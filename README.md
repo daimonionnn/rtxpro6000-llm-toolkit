@@ -188,3 +188,12 @@ Variant 2.
 - Official recipe: https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-Flash-Next
 - Fork: https://github.com/jpezzulli/sglang-rtxpro6000 (tag `pennyroyal-v2.5.0`)
 - Checkpoint: https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4 @ `7b719225242a`
+
+## License
+
+Apache License 2.0 — see [LICENSE](LICENSE).
+
+`sglang/build-local-image/` is a vendored copy of the yepapa-nest recipe, also
+Apache-2.0, with its own `LICENSE` and the changes listed in its `UPSTREAM.md`.
+Software fetched at build time — SGLang images, the pennyroyal fork, NIXL — and the
+model checkpoints are not part of this repository and keep their own licenses.
