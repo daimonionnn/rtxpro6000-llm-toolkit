@@ -171,6 +171,33 @@ built by following the fork's BUILD.md from a script without an activated venv:
 
 Host packages it needs: `meson` and `libaio-dev`.
 
+## `sglang-nvfp4-ram-pennyroyal` breaks after the toolkit directory moves
+
+The fork's venv, the NIXL build and the JIT caches under
+`nvfp4-ram-pennyroyal/cache/` all record absolute paths. After moving or renaming the
+toolkit:
+
+- the launcher fails with `No module named 'sglang'`, and the venv's scripts point
+  at an interpreter that no longer exists;
+- if a symlink with the old name points at the new location, the server still
+  starts, but the cached kernels keep writing to the old relative layout — a stray
+  `sglang/…/cache/` directory appears in the toolkit root;
+- HiCache starts a new, empty namespace under `nixl-storage/` (the namespace hash
+  includes the paths); the old one is unused and can be deleted.
+
+Rebuild from the new location, with the server stopped:
+
+```bash
+cd qwen3.8-flash-next/sglang
+rm -rf pennyroyal-fork/.venv nvfp4-ram-pennyroyal/cache \
+       nvfp4-ram-pennyroyal/nixl nvfp4-ram-pennyroyal/nixl-src/build-posix
+nvfp4-ram-pennyroyal/build.sh && nvfp4-ram-pennyroyal/build-nixl.sh
+```
+
+Both builds reuse the uv cache and take about 3 minutes together; the first server
+start afterwards recompiles its kernels. The Docker profiles are unaffected — their
+mounts are resolved each time they start.
+
 ## HiCache never keeps anything
 
 Check the cleaner watermarks in `nixl-posix-local.toml` against `df -h /`. They
