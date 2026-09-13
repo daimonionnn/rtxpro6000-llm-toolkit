@@ -1,0 +1,39 @@
+diff --git a/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py b/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py
+index fd7bea35f8..0d73b5347d 100644
+--- a/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py
++++ b/python/sglang/srt/layers/attention/qwen_sparse_attn_backend.py
+@@ -1452,15 +1452,30 @@ class QwenSparseAttnBackend(AttentionBackend):
+         v_buffer = pool.get_value_buffer(layer.layer_id)
+         req_to_token = self.req_to_token_pool.req_to_token
+         req_indices = forward_batch.req_pool_indices.tolist()
++        # Local patch: with --kv-cache-dtype fp8_e4m3, chunked-prefill continuation
++        # batches reach this path with an fp8 KV buffer, and the tl.dot inside
++        # sparse_gqa_fwd_interface_triton_ck does not accept an fp8 rhs
++        # ("Unsupported rhs dtype fp8e4nv" - reproduced on the 2nd chunk of a 52K
++        # prompt). Cast only the selected rows back to the query dtype.
++        # NOTE: this assumes the direct-cast e4m3 store, i.e. scale == 1.0. Upstream
++        # PR #36644 does this properly with per-layer KV descale - prefer it once
++        # merged, and verify your checkpoint's KV scales before relying on this.
++        _kv_cast = (
++            (lambda t: t.to(q.dtype)) if k_buffer.dtype != q.dtype else (lambda t: t)
++        )
+         k_parts = [
+-            k_buffer.index_select(
+-                0, req_to_token[req_indices[i], : sequence_lens[i]].long()
++            _kv_cast(
++                k_buffer.index_select(
++                    0, req_to_token[req_indices[i], : sequence_lens[i]].long()
++                )
+             )
+             for i in range(len(sequence_lens))
+         ]
+         v_parts = [
+-            v_buffer.index_select(
+-                0, req_to_token[req_indices[i], : sequence_lens[i]].long()
++            _kv_cast(
++                v_buffer.index_select(
++                    0, req_to_token[req_indices[i], : sequence_lens[i]].long()
++                )
+             )
+             for i in range(len(sequence_lens))
+         ]

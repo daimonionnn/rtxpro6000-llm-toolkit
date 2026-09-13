@@ -1,0 +1,27 @@
+# Model checkpoints — hundreds of GB; download them as described in docs/setup.md
+/models/
+
+# Runtime output
+/logs/
+*.pid
+__pycache__/
+*.pyc
+
+# Editor / agent tool state
+/.kilo/
+.vscode/
+.idea/
+
+# Local Docker image build workspace, created by sglang/build-local-image/build.sh
+/sglang/build-local-image/.build/
+# The upstream recipe's own git metadata, kept locally but not published
+/sglang/build-local-image/.git-upstream/
+
+# pennyroyal fork checkout and its venv, created by the fork profile's build.sh
+/sglang/pennyroyal-fork/
+
+# NIXL source, NIXL install, compiler caches and HiCache storage, created at build/run time
+/sglang/*/nixl-src/
+/sglang/*/nixl/
+/sglang/*/nixl-storage/
+/sglang/*/cache/

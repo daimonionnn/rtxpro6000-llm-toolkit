@@ -1,0 +1,240 @@
+# Setup
+
+Start to finish on a fresh machine. Roughly 40 minutes, most of it the download.
+
+## Prerequisites
+
+| Requirement | Why |
+|---|---|
+| Blackwell GPU, 96 GB, SM120 | NVFP4 is Blackwell-only. This will not run on Ada or Hopper. |
+| NVIDIA driver, kernel module matching userspace | Verified with `nvidia-smi` |
+| Docker with the NVIDIA container runtime | `docker run --rm --gpus '"device=0"' ubuntu:24.04 nvidia-smi -L` |
+| `io_uring` enabled | `sysctl kernel.io_uring_disabled` must report `0`; kernel 5.10+ |
+| ~150 GB free on an **NVMe** filesystem | The PLE table is read continuously during decode |
+| `git`, `rsync`, `curl`, `python3` | Used by `build.sh` |
+
+The checkpoint must sit on NVMe with a real Linux filesystem. An NTFS mount via
+ntfs3 is a bad fit for `O_DIRECT` io_uring reads, and a spinning disk is out of
+the question.
+
+### Driver sanity check
+
+Both numbers must match. If they do not, `nvidia-smi` fails with
+`Driver/library version mismatch` and nothing CUDA works:
+
+```bash
+cat /proc/driver/nvidia/version              # loaded kernel module
+ls -l /usr/lib/x86_64-linux-gnu/libnvidia-ml.so.1   # userspace library
+```
+
+A mismatch usually means the driver was updated without a reboot. The `nvidia`
+module cannot be unloaded while the display stack holds it, so reboot.
+
+## 1. Checkpoint
+
+```bash
+uv tool install "huggingface_hub[cli]"
+hf download RadixArk/Qwen3.8-Flash-Next-NVFP4 \
+  --revision 7b719225242a \
+  --local-dir models/Qwen3.8-Flash-Next-NVFP4
+```
+
+**Pin the revision.** Day-0 uploads get amended without announcement.
+
+126 GiB, 206 shards. Verify nothing is missing before building:
+
+```bash
+python3 - <<'PY'
+import json, os
+d = "models/Qwen3.8-Flash-Next-NVFP4"
+j = json.load(open(os.path.join(d, "model.safetensors.index.json")))
+need, have = set(j["weight_map"].values()), set(os.listdir(d))
+print("shards:", len(need), "| missing:", sorted(need - have))
+PY
+```
+
+## 2. Build the image
+
+```bash
+git clone https://github.com/yepapa-nest/qwen38-flashnext-rtx6000.git \
+  sglang/build-local-image
+cd sglang/build-local-image
+./build.sh
+```
+
+`build.sh` pins an SGLang source tree, cherry-picks three upstream PRs, applies
+one local patch, and runs `docker build`. It takes a while: the blobless clone of
+SGLang is large, and it competes for bandwidth if the checkpoint is still
+downloading.
+
+**Apply the Dockerfile changes described in
+[upstream-fixes.md](upstream-fixes.md) before building** — without them the build
+fails at the last step with `ModuleNotFoundError: ..._storage`.
+
+Result: image `sglang-flashnext-sm120:local`, about 37 GB.
+
+## 3. Serve
+
+```bash
+cd sglang/v0-nvme
+MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-nvme.sh
+```
+
+`serve-nvfp4-nvme.sh` accepts these overrides:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `MODEL_DIR` | *(required)* | Absolute path to the checkpoint |
+| `PORT` | `8090` | Bound to `127.0.0.1` only |
+| `CTX` | `262144` | Native context window |
+| `MEMFRAC` | `0.95` | `--mem-fraction-static` |
+| `MAMBA_SLOTS` | `25` | Recurrent-state slots; the real concurrency limit (~5) |
+| `CHUNKED` | `8192` | Chunked prefill size |
+| `WEIGHT_QUANT` | `modelopt_fp4` | `--quantization`; the launch aborts if the checkpoint is not NVFP4 |
+| `FP4_GEMM_BACKEND` | `flashinfer_cudnn` | FP4 matrix-multiply kernel |
+| `KV_DTYPE` | `fp8_e4m3` | KV cache precision; `auto` means BF16 and roughly half the tokens |
+| `EXTRA_ARGS` | *(empty)* | Extra launch flags, e.g. `--mamba-ssm-dtype bfloat16` |
+
+Before launching, `serve-nvfp4-nvme.sh` runs `quant_info.py`, which reads the checkpoint and
+prints what precision each part runs at:
+
+```
+Qwen3.8-Flash-Next — Qwen3.8-Flash-Next-NVFP4  (modelopt 0.46.0)
+  routed MoE experts    NVFP4 W4A4, group 16, FP8 E4M3 block scales
+                        --quantization modelopt_fp4, FP4 GEMM flashinfer_cudnn
+  attention, router,    BF16 — not quantized (13 exclude patterns)
+  shared experts, MTP,  self_attn, linear_attn, mlp.gate, shared_expert,
+  vision, lm_head       hyper_connection, mtp, visual, embed_tokens, lm_head
+  PLE n-gram table      FP8 E4M3, 47.7 GiB, streamed from NVMe (io_uring)
+  KV cache              fp8_e4m3
+```
+
+The checkpoint is **not uniformly 4-bit**: only the routed MoE experts are NVFP4.
+It can also be run on its own — `python3 sglang/common/quant_info.py MODEL_DIR`. On a running
+container the same information is in its labels:
+`docker inspect flashnext --format '{{json .Config.Labels}}'` (containers started
+before the labels were added do not have them).
+
+The script waits for `The server is fired up` and prints the container log if the
+container exits first.
+
+To see at any time which variant is running, from which directory, on which port
+and how to stop it:
+
+```bash
+scripts/status.sh
+```
+
+For daily use, `scripts/` has a start script per profile, one `stop.sh` for
+whichever is running, and start/stop scripts for the chat UI — see the README.
+
+Ready when:
+
+```bash
+curl -s http://127.0.0.1:8090/v1/models
+```
+
+## 4. Stop
+
+```bash
+./stop.sh          # stop and wait until the VRAM is released
+./stop.sh --rm     # also remove the container
+```
+
+`serve-nvfp4-nvme.sh` uses `--restart unless-stopped`: if the server is running when the
+machine shuts down, Docker starts it again at boot and it takes ~93 GB of VRAM
+without anyone asking. A container stopped by hand stays stopped across reboots.
+`NAME` and `TIMEOUT` (graceful shutdown, default 60 s) can be overridden.
+
+## 5. The RAM launchers
+
+The steps above build the image for the NVMe baseline, which Variant 1 also uses.
+The results of all four launchers are compared in
+[ple-ram-experiment.md](ple-ram-experiment.md). All three RAM variants need
+**at least ~65 GB of free host RAM** for the pinned 47.7 GiB PLE table.
+
+### Variant 1 — same image
+
+Nothing extra to install:
+
+```bash
+cd sglang/v1-ram
+MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+```
+
+It accepts the same variables as the NVMe launcher, with different defaults:
+`MAXRUN=4`, `MAMBA_SLOTS=12`, `CHUNKED=4096`, `MEMFRAC=0.96`, `MAX_TOTAL_TOKENS`
+unset, plus `MAMBA_SSM_DTYPE=bfloat16`.
+
+### Variant 2 — official image
+
+```bash
+docker pull lmsysorg/sglang:dev-qwen38-next-local      # 33 GB
+cd sglang/v2-official-image
+MAXRUN=4 MAMBA_SLOTS=12 KV_DTYPE=auto \
+MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+```
+
+Without overrides it reproduces the published cookbook cell (16 requests,
+~77K KV tokens). **Keep `KV_DTYPE=auto`**: with `fp8_e4m3` the image crashes on
+the first long prompt. Stop it with `./stop.sh`.
+
+### Variant 3 — jpezzulli fork, native
+
+Needs on the host: CUDA 13.3 at `/usr/local/cuda-13.3`, `gcc-15`/`g++-15`, Rust,
+`uv`, and an unlimited memlock limit (`ulimit -l` → `unlimited`). Then:
+
+```bash
+sglang/v3-pennyroyal/build.sh        # clones the fork to sglang/pennyroyal-fork and builds its venv
+cd sglang/v3-pennyroyal
+MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+./stop.sh
+```
+
+The build is the fork's `BUILD.md` with two differences: `CUDA_HOME` points at
+13.3 (the host default is 13.4), and `wheel_stub` is installed first, without
+which `cuda-tile` fails to build. The launcher is the fork's
+`serve-flash-next.sh` minus HiCache/NIXL, and puts `shim/` first on `PATH` so
+TileLang does not target the AMD GPU — see
+[troubleshooting.md](troubleshooting.md).
+
+**HiCache with NIXL persistence** (optional) keeps prefixes across restarts —
+a 220K-token prompt comes back in 1.5 s instead of 17.7 s. It needs two host
+packages and a build:
+
+```bash
+sudo apt install meson libaio-dev
+sglang/v3-pennyroyal/build-nixl.sh      # into sglang/v3-pennyroyal/nixl, no root needed
+cd sglang/v3-pennyroyal
+HICACHE=1 MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+```
+
+Cache files go to `sglang/v3-pennyroyal/nixl-storage/` (`NIXL_STORAGE_BASE`
+overrides), and the host-RAM tier is `HICACHE_SIZE_GB` (default 32). **Read the
+header of `nixl-posix-local.toml` before first use:** its eviction watermarks are
+percentages of the whole filesystem and were set for this machine's disk at 88%.
+
+The first start compiles kernels into `sglang/v3-pennyroyal/cache/`; later starts
+reuse it. The launcher refuses to start while another process holds the GPU, so
+stop any Docker variant first. It runs as a background process with its PID in
+`sglang/v3-pennyroyal/server.pid` and does not restart after a reboot.
+
+## Re-measuring after a config change
+
+```bash
+python3 bench/prefill.py              # 4K / 32K / 128K, cold and prefix-cached
+python3 bench/prefill.py 8192 65536   # or pick your own sizes
+```
+
+Standard library only; it flushes the prefix cache before each cold run.
+
+## Notes on the launch flags
+
+The defaults in `serve-nvfp4-nvme.sh` are the upstream author's measured choices, not
+preferences. Two are worth knowing:
+
+- `--cuda-graph-backend-decode breakable` is what lets CUDA graphs run together
+  with NEXTN speculation. Full and `tc_piecewise` graphs are incompatible with
+  the PLE device-to-host copy during capture.
+- `--speculative-num-draft-tokens 4` is an architectural cap from the QSA
+  compression ratio. Raising it does not help.

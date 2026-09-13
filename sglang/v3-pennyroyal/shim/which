@@ -1,0 +1,14 @@
+#!/bin/sh
+# Hide ROCm's hipcc from TileLang, and only from it.
+#
+# The host has ROCm installed for the Radeon AI PRO R9700, including /usr/bin/hipcc.
+# TileLang detects ROCm with `which hipcc`, and its ROCm detector wins over CUDA, so
+# on this machine it compiled kernels for the AMD GPU and the server died with
+# "N must be divisible by 16, but got 8" from tilelang/rocm/op/gemm. In Docker there
+# is no hipcc, which is why the container variants never hit this.
+#
+# serve-nvfp4-ram.sh puts this directory first on PATH for the server process only.
+for arg in "$@"; do
+  [ "$arg" = hipcc ] && exit 1
+done
+exec /usr/bin/which "$@"

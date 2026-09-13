@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flash-Next Chat</title>
+<style>
+  :root {
+    --bg: #f7f7f5;
+    --panel: #ffffff;
+    --ink: #1a1a18;
+    --muted: #6b6b63;
+    --line: #e2e2dc;
+    --accent: #2f6f4f;
+    --accent-soft: #e8f1ec;
+    --user: #eef1f6;
+    --warn: #8a5a00;
+    --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #16171a;
+      --panel: #1e1f23;
+      --ink: #e8e8e4;
+      --muted: #9a9a92;
+      --line: #2e3036;
+      --accent: #6bbd92;
+      --accent-soft: #1c2b24;
+      --user: #24262c;
+      --warn: #d8a44a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #16171a;
+    --panel: #1e1f23;
+    --ink: #e8e8e4;
+    --muted: #9a9a92;
+    --line: #2e3036;
+    --accent: #6bbd92;
+    --accent-soft: #1c2b24;
+    --user: #24262c;
+    --warn: #d8a44a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--bg); color: var(--ink); margin: 0;
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    height: 100vh; display: flex; flex-direction: column;
+  }
+
+  header {
+    border-bottom: 1px solid var(--line); background: var(--panel);
+    padding: 10px 16px; display: flex; gap: 14px; align-items: center; flex-wrap: wrap;
+  }
+  .brand { font-weight: 650; letter-spacing: -.01em; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: #b9b9b0; display: inline-block; margin-right: 6px; }
+  .dot.on { background: var(--accent); }
+  .dot.err { background: #c0504d; }
+  #status { color: var(--muted); font-size: 13px; }
+  header .spacer { flex: 1; }
+
+  .ctl { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+  .ctl input[type=number] {
+    width: 74px; background: var(--bg); color: var(--ink);
+    border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; font: inherit; font-size: 13px;
+  }
+  .ctl input[type=checkbox] { accent-color: var(--accent); width: 15px; height: 15px; }
+
+  /* session totals */
+  #totals {
+    display: flex; gap: 18px; flex-wrap: wrap;
+    padding: 8px 16px; border-bottom: 1px solid var(--line);
+    background: var(--panel); font-size: 12.5px; color: var(--muted);
+  }
+  #totals b { color: var(--ink); font-family: var(--mono); font-weight: 600; font-size: 13px; }
+  #totals span { white-space: nowrap; }
+
+  main { flex: 1; overflow-y: auto; padding: 20px 16px 8px; }
+  .wrap { max-width: 860px; margin: 0 auto; }
+
+  .msg { margin-bottom: 18px; }
+  .who { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 5px; }
+  .bubble {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+    padding: 11px 14px; white-space: pre-wrap; overflow-wrap: anywhere;
+  }
+  .msg.user .bubble { background: var(--user); }
+  .bubble pre { background: var(--bg); border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px; overflow-x: auto; font-family: var(--mono); font-size: 13px; margin: 8px 0; }
+  .bubble code { font-family: var(--mono); font-size: 13px; }
+
+  details.think {
+    margin-bottom: 8px; border: 1px dashed var(--line); border-radius: 8px;
+    background: var(--accent-soft); padding: 7px 11px;
+  }
+  details.think > summary { cursor: pointer; font-size: 12.5px; color: var(--muted); }
+  details.think .body { white-space: pre-wrap; font-size: 13.5px; color: var(--muted); margin-top: 8px; }
+
+  .stats { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 7px; font-size: 12px; color: var(--muted); }
+  .stats i { font-style: normal; font-family: var(--mono); color: var(--ink); font-weight: 600; }
+  .stats .hit { color: var(--accent); }
+
+  footer { border-top: 1px solid var(--line); background: var(--panel); padding: 12px 16px; }
+  .composer { max-width: 860px; margin: 0 auto; display: flex; gap: 10px; align-items: flex-end; }
+  textarea {
+    flex: 1; resize: none; min-height: 48px; max-height: 220px;
+    background: var(--bg); color: var(--ink); border: 1px solid var(--line);
+    border-radius: 9px; padding: 12px; font: inherit;
+  }
+  textarea:focus, .ctl input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 9px;
+    padding: 12px 20px; font: inherit; font-weight: 600; cursor: pointer;
+  }
+  button.ghost { background: transparent; color: var(--muted); border: 1px solid var(--line); padding: 7px 12px; font-weight: 500; font-size: 13px; }
+  button:disabled { opacity: .45; cursor: default; }
+  .hint { max-width: 860px; margin: 7px auto 0; font-size: 11.5px; color: var(--muted); }
+  .warn { color: var(--warn); }
+
+  @media (max-width: 620px) {
+    #totals { gap: 12px; }
+    .composer { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <span class="brand"><span class="dot" id="dot"></span><span id="modelName">Flash-Next</span></span>
+  <span id="status">connecting…</span>
+  <span class="spacer"></span>
+  <label class="ctl" title="Thinking is ON by default on this model. With a small max_tokens the whole budget goes to reasoning and content comes back empty.">
+    <input type="checkbox" id="thinking"> thinking
+  </label>
+  <label class="ctl">max_tokens <input type="number" id="maxTokens" value="1024" min="1" max="32768" step="64"></label>
+  <label class="ctl">temp <input type="number" id="temp" value="0" min="0" max="2" step="0.1"></label>
+  <button class="ghost" id="clear">Clear</button>
+</header>
+
+<div id="totals">
+  <span>turns <b id="tTurns">0</b></span>
+  <span>avg TTFT <b id="tTtft">–</b></span>
+  <span>avg decode <b id="tTps">–</b></span>
+  <span>best decode <b id="tBest">–</b></span>
+  <span>output tok <b id="tOut">0</b></span>
+  <span>ctx <b id="tCtx">0</b></span>
+</div>
+
+<main id="main"><div class="wrap" id="log"></div></main>
+
+<footer>
+  <div class="composer">
+    <textarea id="input" placeholder="Message…  (Enter to send, Shift+Enter for newline)" rows="2"></textarea>
+    <button id="send">Send</button>
+  </div>
+  <div class="hint" id="hint">
+    Multi-turn: each turn re-sends the conversation, so watch TTFT drop once the prefix cache warms up.
+  </div>
+</footer>
+
+<script>
+// Override with ?api=http://host:port if the server is not on the default endpoint.
+const API = new URLSearchParams(location.search).get("api") || "http://127.0.0.1:8090";
+const $ = id => document.getElementById(id);
+const log = $("log"), main = $("main");
+
+let MODEL = "Qwen3.8-Flash-Next";
+let history = [];           // [{role, content}]
+let busy = false;
+const agg = { turns: 0, ttft: [], tps: [], out: 0, ctx: 0 };
+
+// ---------- health ----------
+(async function health() {
+  try {
+    const r = await fetch(API + "/v1/models");
+    const d = await r.json();
+    MODEL = d.data[0].id;
+    $("modelName").textContent = MODEL;
+    $("status").textContent = "ready · ctx " + d.data[0].max_model_len.toLocaleString();
+    $("dot").classList.add("on");
+  } catch (e) {
+    $("dot").classList.add("err");
+    $("status").innerHTML = '<span class="warn">no server on ' + API + '</span>';
+  }
+})();
+
+// ---------- rendering ----------
+function el(tag, cls, text) {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text !== undefined) n.textContent = text;
+  return n;
+}
+
+function addMsg(role) {
+  const m = el("div", "msg " + role);
+  m.appendChild(el("div", "who", role === "user" ? "you" : MODEL));
+  const think = el("details", "think");
+  think.appendChild(el("summary", null, "reasoning"));
+  const thinkBody = el("div", "body");
+  think.appendChild(thinkBody);
+  think.style.display = "none";
+  const bubble = el("div", "bubble");
+  const stats = el("div", "stats");
+  m.append(think, bubble, stats);
+  log.appendChild(m);
+  return { think, thinkBody, bubble, stats };
+}
+
+const atBottom = () => main.scrollHeight - main.scrollTop - main.clientHeight < 120;
+function scroll(force) { if (force || atBottom()) main.scrollTop = main.scrollHeight; }
+
+function stat(parent, label, value, hit) {
+  const s = el("span", hit ? "hit" : null);
+  s.append(label + " ", el("i", null, value));
+  parent.appendChild(s);
+}
+
+function refreshTotals() {
+  const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
+  $("tTurns").textContent = agg.turns;
+  const t = avg(agg.ttft), p = avg(agg.tps);
+  $("tTtft").textContent = t === null ? "–" : t.toFixed(3) + " s";
+  $("tTps").textContent = p === null ? "–" : p.toFixed(1) + " t/s";
+  $("tBest").textContent = agg.tps.length ? Math.max(...agg.tps).toFixed(1) + " t/s" : "–";
+  $("tOut").textContent = agg.out.toLocaleString();
+  $("tCtx").textContent = agg.ctx.toLocaleString();
+}
+
+// ---------- send ----------
+async function send() {
+  const text = $("input").value.trim();
+  if (!text || busy) return;
+  busy = true; $("send").disabled = true;
+  $("input").value = "";
+
+  const u = addMsg("user");
+  u.bubble.textContent = text;
+  history.push({ role: "user", content: text });
+  scroll(true);
+
+  const a = addMsg("assistant");
+  a.bubble.textContent = "…";
+
+  const body = {
+    model: MODEL,
+    messages: history,
+    max_tokens: +$("maxTokens").value,
+    temperature: +$("temp").value,
+    stream: true,
+    stream_options: { include_usage: true },
+    chat_template_kwargs: { enable_thinking: $("thinking").checked }
+  };
+
+  const t0 = performance.now();
+  let ttft = null, content = "", reasoning = "", usage = null, nChunks = 0;
+
+  try {
+    const resp = await fetch(API + "/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body)
+    });
+    if (!resp.ok) throw new Error("HTTP " + resp.status + " " + (await resp.text()).slice(0, 300));
+
+    const reader = resp.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n");
+      buf = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith("data: ")) continue;
+        const payload = line.slice(6).trim();
+        if (payload === "[DONE]") continue;
+        let d;
+        try { d = JSON.parse(payload); } catch { continue; }
+
+        if (d.usage) usage = d.usage;
+        const delta = d.choices && d.choices[0] && d.choices[0].delta;
+        if (!delta) continue;
+
+        if (ttft === null) { ttft = (performance.now() - t0) / 1000; }
+        nChunks++;
+
+        if (delta.reasoning_content) {
+          reasoning += delta.reasoning_content;
+          a.think.style.display = "";
+          a.think.open = true;
+          a.thinkBody.textContent = reasoning;
+        }
+        if (delta.content) {
+          content += delta.content;
+          a.bubble.textContent = content;
+        }
+
+        // live counter
+        const elapsed = (performance.now() - t0) / 1000;
+        a.stats.textContent = "";
+        stat(a.stats, "TTFT", ttft.toFixed(3) + " s");
+        if (elapsed > ttft) stat(a.stats, "decode", (nChunks / (elapsed - ttft)).toFixed(1) + " t/s");
+        scroll();
+      }
+    }
+
+    const total = (performance.now() - t0) / 1000;
+    const outTok = usage ? usage.completion_tokens : nChunks;
+    const decodeSecs = Math.max(total - (ttft ?? 0), 1e-6);
+    const tps = outTok / decodeSecs;
+
+    if (!content && reasoning) {
+      a.bubble.innerHTML = '<span class="warn">Empty content — the whole max_tokens budget went to reasoning. '
+        + 'Raise max_tokens or turn thinking off.</span>';
+    } else if (!content) {
+      a.bubble.textContent = "(empty response)";
+    }
+    a.think.open = false;
+
+    a.stats.textContent = "";
+    stat(a.stats, "TTFT", (ttft ?? 0).toFixed(3) + " s");
+    stat(a.stats, "decode", tps.toFixed(1) + " t/s");
+    stat(a.stats, "total", total.toFixed(2) + " s");
+    if (usage) {
+      stat(a.stats, "in", usage.prompt_tokens.toLocaleString());
+      stat(a.stats, "out", usage.completion_tokens.toLocaleString());
+      if (usage.reasoning_tokens) stat(a.stats, "reasoning", usage.reasoning_tokens.toLocaleString());
+      const pd = usage.prompt_tokens_details;
+      if (pd && pd.cached_tokens) stat(a.stats, "cached", pd.cached_tokens.toLocaleString(), true);
+      stat(a.stats, "prefill", (usage.prompt_tokens / Math.max(ttft ?? 1e-6, 1e-6)).toFixed(0) + " t/s");
+    }
+
+    history.push({ role: "assistant", content: content });
+    agg.turns++;
+    if (ttft !== null) agg.ttft.push(ttft);
+    agg.tps.push(tps);
+    agg.out += outTok;
+    if (usage) agg.ctx = usage.total_tokens;
+    refreshTotals();
+
+  } catch (e) {
+    a.bubble.innerHTML = '<span class="warn">' + String(e.message || e) + "</span>";
+    history.pop(); // drop the user turn so the conversation stays consistent
+  } finally {
+    busy = false; $("send").disabled = false; $("input").focus(); scroll();
+  }
+}
+
+// ---------- wiring ----------
+$("send").addEventListener("click", send);
+$("input").addEventListener("keydown", e => {
+  if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); send(); }
+});
+$("input").addEventListener("input", e => {
+  e.target.style.height = "auto";
+  e.target.style.height = Math.min(e.target.scrollHeight, 220) + "px";
+});
+$("clear").addEventListener("click", () => {
+  history = []; log.textContent = "";
+  agg.turns = 0; agg.ttft = []; agg.tps = []; agg.out = 0; agg.ctx = 0;
+  refreshTotals();
+});
+$("thinking").addEventListener("change", e => {
+  $("hint").innerHTML = e.target.checked
+    ? 'Thinking on: reasoning tokens count toward <code>max_tokens</code>. If it is too small, <code>content</code> comes back empty.'
+    : 'Multi-turn: each turn re-sends the conversation, so watch TTFT drop once the prefix cache warms up.';
+});
+refreshTotals();
+$("input").focus();
+</script>
+</body>
+</html>

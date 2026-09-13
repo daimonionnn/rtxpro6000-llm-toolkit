@@ -1,0 +1,19 @@
+# NIXL POSIX config for this machine, based on the fork's configs/pennyroyal/nixl-posix.toml.
+#
+# The cleaner watermarks are WHOLE-FILESYSTEM occupancy percentages, not a quota for
+# this cache. The fork's 54.6 / 53.0 were set for a dedicated, mostly empty volume.
+# The root filesystem here was already 88% full (3.6 TB, 2026-09-13), so with those
+# values the cleaner would evict continuously and nothing would ever persist.
+#
+# 92 / 90 lets the cache grow until the filesystem reaches 92% — roughly 140 GB of
+# headroom from 88% — then evicts back down to 90%. Other data filling the disk
+# counts too: if the filesystem passes 92% for unrelated reasons, cached prefixes
+# are evicted. Raise or lower both numbers together.
+use_direct_io = true
+l3_cleaner_enabled = true
+l3_cleaner_high_watermark = 92.0
+l3_cleaner_low_watermark = 90.0
+
+[plugin.posix]
+active = true
+use_uring = "true"
