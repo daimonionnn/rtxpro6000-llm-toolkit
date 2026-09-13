@@ -4,15 +4,15 @@
 #   ./stop.sh          # stop the container, keep it (the launcher recreates it anyway)
 #   ./stop.sh --rm     # stop and remove the container
 #
-# Shared by the Docker variants (v0-nvme, v1-ram, v2-official-image); each has a
-# stop.sh that calls this. They all run as the one container "flashnext".
+# Shared by every Docker profile; each profile directory has a
+# stop.sh that calls this. They all run as the one container "rtxpro6000-llm".
 #
 # The Docker launchers use --restart unless-stopped. A container stopped by hand
 # stays stopped across reboots, so this is also how you keep the model from
 # grabbing the GPU at the next boot.
 set -euo pipefail
 
-NAME="${NAME:-flashnext}"
+NAME="${NAME:-rtxpro6000-llm}"
 TIMEOUT="${TIMEOUT:-60}"   # seconds to wait for a graceful shutdown before SIGKILL
 REMOVE=0
 [ "${1:-}" = "--rm" ] && REMOVE=1

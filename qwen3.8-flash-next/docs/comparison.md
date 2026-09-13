@@ -43,12 +43,12 @@ Common to all launchers. Read from the checkpoint's `config.json`.
 
 | Launcher | Weights | KV cache | Mamba SSM state | RoPE / window | KV pool (tokens) |
 |---|---|---|---|---|---|
-| **NVMe baseline** (yepapa-nest recipe) | NVFP4 mix¹ | FP8 | **FP32** | native / 262K | 231,936 |
-| **Variant 1** (our image, PLE in RAM) | NVFP4 mix¹ | FP8 | BF16 | native / 262K | 498,624 |
-| **Variant 2a** (official image, cookbook as published) | NVFP4 mix¹ | **BF16** | BF16 | native / 262K | 76,864 |
-| **Variant 2b** (official image, FP8 KV) | NVFP4 mix¹ | FP8 | BF16 | native / 262K | 498,624 — **crashes** |
-| **Variant 2c** (official image, tuned for one agent) | NVFP4 mix¹ | **BF16** | BF16 | native / 262K | 256,832 |
-| **Variant 3** (jpezzulli fork) | NVFP4 mix¹ | FP8 | BF16 | **YaRN ×2** / 524K | **831,872** |
+| **`sglang-nvfp4-nvme`** (yepapa-nest recipe) | NVFP4 mix¹ | FP8 | **FP32** | native / 262K | 231,936 |
+| **`sglang-nvfp4-ram`** (our image, PLE in RAM) | NVFP4 mix¹ | FP8 | BF16 | native / 262K | 498,624 |
+| **`sglang-nvfp4-ram-official` (cookbook defaults)** (official image, cookbook as published) | NVFP4 mix¹ | **BF16** | BF16 | native / 262K | 76,864 |
+| **`sglang-nvfp4-ram-official` with FP8 KV** (official image, FP8 KV) | NVFP4 mix¹ | FP8 | BF16 | native / 262K | 498,624 — **crashes** |
+| **`sglang-nvfp4-ram-official`** (official image, tuned for one agent) | NVFP4 mix¹ | **BF16** | BF16 | native / 262K | 256,832 |
+| **`sglang-nvfp4-ram-pennyroyal`** (jpezzulli fork) | NVFP4 mix¹ | FP8 | BF16 | **YaRN ×2** / 524K | **831,872** |
 
 ¹ **NVFP4 mix**, identical everywhere: routed experts in **NVFP4 W4A4** (4-bit
 float weights *and* activations, one FP8 E4M3 scale per block of 16 values, FP32
@@ -62,28 +62,28 @@ checkpoint at every launch.
 - **The checkpoint is not "4-bit" throughout.** Only the routed experts are NVFP4,
   but they hold most of the non-PLE parameters, which is what brings the weights
   down to ~80 GB of VRAM.
-- **FP32 mamba state in the NVMe baseline is the model's own default**
-  (`mamba_ssm_dtype: float32` in `config.json`), not a choice. The RAM variants set
+- **FP32 mamba state in `sglang-nvfp4-nvme` is the model's own default**
+  (`mamba_ssm_dtype: float32` in `config.json`), not a choice. The RAM profiles set
   `--mamba-ssm-dtype bfloat16` because halving that state is part of how they fit.
-  Memory confirms it: 110 MB per state slot in the baseline, 55 MB in the others.
+  Memory confirms it: 110 MB per state slot in `sglang-nvfp4-nvme`, 55 MB in the others.
 - **FP8 KV here is uncalibrated.** The checkpoint ships no KV scales, and the log
   warns `Defaulting to scaling factors of 1.0. This may lead to less accurate
   results!` Upstream PR #36644 (unmerged on 2026-09-13) would add per-layer descale.
 - **KV precision decides the pool size** almost by itself: the same memory holds
   498,624 FP8 tokens or 256,832 BF16 tokens (2b and 2c differ only in that).
-- **Variant 2b is listed as a warning.** The official image has no fix for FP8 KV
+- **`sglang-nvfp4-ram-official` with FP8 KV is listed as a warning.** The official image has no fix for FP8 KV
   in chunked prefill, and the first 57K-token prompt killed its scheduler with
   `Unsupported rhs dtype fp8e4nv`.
-- **YaRN in Variant 3 is static.** `--json-model-override-args` sets factor 2 for
+- **YaRN in `sglang-nvfp4-ram-pennyroyal` is static.** `--json-model-override-args` sets factor 2 for
   every request, so short prompts get rescaled positions too. That is the price of
   the 524K window.
 - **Speculative decoding does not change output.** All launchers use NEXTN with 4
   draft tokens; verification against the target is exact, so the draft's precision
-  (`modelopt_fp4` in most, `unquant` in Variant 3) affects speed, not results.
+  (`modelopt_fp4` in most, `unquant` in `sglang-nvfp4-ram-pennyroyal`) affects speed, not results.
 
 ## Where the model lives: VRAM, RAM, NVMe
 
-The checkpoint is the same file set for every variant — **125.9 GiB (135.3 GB)
+The checkpoint is the same file set for every profile — **125.9 GiB (135.3 GB)
 on disk, 180.0B parameters, 6.01 bits per parameter on average**. Exact counts,
 read from the safetensors headers:
 
@@ -100,12 +100,12 @@ scales.
 Only 10 of 512 experts run per token, so of the ~6B parameters active per token
 2.36B are routed-expert weights at 4.5 bits and the rest are BF16.
 
-What differs between variants is **where the PLE table lives** and **how the free
+What differs between profiles is **where the PLE table lives** and **how the free
 VRAM is spent**. KV cache, mamba cache and free-after-graphs figures are from each
-variant's startup log (SGLang labels them GB but counts in GiB); "VRAM in use" is
+profile's startup log (SGLang labels them GB but counts in GiB); "VRAM in use" is
 `nvidia-smi`, converted from MiB. The card has 95.6 GiB (97,887 MiB).
 
-### NVMe baseline — `sglang/v0-nvme/`
+### `sglang-nvfp4-nvme` — `qwen3.8-flash-next/sglang/nvfp4-nvme/`
 
 | | Size | Where |
 |---|---|---|
@@ -119,7 +119,7 @@ variant's startup log (SGLang labels them GB but counts in GiB); "VRAM in use" i
 | **Host RAM** | **~0** beyond page cache | |
 | Disk besides the checkpoint | Docker image `sglang-flashnext-sm120:local` 36.9 GB (36.1 GB shared with its base image) | |
 
-### Variant 1 — `sglang/v1-ram/`
+### `sglang-nvfp4-ram` — `qwen3.8-flash-next/sglang/nvfp4-ram/`
 
 | | Size | Where |
 |---|---|---|
@@ -131,9 +131,9 @@ variant's startup log (SGLang labels them GB but counts in GiB); "VRAM in use" i
 | Free after CUDA graph capture | 4.6 GiB | VRAM |
 | **VRAM in use** | **92.1–92.9 GiB** of 95.6 GiB | |
 | **Host RAM** | **~65 GB** | |
-| Disk besides the checkpoint | same Docker image as the NVMe baseline | |
+| Disk besides the checkpoint | same Docker image as `sglang-nvfp4-nvme` | |
 
-### Variant 2 (2c, as started by `scripts/start-v2-official-image.sh`) — `sglang/v2-official-image/`
+### `sglang-nvfp4-ram-official` (2c, as started by `scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official.sh`) — `qwen3.8-flash-next/sglang/nvfp4-ram-official/`
 
 | | Size | Where |
 |---|---|---|
@@ -143,11 +143,11 @@ variant's startup log (SGLang labels them GB but counts in GiB); "VRAM in use" i
 | KV cache — 256,832 tokens, **BF16** | 6.4 GiB | VRAM |
 | Mamba cache — 12 slots, BF16 state | 1.8 GiB | VRAM |
 | Free after CUDA graph capture | 4.6 GiB | VRAM |
-| **VRAM in use** | not recorded; same budget as Variant 1 | |
+| **VRAM in use** | not recorded; same budget as `sglang-nvfp4-ram` | |
 | **Host RAM** | **~65 GB** | |
 | Disk besides the checkpoint | Docker image `lmsysorg/sglang:dev-qwen38-next-local` 33 GB | |
 
-### Variant 3 — `sglang/v3-pennyroyal/`
+### `sglang-nvfp4-ram-pennyroyal` — `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/`
 
 | | Size | Where |
 |---|---|---|
@@ -168,10 +168,10 @@ variant's startup log (SGLang labels them GB but counts in GiB); "VRAM in use" i
   context, activations and CUDA graphs (~1 GiB) are not listed. The 78.2 GiB of
   weights already includes the MTP draft head, which is part of the BF16 tensors.
 - **The model itself is identical in all four** — same parameters, same bits,
-  78.2 GiB on the GPU. Size therefore cannot separate the variants' quality; only
+  78.2 GiB on the GPU. Size therefore cannot separate the profiles' quality; only
   the KV cache precision (FP8 or BF16), the mamba state precision (FP32 or BF16)
-  and Variant 3's YaRN can.
-- The "extra" VRAM each variant shows is state, not model: the KV pool and the
+  and `sglang-nvfp4-ram-pennyroyal`'s YaRN can.
+- The "extra" VRAM each profile shows is state, not model: the KV pool and the
   mamba cache trade against each other inside the same ~14 GiB.
 - NVMe versus RAM moves 47.7 GiB between host RAM and the SSD. It changes speed
   (prefill 1.5–2× faster from RAM), not what the model computes.
@@ -188,7 +188,7 @@ quantizing attention, routers or embeddings hurts more than quantizing experts.
 | unsloth GGUF Q8_0 | 175.3 GiB | 8.4 | 8 | 8 | 8 |
 | Qwen FP8 | ~190 GB (estimate³) | ~8.4 | 8 | 16 | 8 |
 | wtdcode AWQ W4A16 | 180.8 GB | 8.0 | **INT4, group 128 (4.1)**, activations 16-bit | 16 | **16** |
-| **RadixArk NVFP4 — all our variants** | **135.3 GB** | **6.0** | **FP4, group 16, FP8 scales (4.5)**, activations 4-bit | **16** | 8 |
+| **RadixArk NVFP4 — all our profiles** | **135.3 GB** | **6.0** | **FP4, group 16, FP8 scales (4.5)**, activations 4-bit | **16** | 8 |
 | unsloth GGUF UD-Q4_K_XL | 103.7 GiB | 4.9 | ~4–5, mixed | mixed, higher for sensitive tensors | quantized |
 | unsloth GGUF UD-IQ4_XS | 87.2 GiB | 4.2 | ~4 | mixed | quantized |
 | unsloth GGUF UD-Q3_K_XL | 83.8 GiB | 4.0 | ~3–4 | mixed | quantized |
@@ -256,8 +256,8 @@ builds here multiply by `weight_scale` (checked in `qwen4_exp.py` of each).
 
 | Source | Setup | Result |
 |---|---|---|
-| [yepapa-nest recipe](https://github.com/yepapa-nest/qwen38-flashnext-rtx6000) — our NVMe baseline configuration, RTX PRO 6000 | HumanEval+, greedy | **0.939 / 0.921** non-thinking, 0.957 / 0.927 thinking; GSM8K 0.98; tools 6/7 |
-| [jpezzulli fork](https://github.com/jpezzulli/sglang-rtxpro6000) — our Variant 3, RTX PRO 6000 | own reasoning, tool, vision and agent suite | reasoning **98.52/100**; tool calls 29/30 exact; vision and a six-turn agent task passed |
+| [yepapa-nest recipe](https://github.com/yepapa-nest/qwen38-flashnext-rtx6000) — our `sglang-nvfp4-nvme` configuration, RTX PRO 6000 | HumanEval+, greedy | **0.939 / 0.921** non-thinking, 0.957 / 0.927 thinking; GSM8K 0.98; tools 6/7 |
+| [jpezzulli fork](https://github.com/jpezzulli/sglang-rtxpro6000) — our `sglang-nvfp4-ram-pennyroyal`, RTX PRO 6000 | own reasoning, tool, vision and agent suite | reasoning **98.52/100**; tool calls 29/30 exact; vision and a six-turn agent task passed |
 | [E2Studio local LLM benchmark](https://wonderrico.github.io/local_llm_benchmark/benchmark-main.html?filter=3.8) | first 100 Django tasks of SWE-bench Verified, mini-swe-agent | **98/100** with AWQ W4A16 + INT4 PLE on vLLM — the top score on that board; Qwen3.8-27B 74–81, DeepSeek V4 Flash 81–92 |
 | [eesel AI review](https://www.eesel.ai/blog/qwen38-flash-next-review), citing Artificial Analysis | hosted API | Intelligence Index 56, #5 of 111 in its class; flagged **very verbose** (~200M output tokens on the index vs a 110M median) |
 
@@ -285,9 +285,9 @@ intentionally under-trained preview of the Qwen4 architecture.
   preview, and tool calling is good but not perfect (6/7 and 29/30 in the two
   independent batteries). On the hardest general-knowledge exams frontier models
   still lead.
-- **Between our variants the differences should be small**, since they run the
-  same weights. The unmeasured risks are Variant 3's static YaRN at short context
-  and the uncalibrated FP8 KV cache in the NVMe baseline, Variant 1 and Variant 3.
+- **Between our profiles the differences should be small**, since they run the
+  same weights. The unmeasured risks are `sglang-nvfp4-ram-pennyroyal`'s static YaRN at short context
+  and the uncalibrated FP8 KV cache in `sglang-nvfp4-nvme`, `sglang-nvfp4-ram` and `sglang-nvfp4-ram-pennyroyal`.
   That is what the HumanEval+ TODO in the README is meant to settle.
 
 ## Speed
@@ -297,16 +297,16 @@ runs after a warmup.
 
 | Launcher | Decode | Prefill 4K | Prefill 32K | Prefill 128K |
 |---|---|---|---|---|
-| NVMe baseline | 214–222 tok/s | 0.55 s · 7,314 tok/s | 4.37 s · 7,320 | 18.0 s · 7,076 |
-| Variant 1 | 236–249 | 0.31 s · 12,911 | 2.90 s · 11,010 | 10.7 s · 11,892 |
-| Variant 2a | 248–263 | 0.30 s · 13,217 | 2.94 s · 10,828 | not run |
-| Variant 2c | **258–260** | 0.30 s · 13,377 | 2.45 s · 12,997 | 10.4 s · 12,217 |
-| Variant 3 | 235–254 | **0.27 s** · 14,992 | 2.62 s · 12,174 | **9.68 s** · 13,171 |
-| Variant 3 + HiCache | 228–247² | 0.29 s · ~13,900 | **2.36 s** · 13,506 | 9.89 s · 12,888 |
+| `sglang-nvfp4-nvme` | 214–222 tok/s | 0.55 s · 7,314 tok/s | 4.37 s · 7,320 | 18.0 s · 7,076 |
+| `sglang-nvfp4-ram` | 236–249 | 0.31 s · 12,911 | 2.90 s · 11,010 | 10.7 s · 11,892 |
+| `sglang-nvfp4-ram-official` (cookbook defaults) | 248–263 | 0.30 s · 13,217 | 2.94 s · 10,828 | not run |
+| `sglang-nvfp4-ram-official` | **258–260** | 0.30 s · 13,377 | 2.45 s · 12,997 | 10.4 s · 12,217 |
+| `sglang-nvfp4-ram-pennyroyal` | 235–254 | **0.27 s** · 14,992 | 2.62 s · 12,174 | **9.68 s** · 13,171 |
+| `sglang-nvfp4-ram-pennyroyal` + HiCache | 228–247² | 0.29 s · ~13,900 | **2.36 s** · 13,506 | 9.89 s · 12,888 |
 
 ² Measured with a different prompt and across context lengths; see below.
 
-**Variant 3 + HiCache, the configuration currently in use:**
+**`sglang-nvfp4-ram-pennyroyal` + HiCache, the configuration currently in use:**
 
 | Context behind the request | TTFT (cold) | Decode |
 |---|---|---|
@@ -322,7 +322,7 @@ runs after a warmup.
 | 128K | 9.89 s | 0.45 s | — |
 | 220K | 17.7 s | 1.01 s | **1.51 s** |
 | 255K | 21.5 s | 0.83 s | — |
-| 492K (Variant 3 without HiCache) | 57.3 s | — | — |
+| 492K (`sglang-nvfp4-ram-pennyroyal` without HiCache) | 57.3 s | — | — |
 
 The 57K and 220K rows come from the persistence test (needle prompts, one run
 each); 128K and 255K from `bench/prefill.py`. Different prompts and runs, so the
@@ -331,14 +331,14 @@ faster than 220K for that reason, not because it is.
 
 **Comments**
 
-- **Decode differences between the RAM variants are noise.** Each figure is three
+- **Decode differences between the RAM profiles are noise.** Each figure is three
   or four warm runs, and the ranges overlap. Do not pick a launcher on decode.
 - **Prefill is where RAM beats NVMe clearly** — 1.5× to 2× cold. A prefill step
   gathers a PLE row for every prompt token, and the NVMe path reads each from the
   SSD with `O_DIRECT`, bypassing the page cache. Decode needs only one row per
   step, which is why its gain is small.
 - **Cold prefill slows only gently with length:** about 12% from 4K to 255K in
-  Variant 3, and still ~8,600 tok/s at 492K.
+  `sglang-nvfp4-ram-pennyroyal`, and still ~8,600 tok/s at 492K.
 - **In practice the prefix cache decides waiting time.** An agent resends a long,
   mostly unchanged prefix every turn; with the cache a 220K prompt returns in about
   a second instead of 18. HiCache/NIXL extends that across restarts.
@@ -377,24 +377,24 @@ quality can only differ through three settings:
 
 | | KV cache | Mamba SSM state | RoPE |
 |---|---|---|---|
-| NVMe baseline | FP8, uncalibrated | **FP32** | native |
-| Variant 1 | FP8, uncalibrated | BF16 | native |
-| Variant 2c | **BF16** | BF16 | native |
-| Variant 3 | FP8, uncalibrated | BF16 | **YaRN ×2** |
+| `sglang-nvfp4-nvme` | FP8, uncalibrated | **FP32** | native |
+| `sglang-nvfp4-ram` | FP8, uncalibrated | BF16 | native |
+| `sglang-nvfp4-ram-official` | **BF16** | BF16 | native |
+| `sglang-nvfp4-ram-pennyroyal` | FP8, uncalibrated | BF16 | **YaRN ×2** |
 
 **Comments**
 
-- **Variant 2c** keeps the full-precision KV cache, so the 12 full-attention layers
+- **`sglang-nvfp4-ram-official`** keeps the full-precision KV cache, so the 12 full-attention layers
   see exact keys and values.
-- **The NVMe baseline** keeps the recurrent state of the 36 linear-attention layers
+- **`sglang-nvfp4-nvme`** keeps the recurrent state of the 36 linear-attention layers
   in FP32 — the most precise — but pays with uncalibrated FP8 KV.
-- **Variant 1** is one step lower than one of those on each axis.
-- **Variant 3** has Variant 1's precisions plus static YaRN on every prompt. On
+- **`sglang-nvfp4-ram`** is one step lower than one of those on each axis.
+- **`sglang-nvfp4-ram-pennyroyal`** has `sglang-nvfp4-ram`'s precisions plus static YaRN on every prompt. On
   paper it carries the most risk at short context — and it is the only launcher
   with a window beyond 262K.
 - These effects are probably small, and which dominates cannot be reasoned out.
   The only quality figures that exist are the yepapa-nest author's for the NVMe
-  baseline configuration: **HumanEval+ 0.939 / 0.921** non-thinking and
+  `sglang-nvfp4-nvme` configuration: **HumanEval+ 0.939 / 0.921** non-thinking and
   0.957 / 0.927 thinking, **GSM8K 0.98**.
 - Running HumanEval+ on the four launchers above is the open TODO in
   [README.md](../README.md#todo).

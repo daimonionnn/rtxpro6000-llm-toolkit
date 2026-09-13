@@ -39,7 +39,7 @@ at all. Without `_storage` there is no server, not merely a slower first start.
 
 ### The fix
 
-Two changes in `sglang/build-local-image/Dockerfile`:
+Two changes in `qwen3.8-flash-next/sglang/build-local-image/Dockerfile`:
 
 1. **Pin the base image by digest** so the tag cannot move again:
 
@@ -60,14 +60,14 @@ cached under `/root/.cache/sglang/rust_extensions`, which the runtime finds even
 with the image's `mode=never`, because `never` still permits bundled and cached
 extensions — it only forbids invoking Cargo.
 
-## Layout: the clone builds the image, launchers live per variant
+## Layout: the clone builds the image, launchers live per profile
 
-The upstream repo is cloned as `sglang/build-local-image/` and is only used to
+The upstream repo is cloned as `qwen3.8-flash-next/sglang/build-local-image/` and is only used to
 build the Docker image (`build.sh`, `Dockerfile`, `patches/`,
 `seccomp-iouring.json`). The launchers that were added or renamed here moved out
-of it, one directory per variant: `sglang/v0-nvme/serve-nvfp4-nvme.sh` and
-`sglang/v1-ram/serve-nvfp4-ram.sh` both use that image. `quant_info.py` and the
-Docker stop script are shared from `sglang/common/`.
+of it, one directory per profile: `qwen3.8-flash-next/sglang/nvfp4-nvme/serve-nvfp4-nvme.sh` and
+`qwen3.8-flash-next/sglang/nvfp4-ram/serve-nvfp4-ram.sh` both use that image. `quant_info.py` and the
+Docker stop script are shared from `common/`.
 
 ## `serve.sh` renamed to `serve-nvfp4-nvme.sh`
 

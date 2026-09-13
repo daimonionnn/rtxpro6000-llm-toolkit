@@ -89,11 +89,11 @@ slots. See [ple-ram-experiment.md](ple-ram-experiment.md).
 AssertionError: Unsupported rhs dtype fp8e4nv
 ```
 
-**On the official `dev-qwen38-next-local` image (Variant 2)** this kills the
+**On the official `dev-qwen38-next-local` image (`sglang-nvfp4-ram-official`)** this kills the
 scheduler on the first long prompt whenever `--kv-cache-dtype fp8_e4m3` is set,
 and `--restart unless-stopped` then crash-loops the container. That image has no
 fix; run it with `KV_DTYPE=auto`. Our image carries the local patch below, and
-the fork (Variant 3) handles it itself.
+the fork (`sglang-nvfp4-ram-pennyroyal`) handles it itself.
 
 With `--kv-cache-dtype fp8_e4m3`, any prompt long enough to be chunked dies on
 the second chunk. `patches/0001-qsa-fp8-kv-dequant-on-read.patch` handles it by
@@ -118,14 +118,14 @@ with per-layer KV descale — switch when it merges.
 The hierarchical KV cache attaches and reopens 2.4× faster, but after a restore a
 needle-in-haystack probe answers "there is no code in the context" — silent
 context loss, most likely because the QSA indexer's side cache is not tiered
-along with KV. Off by default; leave it off in the NVMe launcher and Variants 1
+along with KV. Off by default; leave it off in the NVMe launcher and Profiles 1
 and 2.
 
-The Variant 3 fork fixes this. Tested here: 57K- and 220K-token needle prompts
+The `sglang-nvfp4-ram-pennyroyal` fork fixes this. Tested here: 57K- and 220K-token needle prompts
 restored from NIXL after a full restart and still answered correctly. Use
 `HICACHE=1` with that launcher only.
 
-## Variant 3 dies with `N must be divisible by 16, but got 8`
+## `sglang-nvfp4-ram-pennyroyal` dies with `N must be divisible by 16, but got 8`
 
 ```
 tilelang/rocm/op/gemm/gemm_mfma.py ... compute_warp_partition
@@ -138,27 +138,27 @@ ROCm installed for the Radeon AI PRO R9700, including `/usr/bin/hipcc`, and
 TileLang detects ROCm with `which hipcc` before it checks CUDA. It happens only
 natively — Docker containers have no `hipcc`.
 
-`sglang/v3-pennyroyal/serve-nvfp4-ram.sh` fixes it by putting `sglang/v3-pennyroyal/shim/`
+`qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/serve-nvfp4-ram.sh` fixes it by putting `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/shim/`
 first on `PATH`; the `which` there reports `hipcc` as not found and defers to
 `/usr/bin/which` for everything else. If you launch the fork any other way, carry
 that `PATH`. To check what TileLang will pick:
 
 ```bash
-PATH="$PWD/sglang/v3-pennyroyal/shim:$PATH" sglang/pennyroyal-fork/.venv/bin/python \
+PATH="$PWD/sglang/nvfp4-ram-pennyroyal/shim:$PATH" qwen3.8-flash-next/sglang/pennyroyal-fork/.venv/bin/python \
   -c "from tilelang.backend.target import auto_detect_target; print(auto_detect_target())"
 ```
 
 It should print a `cuda` target with `"arch":"sm_120a"`, not `hip`.
 
-## Variant 3 build fails: `No module named 'wheel_stub'`
+## `sglang-nvfp4-ram-pennyroyal` build fails: `No module named 'wheel_stub'`
 
 `cuda-tile` builds through NVIDIA's `wheel_stub`, and the fork installs with
-`--no-build-isolation`, so uv does not fetch it. `sglang/v3-pennyroyal/build.sh`
+`--no-build-isolation`, so uv does not fetch it. `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build.sh`
 installs `wheel_stub` into the venv first.
 
 ## NIXL build fails
 
-`sglang/v3-pennyroyal/build-nixl.sh` already handles these; they appear if NIXL is
+`qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build-nixl.sh` already handles these; they appear if NIXL is
 built by following the fork's BUILD.md from a script without an activated venv:
 
 - `No module named '__future__'` inside `nixl-meta` — `pip install .`'s build
@@ -178,17 +178,34 @@ are percentages of the **whole filesystem**. If the disk is fuller than the high
 watermark, the cleaner evicts everything on every pass (every 30 s). The fork's
 sample values, 54.6 / 53.0, only suit a mostly empty dedicated volume.
 
-## A RAM variant fails to pin the PLE table
+## A RAM profile fails to pin the PLE table
 
 The 47.7 GiB table is page-locked host memory. Docker needs
 `--ulimit memlock=-1` (the Docker RAM launchers pass it). A native process
 inherits the limit of the shell that started it: interactive logins here have
 `unlimited` from `/etc/security/limits.conf`, but systemd user services default
-to 8 MB, so starting Variant 3 from a service would fail. Its launcher checks
+to 8 MB, so starting `sglang-nvfp4-ram-pennyroyal` from a service would fail. Its launcher checks
 `ulimit -l` and refuses to start otherwise.
 
 Pinned memory does not show in a process's `VmLck` or `VmRSS`; look at host
 `used`/`shared` in `free -g` instead, which rise by about 65 GB.
+
+## vLLM hangs at startup after capturing CUDA graphs
+
+The log stops after `Graph capturing finished` and `Free memory on device …`,
+`/health` never answers, `VLLM::EngineCore` spins one core, and there is no
+`PleOffloadWorker` process in the container.
+
+With `VLLM_PLE_CPU_OFFLOAD=1` on a single GPU, vLLM runs the model in-process
+(uniproc executor), but only the multiprocess executor spawns and waits for the PLE
+offload worker. Start with `--distributed-executor-backend mp`, as the
+`vllm-awq-w4a16` launcher does. Details in [vllm-awq.md](vllm-awq.md).
+
+## Benchmarks fail with HTTP 404 on `/flush_cache`
+
+`/flush_cache` is SGLang's. vLLM has no equivalent outside its dev mode.
+`bench/prefill.py` skips the flush when the endpoint is missing; its per-run nonce
+keeps cold measurements cold anyway.
 
 ## Other traps carried over from upstream
 

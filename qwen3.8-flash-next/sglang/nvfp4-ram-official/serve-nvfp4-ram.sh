@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Variant 2: Qwen3.8-Flash-Next on the official SGLang image, PLE table in RAM.
+# Profile sglang-nvfp4-ram-official: Qwen3.8-Flash-Next on the official SGLang image, PLE table in RAM.
 #
 #   MODEL_DIR=/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
 #
@@ -12,7 +12,7 @@
 #
 #   MAXRUN=4 MAMBA_SLOTS=12 ./serve-nvfp4-ram.sh
 #
-# Differences from ../v1-ram/serve-nvfp4-ram.sh (variant 1):
+# Differences from ../nvfp4-ram/serve-nvfp4-ram.sh:
 #   - stock image, so no local FP8-KV chunked-prefill patch. The recipe leaves KV
 #     at the checkpoint default (BF16); KV_DTYPE=fp8_e4m3 is untested here and
 #     upstream's proper fix (#36644) was still unmerged on 2026-09-12.
@@ -25,7 +25,7 @@ set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
 IMAGE="${IMAGE:-lmsysorg/sglang:dev-qwen38-next-local}"
-NAME="${NAME:-flashnext}"
+NAME="${NAME:-rtxpro6000-llm}"
 PORT="${PORT:-8090}"
 MODEL_DIR="${MODEL_DIR:?set MODEL_DIR to the local checkpoint directory}"
 
@@ -44,7 +44,7 @@ KV_DTYPE="${KV_DTYPE:-auto}"          # recipe default: checkpoint's own (BF16)
 
 EXTRA_ARGS="${EXTRA_ARGS:-}"
 
-python3 "$HERE/../common/quant_info.py" "$MODEL_DIR" \
+python3 "$HERE/../../quant_info.py" "$MODEL_DIR" \
   --weight-quant "$WEIGHT_QUANT" --kv-dtype "$KV_DTYPE" \
   --fp4-gemm-backend "$FP4_GEMM_BACKEND" --ple-mode ram || exit 2
 echo "image: $IMAGE   max-running-requests $MAXRUN, mamba slots $MAMBA_SLOTS"
@@ -54,11 +54,11 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 docker run -d --name "$NAME" --restart unless-stopped --gpus '"device=0"' \
   --ipc host --shm-size 32g \
   --ulimit memlock=-1 \
-  --label "flashnext.variant=v2-official-image" \
-  --label "flashnext.quant.experts=NVFP4-W4A4" \
-  --label "flashnext.quant.rest=BF16" \
-  --label "flashnext.quant.kv_cache=$KV_DTYPE" \
-  --label "flashnext.quant.ple=FP8_E4M3/ram" \
+  --label "rtxpro6000-llm.profile=qwen3.8-flash-next-sglang-nvfp4-ram-official" \
+  --label "rtxpro6000-llm.quant.experts=NVFP4-W4A4" \
+  --label "rtxpro6000-llm.quant.rest=BF16" \
+  --label "rtxpro6000-llm.quant.kv_cache=$KV_DTYPE" \
+  --label "rtxpro6000-llm.quant.ple=FP8_E4M3/ram" \
   -p "127.0.0.1:${PORT}:8000" \
   -v "$MODEL_DIR:/model:ro" \
   -e PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True \

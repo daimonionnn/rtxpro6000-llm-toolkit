@@ -30,18 +30,25 @@ method object string number list array result error module import export static 
 
 
 def flush():
-    # The server refuses (HTTP 400) while any request is still running or waiting.
-    # With HiCache a finished request can count as busy for a moment while its
-    # prefix is written through to storage, so retry briefly instead of failing.
-    req = urllib.request.Request(BASE + "/flush_cache", method="POST")
-    for attempt in range(30):
-        try:
-            urllib.request.urlopen(req, timeout=60).read()
-            return
-        except urllib.error.HTTPError as err:
-            if err.code != 400 or attempt == 29:
-                raise
-            time.sleep(1)
+    """Drop the server's prefix cache before a cold run.
+
+    SGLang exposes POST /flush_cache; it answers HTTP 400 for a moment while a
+    finished request is still being written through HiCache, so that is retried.
+    vLLM has no equivalent outside its dev mode. Prompts carry a per-run nonce,
+    so a server without a flush endpoint still sees them cold.
+    """
+    for path in ("/flush_cache", "/reset_prefix_cache"):
+        req = urllib.request.Request(BASE + path, method="POST")
+        for attempt in range(30):
+            try:
+                urllib.request.urlopen(req, timeout=60).read()
+                return
+            except urllib.error.HTTPError as err:
+                if err.code in (404, 405):
+                    break                      # not this engine's endpoint; try the next
+                if err.code != 400 or attempt == 29:
+                    raise
+                time.sleep(1)
 
 
 RUN_NONCE = os.urandom(6).hex()

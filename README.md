@@ -1,98 +1,60 @@
-# sglang-rtxpro6000-toolkit
+# rtxpro6000-llm-toolkit
 
-Serving large models with SGLang on a **single RTX PRO 6000 Blackwell 96 GB**.
+Launch profiles, scripts and measurements for running large language models on a
+**single NVIDIA RTX PRO 6000 Blackwell 96 GB**, with SGLang or vLLM.
 
-Currently: Qwen3.8-Flash-Next (176B MoE, 6B active) with the RadixArk NVFP4
-checkpoint and NEXTN speculative decoding. The 126 GiB checkpoint lives once in
-`models/` and is shared by every launcher.
+Every profile serves an OpenAI-compatible API on `http://127.0.0.1:8090/v1`. Only
+one profile can hold the GPU at a time; the scripts in `scripts/` start, stop and
+report on them.
 
-## Launchers
+## Models
 
-Four ways to run the same checkpoint, one directory each. Only one can hold the
-GPU at a time, and every one serves `http://127.0.0.1:8090/v1` as model
-`Qwen3.8-Flash-Next`. Start and stop them with the scripts in `scripts/`;
-**`scripts/status.sh` shows which one is running and from where.**
+| Model | Profiles | Engines | Details |
+|---|---|---|---|
+| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K context | 5 | SGLang, vLLM | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
 
-| | NVMe baseline | Variant 1 | Variant 2 | Variant 3 |
-|---|---|---|---|---|
-| Directory | `sglang/v0-nvme/` | `sglang/v1-ram/` | `sglang/v2-official-image/` | `sglang/v3-pennyroyal/` |
-| Launcher | `serve-nvfp4-nvme.sh` | `serve-nvfp4-ram.sh` | `serve-nvfp4-ram.sh` | `serve-nvfp4-ram.sh` |
-| Runtime | Docker, locally built image | Docker, locally built image | Docker, stock `lmsysorg/sglang:dev-qwen38-next-local` | native venv, jpezzulli fork |
-| PLE table (47.7 GiB) | streamed from NVMe | pinned RAM | pinned RAM | pinned RAM |
-| **KV cache** | 231,936 (FP8) | 498,624 (FP8) | 256,832 (BF16)¹ | **831,872 (FP8)** |
-| **Context window** | 262,144 | 262,144 | 262,144 | **524,288** (YaRN ×2) |
-| TTFT 4K / 32K / 128K | 0.55 / 4.37 / 18.0 s | 0.31 / 2.90 / 10.7 s | 0.30 / 2.45 / 10.4 s | **0.27 / 2.62 / 9.68 s** |
-| Decode, warm | 214–222 tok/s | 236–249 | 258–260 | 235–254 |
-| Needle test | not run | 12/12 to 220K | 12/12 to 220K | **15/15 to 492K** |
-| Prefix cache across restarts | no | no | no | **yes** with `HICACHE=1` (220K in 1.5 s) |
-| Concurrency | 5 | 4 | 4 | 4 |
-| Host RAM | ~0 | ~65 GB | ~65 GB | ~65 GB, +32 GB with HiCache |
-| Stop with | `./stop.sh` in the same directory | same | same | same |
+Each model directory has its own README with checkpoints, a comparison of its
+profiles, measurements and open TODOs, and a `docs/` folder with setup,
+troubleshooting and the full results.
 
-¹ With `MAXRUN=4 MAMBA_SLOTS=12
-KV_DTYPE=auto`. The launcher's defaults reproduce the published cookbook cell
-(16 requests, 76,864 tokens). FP8 KV crashes this image on long prompts.
-
-Decode differences between the RAM variants are inside the measurement spread.
-Context size, KV size, prefill and the needle results are solid. Full results,
-settings and the reasoning behind them are in
-[docs/comparison.md](docs/comparison.md) and
-[docs/ple-ram-experiment.md](docs/ple-ram-experiment.md).
-
-**Which one:** for a single long-context agent, Variant 3 has the most room by a
-wide margin. But it applies YaRN to every prompt (short-context quality not yet
-measured), runs outside Docker, and depends on one person's fork. Variant 1 is
-the conservative choice with twice the baseline's KV. Variant 2 is the only one
-with no local patches or builds.
-
-## Quick start
-
-All day-to-day control is in `scripts/`, named after the profiles:
+## Scripts
 
 | Script | Does |
 |---|---|
-| `scripts/start-v0-nvme.sh` | Start the NVMe baseline |
-| `scripts/start-v1-ram.sh` | Start Variant 1 |
-| `scripts/start-v2-official-image.sh` | Start Variant 2, tuned for one agent (4 requests, BF16 KV) |
-| `scripts/start-v3-pennyroyal.sh` | Start Variant 3 |
-| `scripts/start-v3-pennyroyal-hicache.sh` | Start Variant 3 with HiCache/NIXL persistence |
-| `scripts/stop.sh` | Stop whichever variant is running (`--rm` also removes a Docker container) |
-| `scripts/status.sh` | What is running, from which directory, with which context and KV cache |
+| `scripts/start-<model>-<engine>-<variant>.sh` | Start one profile (listed below) |
+| `scripts/stop.sh` | Stop whichever profile is running (`--rm` also removes a Docker container) |
+| `scripts/status.sh` | What is running, from which directory, with which checkpoint, context and KV cache |
 | `scripts/start-ui.sh` / `scripts/stop-ui.sh` | Chat UI in the background on http://127.0.0.1:5173/ |
 
+Current profiles:
+
+| Start script | Profile |
+|---|---|
+| `start-qwen3.8-flash-next-sglang-nvfp4-nvme.sh` | SGLang, local Docker image, NVFP4, PLE table streamed from NVMe |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram.sh` | SGLang, local Docker image, NVFP4, PLE table in RAM |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-official.sh` | SGLang, official lmsysorg image, NVFP4, PLE table in RAM |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh` | SGLang pennyroyal fork (native), NVFP4, PLE table in RAM, 524K context |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-hicache.sh` | the same with HiCache/NIXL prefix persistence |
+| `start-qwen3.8-flash-next-vllm-awq-w4a16.sh` | vLLM, official image, AWQ W4A16, PLE table in RAM |
+
 ```bash
-scripts/start-v3-pennyroyal-hicache.sh
+scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh
 scripts/status.sh
 scripts/stop.sh
 ```
 
-The start scripts only call the launcher in `sglang/<profile>/`. They set
-`MODEL_DIR` to `models/Qwen3.8-Flash-Next-NVFP4` and refuse to start while another
-variant is running. Every launcher variable can still be overridden, e.g.
-`CHUNKED=8192 scripts/start-v1-ram.sh`.
+The start scripts call the launcher in the profile's directory, set `MODEL_DIR` to
+its checkpoint under `models/`, and refuse to start while another profile is
+running. Launcher variables can be overridden from the environment, e.g.
+`CHUNKED=8192 scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram.sh`.
 
-Each launcher prints what runs at which precision before starting, refuses a
-checkpoint that is not NVFP4, and waits until the server is ready. The Variant 3
-launcher also refuses to start while another server holds the GPU.
+Docker profiles run as the container `rtxpro6000-llm` with `--restart
+unless-stopped`: a server left running comes back after a reboot and takes most of
+the VRAM. One stopped with `scripts/stop.sh` stays stopped.
 
-The Docker launchers use `--restart unless-stopped`: a server left running comes
-back after a reboot and takes ~92 GiB of VRAM. One stopped with `stop.sh` stays
-stopped. Variant 3 never restarts by itself.
-
-Smoke test:
-
-```bash
-curl http://127.0.0.1:8090/v1/chat/completions \
-  -H 'Content-Type: application/json' -d '{
-    "model": "Qwen3.8-Flash-Next",
-    "messages": [{"role": "user", "content": "Hello"}],
-    "chat_template_kwargs": {"enable_thinking": false}
-  }'
-```
-
-> **Note:** thinking is **on by default** in every variant. With a small
-> `max_tokens` the whole budget goes to `reasoning_content` and `content` comes
-> back empty. See [docs/troubleshooting.md](docs/troubleshooting.md).
+> **Note:** reasoning models here have thinking **on by default**. With a small
+> `max_tokens` the whole budget can go to `reasoning_content` and leave `content`
+> empty; send `"chat_template_kwargs": {"enable_thinking": false}` for plain answers.
 
 ### Chat UI
 
@@ -100,100 +62,58 @@ curl http://127.0.0.1:8090/v1/chat/completions \
 scripts/start-ui.sh          # http://127.0.0.1:5173
 ```
 
-Shows time-to-first-token, decode and prefill speed, and token counts for every
-turn. Works with any launcher. See [docs/ui.md](docs/ui.md).
-
-## TODO
-
-### HumanEval+ across the launchers
-
-All launchers run the same weights. They differ in three runtime settings that
-can affect quality, and none of it has been measured — the needle tests check
-retrieval from long context, not code quality.
-
-| Launcher | KV cache | Mamba SSM state | RoPE |
-|---|---|---|---|
-| NVMe baseline | FP8, uncalibrated (scale 1.0) | **FP32** (model default) | native |
-| Variant 1 | FP8, uncalibrated | BF16 | native |
-| Variant 2c | **BF16** | BF16 | native |
-| Variant 3 | FP8, uncalibrated | BF16 | **YaRN ×2 on every prompt** |
-
-On paper Variant 2c has the most precise KV cache, the NVMe baseline the most
-precise recurrent state, and Variant 3 the most risk at short context. Which
-effect dominates is unknown.
-
-- [ ] Run HumanEval+ (EvalPlus, 164 problems, greedy, base / plus pass@1) on those four
-- [ ] Non-thinking, temperature 0 — the conditions of the only published figure
-- [ ] Optionally repeat with thinking (`reasoning_effort: xhigh`) for the best one or two
-- [ ] Record results in `docs/ple-ram-experiment.md` and revise "Which one" above
-
-Reference, from the yepapa-nest recipe's author (NVMe baseline configuration,
-same card): **0.939 / 0.921** non-thinking, 0.957 / 0.927 thinking. Their harness
-pinned the thinking mode and coerced null content, since thinking is on by default
-and can leave `content` empty. Estimated effort: 45–60 minutes including restarts.
-
-## Quantization
-
-The checkpoint is not uniformly 4-bit. The routed experts are NVFP4 W4A4; the
-attention, shared experts, router and MTP draft are BF16; the PLE table is FP8.
-KV cache precision is a launch setting: FP8 in Variants 1 and 3, BF16 in
-Variant 2.
+Shows time-to-first-token, decode and prefill speed and token counts for every
+turn, and works with any profile. See [docs/ui.md](docs/ui.md).
 
 ## Layout
 
 ```
 .
 ├── README.md
-├── scripts/                               start / stop / status per profile, chat UI start / stop
-├── bench/prefill.py                       prefill benchmark (cold vs prefix-cached)
-├── ui/                                    local chat UI with live TTFT / tok-s stats
-├── docs/                                  documentation (below)
-├── models/
-│   └── Qwen3.8-Flash-Next-NVFP4/          126 GiB, 206 shards, shared by all launchers
-├── sglang/
-│   ├── v0-nvme/                           NVMe baseline: launcher, stop
-│   ├── v1-ram/                            Variant 1: launcher, stop
-│   ├── v2-official-image/                 Variant 2: launcher, stop
-│   ├── v3-pennyroyal/                     Variant 3: launcher, stop, build, NIXL build, host shim
-│   ├── build-local-image/                 builds the Docker image for v0 and v1 (yepapa-nest recipe clone)
-│   ├── common/                            shared: quant_info.py, stop-docker.sh
-│   └── pennyroyal-fork/                   Variant 3 source + venv (cannot be moved: absolute paths)
-└── logs/                                  build and serve logs
+├── scripts/                      start-<profile>.sh, stop.sh, status.sh, start-ui.sh, stop-ui.sh
+│   └── _lib.sh                   the profile registry (PROFILES) shared by the scripts
+├── common/                       stop-docker.sh, shared by every Docker profile
+├── qwen3.8-flash-next/           one directory per model
+│   ├── README.md
+│   ├── docs/
+│   ├── quant_info.py
+│   ├── sglang/<variant>/         launcher + stop per profile
+│   └── vllm/<variant>/
+├── bench/prefill.py              prefill benchmark (cold vs prefix-cached), any engine
+├── ui/                           local chat UI
+├── docs/ui.md
+├── models/                       checkpoints (not tracked)
+└── logs/                         build and serve logs (not tracked)
 ```
 
-## Documentation
+## Adding a model or profile
 
-| Document | Covers |
-|---|---|
-| [docs/setup.md](docs/setup.md) | Installation from scratch: prerequisites, checkpoint, each launcher |
-| [docs/comparison.md](docs/comparison.md) | All launchers side by side: architecture, quantization, VRAM / RAM / NVMe footprint per variant, quality estimate from size, published test results, speed |
-| [docs/ple-ram-experiment.md](docs/ple-ram-experiment.md) | How the RAM variants were made to fit, with every result and failure |
-| [docs/benchmarks.md](docs/benchmarks.md) | NVMe baseline measurements and memory breakdown |
-| [docs/upstream-fixes.md](docs/upstream-fixes.md) | What we changed relative to the upstream recipe, and why |
-| [docs/troubleshooting.md](docs/troubleshooting.md) | Traps, error messages, and what to do about them |
-| [docs/ui.md](docs/ui.md) | The chat UI: what each stat means, how to point it elsewhere |
+1. Put the launcher in `<model>/<engine>/<variant>/`, with a `stop.sh` — for a
+   Docker profile a two-line wrapper around `common/stop-docker.sh`. Run the
+   container as `rtxpro6000-llm` with the label
+   `rtxpro6000-llm.profile=<model>-<engine>-<variant>` so `status.sh` and `stop.sh`
+   recognise it.
+2. Add a line to `PROFILES` in `scripts/_lib.sh`: id, directory, launcher,
+   checkpoint directory under `models/`, description.
+3. Add `scripts/start-<id>.sh`: source `_lib.sh` and call `start_profile <id>`.
+4. Document it in the model's README and `docs/`.
 
 ## Hardware
 
-- **NVIDIA RTX PRO 6000 Blackwell Workstation**, 96 GB, SM120 (compute cap 12.0)
-- 244 GB RAM; checkpoint on NVMe (Samsung 990 PRO 4 TB)
-- AMD Radeon AI PRO R9700 32 GB. **Not usable for this model:** CUDA and ROCm
-  cannot share one TP group. Its ROCm install does affect Variant 3; see
-  troubleshooting.
+- **NVIDIA RTX PRO 6000 Blackwell Workstation**, 96 GB, SM120 (compute capability
+  12.0). The Server and Max-Q editions have the same memory and architecture.
+- 244 GB RAM; checkpoints on NVMe
+- An AMD Radeon AI PRO R9700 32 GB in the same machine. It is not used: CUDA and
+  ROCm cannot share one tensor-parallel group. Its ROCm install does affect native
+  (non-Docker) builds — see the Qwen3.8-Flash-Next troubleshooting notes.
 - Driver 610.57.04, kernel 7.0.0-31, Docker 29.5.3, CUDA 13.3 and 13.4 toolkits
-
-## Sources
-
-- NVMe recipe: https://github.com/yepapa-nest/qwen38-flashnext-rtx6000 (commit `2ef81d5`)
-- Official recipe: https://docs.sglang.io/cookbook/autoregressive/Qwen/Qwen3.8-Flash-Next
-- Fork: https://github.com/jpezzulli/sglang-rtxpro6000 (tag `pennyroyal-v2.5.0`)
-- Checkpoint: https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4 @ `7b719225242a`
 
 ## License
 
 Apache License 2.0 — see [LICENSE](LICENSE).
 
-`sglang/build-local-image/` is a vendored copy of the yepapa-nest recipe, also
-Apache-2.0, with its own `LICENSE` and the changes listed in its `UPSTREAM.md`.
-Software fetched at build time — SGLang images, the pennyroyal fork, NIXL — and the
-model checkpoints are not part of this repository and keep their own licenses.
+`qwen3.8-flash-next/sglang/build-local-image/` is a vendored copy of the
+yepapa-nest recipe, also Apache-2.0, with its own `LICENSE` and the changes listed
+in its `UPSTREAM.md`. Software fetched at build time — SGLang and vLLM images, the
+pennyroyal fork, NIXL — and the model checkpoints are not part of this repository
+and keep their own licenses.

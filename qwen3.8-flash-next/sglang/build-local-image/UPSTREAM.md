@@ -8,10 +8,10 @@ the Docker image `sglang-flashnext-sm120:local` for the NVMe and RAM SGLang prof
 Changes made here:
 
 - `Dockerfile` — base image pinned by digest, and `SGLANG_RUST_BUILD_MODE=auto` for
-  the `_storage` prebuild. See `docs/upstream-fixes.md`.
+  the `_storage` prebuild. See `qwen3.8-flash-next/docs/upstream-fixes.md`.
 - `serve.sh` — moved out of this directory. The launchers now live in the per-profile
-  directories under `sglang/`, and the shared `quant_info.py` and Docker stop script
-  are in `sglang/common/`.
+  directories beside it (`../nvfp4-nvme/`, `../nvfp4-ram/`, …); `quant_info.py` is in
+  the model directory and the Docker stop script in the toolkit's `common/`.
 
 `README.md` and `BENCHMARKS.md` are the upstream author's and still refer to
 `serve.sh`. `.build/`, created by `build.sh`, is not tracked.

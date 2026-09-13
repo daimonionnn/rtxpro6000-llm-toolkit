@@ -41,7 +41,16 @@ hf download RadixArk/Qwen3.8-Flash-Next-NVFP4 \
 
 **Pin the revision.** Day-0 uploads get amended without announcement.
 
-126 GiB, 206 shards. Verify nothing is missing before building:
+For the `vllm-awq-w4a16` profile, the AWQ checkpoint as well (168 GiB, 6 shards
+plus `model_mtp.safetensors`):
+
+```bash
+hf download wtdcode/Qwen3.8-Flash-Next-AWQ-W4A16 \
+  --revision 0939125b929543a783ce700c90e36dd1a575c00c \
+  --local-dir models/Qwen3.8-Flash-Next-AWQ-W4A16
+```
+
+The NVFP4 checkpoint is 126 GiB, 206 shards. Verify nothing is missing before building:
 
 ```bash
 python3 - <<'PY'
@@ -57,8 +66,8 @@ PY
 
 ```bash
 git clone https://github.com/yepapa-nest/qwen38-flashnext-rtx6000.git \
-  sglang/build-local-image
-cd sglang/build-local-image
+  qwen3.8-flash-next/sglang/build-local-image
+cd qwen3.8-flash-next/sglang/build-local-image
 ./build.sh
 ```
 
@@ -76,7 +85,7 @@ Result: image `sglang-flashnext-sm120:local`, about 37 GB.
 ## 3. Serve
 
 ```bash
-cd sglang/v0-nvme
+cd qwen3.8-flash-next/sglang/nvfp4-nvme
 MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-nvme.sh
 ```
 
@@ -110,7 +119,7 @@ Qwen3.8-Flash-Next — Qwen3.8-Flash-Next-NVFP4  (modelopt 0.46.0)
 ```
 
 The checkpoint is **not uniformly 4-bit**: only the routed MoE experts are NVFP4.
-It can also be run on its own — `python3 sglang/common/quant_info.py MODEL_DIR`. On a running
+It can also be run on its own — `python3 qwen3.8-flash-next/quant_info.py MODEL_DIR`. On a running
 container the same information is in its labels:
 `docker inspect flashnext --format '{{json .Config.Labels}}'` (containers started
 before the labels were added do not have them).
@@ -118,7 +127,7 @@ before the labels were added do not have them).
 The script waits for `The server is fired up` and prints the container log if the
 container exits first.
 
-To see at any time which variant is running, from which directory, on which port
+To see at any time which profile is running, from which directory, on which port
 and how to stop it:
 
 ```bash
@@ -148,17 +157,17 @@ without anyone asking. A container stopped by hand stays stopped across reboots.
 
 ## 5. The RAM launchers
 
-The steps above build the image for the NVMe baseline, which Variant 1 also uses.
+The steps above build the image for `sglang-nvfp4-nvme`, which `sglang-nvfp4-ram` also uses.
 The results of all four launchers are compared in
-[ple-ram-experiment.md](ple-ram-experiment.md). All three RAM variants need
+[ple-ram-experiment.md](ple-ram-experiment.md). All three RAM profiles need
 **at least ~65 GB of free host RAM** for the pinned 47.7 GiB PLE table.
 
-### Variant 1 — same image
+### `sglang-nvfp4-ram` — same image
 
 Nothing extra to install:
 
 ```bash
-cd sglang/v1-ram
+cd qwen3.8-flash-next/sglang/nvfp4-ram
 MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
 ```
 
@@ -166,11 +175,11 @@ It accepts the same variables as the NVMe launcher, with different defaults:
 `MAXRUN=4`, `MAMBA_SLOTS=12`, `CHUNKED=4096`, `MEMFRAC=0.96`, `MAX_TOTAL_TOKENS`
 unset, plus `MAMBA_SSM_DTYPE=bfloat16`.
 
-### Variant 2 — official image
+### `sglang-nvfp4-ram-official` — official image
 
 ```bash
 docker pull lmsysorg/sglang:dev-qwen38-next-local      # 33 GB
-cd sglang/v2-official-image
+cd qwen3.8-flash-next/sglang/nvfp4-ram-official
 MAXRUN=4 MAMBA_SLOTS=12 KV_DTYPE=auto \
 MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
 ```
@@ -179,14 +188,14 @@ Without overrides it reproduces the published cookbook cell (16 requests,
 ~77K KV tokens). **Keep `KV_DTYPE=auto`**: with `fp8_e4m3` the image crashes on
 the first long prompt. Stop it with `./stop.sh`.
 
-### Variant 3 — jpezzulli fork, native
+### `sglang-nvfp4-ram-pennyroyal` — jpezzulli fork, native
 
 Needs on the host: CUDA 13.3 at `/usr/local/cuda-13.3`, `gcc-15`/`g++-15`, Rust,
 `uv`, and an unlimited memlock limit (`ulimit -l` → `unlimited`). Then:
 
 ```bash
-sglang/v3-pennyroyal/build.sh        # clones the fork to sglang/pennyroyal-fork and builds its venv
-cd sglang/v3-pennyroyal
+qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build.sh        # clones the fork to qwen3.8-flash-next/sglang/pennyroyal-fork and builds its venv
+cd qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal
 MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
 ./stop.sh
 ```
@@ -204,20 +213,32 @@ packages and a build:
 
 ```bash
 sudo apt install meson libaio-dev
-sglang/v3-pennyroyal/build-nixl.sh      # into sglang/v3-pennyroyal/nixl, no root needed
-cd sglang/v3-pennyroyal
+qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build-nixl.sh      # into qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/nixl, no root needed
+cd qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal
 HICACHE=1 MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
 ```
 
-Cache files go to `sglang/v3-pennyroyal/nixl-storage/` (`NIXL_STORAGE_BASE`
+Cache files go to `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/nixl-storage/` (`NIXL_STORAGE_BASE`
 overrides), and the host-RAM tier is `HICACHE_SIZE_GB` (default 32). **Read the
 header of `nixl-posix-local.toml` before first use:** its eviction watermarks are
 percentages of the whole filesystem and were set for this machine's disk at 88%.
 
-The first start compiles kernels into `sglang/v3-pennyroyal/cache/`; later starts
+The first start compiles kernels into `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/cache/`; later starts
 reuse it. The launcher refuses to start while another process holds the GPU, so
-stop any Docker variant first. It runs as a background process with its PID in
-`sglang/v3-pennyroyal/server.pid` and does not restart after a reboot.
+stop any Docker profile first. It runs as a background process with its PID in
+`qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/server.pid` and does not restart after a reboot.
+
+## 6. The vLLM profile
+
+```bash
+docker pull vllm/vllm-openai:qwen38-flash-next      # 19.8 GB
+scripts/start-qwen3.8-flash-next-vllm-awq-w4a16.sh
+```
+
+Needs the AWQ checkpoint and at least 100 GiB of free host RAM for the BF16 PLE
+table. First start is about three minutes. See [vllm-awq.md](vllm-awq.md) for the
+launcher options, measurements, and why it must run with
+`--distributed-executor-backend mp` on a single GPU.
 
 ## Re-measuring after a config change
 

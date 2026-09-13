@@ -3,7 +3,7 @@
 #
 #   ./stop.sh
 #
-# Unlike the Docker variants there is no restart policy: once stopped it stays
+# Unlike the Docker profiles there is no restart policy: once stopped it stays
 # stopped, and it does not come back after a reboot.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"

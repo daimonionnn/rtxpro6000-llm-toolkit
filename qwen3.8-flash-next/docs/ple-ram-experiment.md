@@ -3,10 +3,10 @@
 **Solved, three ways.** The first attempt (at the bottom of this document) failed:
 pinned-host PLE cost 1.83 GB of VRAM and the KV cache collapsed. On 2026-09-12
 three approaches found on the web were tested, all with the table in RAM, all
-passing a needle-in-a-haystack test. Every one of them beats the NVMe baseline
+passing a needle-in-a-haystack test. Every one of them beats `sglang-nvfp4-nvme`
 on context and prefill.
 
-| | NVMe baseline | Variant 1 | Variant 2c | Variant 3 |
+| | `sglang-nvfp4-nvme` | `sglang-nvfp4-ram` | `sglang-nvfp4-ram-official` | `sglang-nvfp4-ram-pennyroyal` |
 |---|---|---|---|---|
 | What | our image, `serve-nvfp4-nvme.sh` | our image, memory flags | official image, cookbook recipe | jpezzulli fork, native |
 | PLE table | NVMe (io_uring) | pinned RAM | pinned RAM | pinned RAM |
@@ -19,18 +19,18 @@ on context and prefill.
 | Host RAM added | ~0 | ~65 GB | ~65 GB | ~65 GB |
 | Local patches / build | yes | yes | **none** | fork + native build + host shim |
 
-Decode differences between the RAM variants are inside the spread of three warm
+Decode differences between the RAM profiles are inside the spread of three warm
 runs and should not be read as a ranking. Context, KV size, prefill and needle
 results are robust.
 
 ---
 
-## Variant 1: same image, mamba cache shrunk
+## `sglang-nvfp4-ram`: same image, mamba cache shrunk
 
 Same image, same checkpoint, PLE in pinned host RAM. The 1.83 GB the RAM path
 costs is won back from the mamba state cache, which was taking 5.34 GB:
 
-| Setting | NVMe baseline | Variant 1 |
+| Setting | `sglang-nvfp4-nvme` | `sglang-nvfp4-ram` |
 |---|---|---|
 | `--mamba-radix-cache-strategy` | `extra_buffer` | `extra_buffer_lazy` |
 | `SGLANG_OPT_MAMBA_SKIP_DECODE_LOCK` | unset | `1` |
@@ -52,7 +52,7 @@ under the overlap scheduler.
 
 ### Results
 
-| | NVMe baseline | Variant 1 (RAM) |
+| | `sglang-nvfp4-nvme` | `sglang-nvfp4-ram` (RAM) |
 |---|---|---|
 | **KV cache** | 231,936 tokens | **498,624 tokens** (2.15×) |
 | Mamba cache | 5.34 GB | 1.79 GB |
@@ -86,15 +86,15 @@ PLE path together.
 
 ---
 
-## Variant 2: official image, cookbook recipe
+## `sglang-nvfp4-ram-official`: official image, cookbook recipe
 
 `lmsysorg/sglang:dev-qwen38-next-local` (commit `4ccff141db`, pulled 2026-09-12,
 33 GB) with SGLang's verified cookbook cell for 1× RTX PRO 6000, NVFP4 RadixArk,
-low latency. Launcher: `sglang/v2-official-image/serve-nvfp4-ram.sh`,
+low latency. Launcher: `qwen3.8-flash-next/sglang/nvfp4-ram-official/serve-nvfp4-ram.sh`,
 whose defaults reproduce the published cell; `MAXRUN`, `MAMBA_SLOTS` and
 `KV_DTYPE` tune it.
 
-It shares Variant 1's memory settings (`extra_buffer_lazy`, `SKIP_DECODE_LOCK`,
+It shares `sglang-nvfp4-ram`'s memory settings (`extra_buffer_lazy`, `SKIP_DECODE_LOCK`,
 bf16 SSM, chunked prefill 4096, `expandable_segments`, `memlock=-1`) and differs
 in: stock image with no local patches, `flashinfer_cutlass` for both FP4 GEMM and
 the MoE runner, and the default CUDA graph backend instead of `breakable`.
@@ -114,7 +114,7 @@ the MoE runner, and the default CUDA graph backend instead of `breakable`.
 4.2 GB free; this card gave 76,864 and 4.10 GB. The image works as documented.
 
 **2b shows the FP8-KV bug is still there.** The KV pool sizes to 498,624 tokens,
-identical to Variant 1, so the official image has the same memory ceiling. But
+identical to `sglang-nvfp4-ram`, so the official image has the same memory ceiling. But
 the first 57K-token prompt killed the scheduler:
 
 ```
@@ -131,9 +131,9 @@ KV at BF16 is presumably why.
 relative to FP8, but 256,832 tokens still covers nearly the whole 262,144-token
 window for one request, and decode and prefill are the fastest measured so far.
 
-### Variant 1 vs 2c
+### `sglang-nvfp4-ram` vs 2c
 
-| | Variant 1 (our image, FP8 KV) | Variant 2c (official, BF16 KV) |
+| | `sglang-nvfp4-ram` (our image, FP8 KV) | `sglang-nvfp4-ram-official` (official, BF16 KV) |
 |---|---|---|
 | KV cache | **498,624** | 256,832 |
 | Decode, warm | 236–249 tok/s | **258–260 tok/s** |
@@ -142,25 +142,25 @@ window for one request, and decode and prefill are the fastest measured so far.
 | Local patches / build | yes | **none** |
 
 For a single agent the window caps a request at 262,144 tokens either way, so
-Variant 1's larger pool mostly buys prefix-cache retention across turns and room
-for concurrent requests. Variant 2c trades that for ~5% faster decode and no
+`sglang-nvfp4-ram`'s larger pool mostly buys prefix-cache retention across turns and room
+for concurrent requests. `sglang-nvfp4-ram-official` trades that for ~5% faster decode and no
 local build. The decode difference is within the spread of three warm runs; it is
 suggestive, not established.
 
 ---
 
-## Variant 3: jpezzulli/sglang-rtxpro6000 fork
+## `sglang-nvfp4-ram-pennyroyal`: jpezzulli/sglang-rtxpro6000 fork
 
 [jpezzulli/sglang-rtxpro6000](https://github.com/jpezzulli/sglang-rtxpro6000)
 ("Pennyroyal"), tag `pennyroyal-v2.5.0` (commit `2c675da096`): a personal SGLang
 fork tuned for exactly this card. Built natively per its `BUILD.md` into
-`sglang/pennyroyal-fork/` (Python 3.12.13 venv, CUDA 13.3, GCC 15, torch
-2.13.0+cu130). Launcher: `sglang/v3-pennyroyal/serve-nvfp4-ram.sh` — the fork's
+`qwen3.8-flash-next/sglang/pennyroyal-fork/` (Python 3.12.13 venv, CUDA 13.3, GCC 15, torch
+2.13.0+cu130). Launcher: `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/serve-nvfp4-ram.sh` — the fork's
 `configs/pennyroyal/serve-flash-next.sh` (native NEXTN, no FR-Spec) with HiCache/NIXL
 removed, since NIXL was not installed. HiCache persists prefix state to host RAM
 and disk; it does not change the GPU KV pool.
 
-What it has that Variants 1 and 2 cannot:
+What it has that Profiles 1 and 2 cannot:
 
 - **`--gdn-mtp-cache-mode none`** — not in upstream SGLang. MTP verify normally
   keeps an intermediate SSM state per draft position (1.05 GB at these settings);
@@ -237,8 +237,8 @@ request finishes while HiCache is still writing it through.
 `HICACHE=1 ./serve-nvfp4-ram.sh` adds the fork's hierarchical cache: a 32 GB
 host-RAM tier with write-through to NIXL POSIX files (io_uring, `O_DIRECT`), in a
 namespace directory derived from the whole configuration by the fork's
-`derive_namespace.py`. NIXL is built by `sglang/v3-pennyroyal/build-nixl.sh` into
-`sglang/v3-pennyroyal/nixl`. The GPU KV pool is unchanged at 831,872 tokens; host RAM
+`derive_namespace.py`. NIXL is built by `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build-nixl.sh` into
+`qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/nixl`. The GPU KV pool is unchanged at 831,872 tokens; host RAM
 in use rises by the 32 GB tier.
 
 Tested 2026-09-13 with two needle prompts (code at 50% depth, fixed seeds so the
@@ -265,7 +265,7 @@ Those two prompts wrote 5.6 GB in 13,053 files.
 **The cleaner watermarks had to change.** The fork's `nixl-posix.toml` evicts when
 the *whole filesystem* passes 54.6% and stops at 53.0%. This root filesystem was
 already at 88%, so the cleaner would have evicted continuously and nothing would
-persist. `sglang/v3-pennyroyal/nixl-posix-local.toml` uses 92 / 90, about 140 GB of
+persist. `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/nixl-posix-local.toml` uses 92 / 90, about 140 GB of
 headroom; the startup log confirms `HiCacheL3Cleaner started: … high=92.0% low=90.0%`.
 Anything else filling the disk past 92% also triggers eviction.
 
@@ -284,7 +284,7 @@ builds through NVIDIA's `wheel_stub`:
 ModuleNotFoundError: No module named 'wheel_stub'
 ```
 
-`sglang/v3-pennyroyal/build.sh` adds `wheel_stub` to the bootstrap packages.
+`qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build.sh` adds `wheel_stub` to the bootstrap packages.
 
 **NIXL's build assumes an activated venv and `pip`.** Following BUILD.md from a
 script that calls the venv's Python directly failed three ways in turn:
@@ -293,7 +293,7 @@ script that calls the venv's Python directly failed three ways in turn:
 `nixl-meta` wheel and broke its interpreter (`No module named '__future__'`);
 `./contrib/tomlutil.py`'s shebang picked the system Python, which lacks
 `tomlkit`; and `meson` found no `pybind11-config` on `PATH`.
-`sglang/v3-pennyroyal/build-nixl.sh` uses `uv pip install`, puts the venv's `bin`
+`qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build-nixl.sh` uses `uv pip install`, puts the venv's `bin`
 first on `PATH`, and installs `pybind11`.
 
 **2. TileLang compiled kernels for the AMD card.** The first launch allocated
@@ -308,9 +308,9 @@ N must be divisible by 16, but got 8
 The host has ROCm installed for the Radeon AI PRO R9700, including
 `/usr/bin/hipcc`. TileLang decides whether ROCm is present by running
 `which hipcc`, and its ROCm detector runs before CUDA's, so it chose the `hip`
-target. The Docker variants never hit this because the container has no
+target. The Docker profiles never hit this because the container has no
 `hipcc`. TileLang has no environment variable to force a target, so the
-launcher puts `sglang/v3-pennyroyal/shim/` first on `PATH`: a `which` that answers
+launcher puts `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/shim/` first on `PATH`: a `which` that answers
 "not found" for `hipcc` only and defers to `/usr/bin/which` otherwise. Verified:
 without it `auto_detect_target()` returns `hip`; with it,
 `{"kind":"cuda", ..., "arch":"sm_120a"}`. Nothing outside that one server process
@@ -321,7 +321,7 @@ is affected.
 - **YaRN is applied to every prompt, not only long ones.** A static rope-scaling
   factor can change quality at short context. That was not measured here — the
   needle test checks retrieval, not reasoning or code quality. Worth an eval
-  (e.g. HumanEval+) against Variant 1 before relying on it for a coding agent.
+  (e.g. HumanEval+) against `sglang-nvfp4-ram` before relying on it for a coding agent.
 - **The recipe defaults thinking on** (`enable_thinking: true`,
   `reasoning_effort: medium`) and uses its own pinned chat template
   (`froggeric-v22.5.jinja`). Sending `enable_thinking: false` is respected —
@@ -332,7 +332,7 @@ is affected.
 - **A single maintainer's fork**, 70 stars. Updates follow its tags rather than
   upstream SGLang.
 - **Native, not Docker**: no restart policy, so it does not come back after a
-  reboot; stopped with `sglang/v3-pennyroyal/stop.sh`, which signals the whole
+  reboot; stopped with `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/stop.sh`, which signals the whole
   process group.
 - `torchcodec` logs `libavutil.so.56: cannot open shared object file` at startup.
   That is video decoding (it wants FFmpeg 4's libavutil 56); text serving is
@@ -435,7 +435,7 @@ The suggestion in the error message is misleading for this model.
 **Shrinking the mamba cache backfires — on its own.** Cutting slots from 25 to 10
 freed memory but also dropped `max_running_requests` to 2, and the KV pool ended
 up far smaller rather than larger. *In hindsight this was the right lever used
-badly:* Variant 1 shrinks the same cache, but by lowering the slots needed per
+badly:* `sglang-nvfp4-ram` shrinks the same cache, but by lowering the slots needed per
 request (`extra_buffer_lazy`, `SKIP_DECODE_LOCK`) and halving the state
 (`bfloat16`) rather than by starving concurrency, together with
 `expandable_segments`.
@@ -448,11 +448,11 @@ request (`extra_buffer_lazy`, `SKIP_DECODE_LOCK`) and halving the state
 
 This attempt concluded that only disabling NEXTN speculation (4.37 GB of draft
 weights) would free enough, which is a bad trade at roughly 3× decode speed.
-That was wrong: Variant 1 keeps NEXTN and fits with room to spare. One unexplained
-difference: Variant 1's draft-model load line reports `mem usage=0.51 GB`, where
+That was wrong: `sglang-nvfp4-ram` keeps NEXTN and fits with room to spare. One unexplained
+difference: `sglang-nvfp4-ram`'s draft-model load line reports `mem usage=0.51 GB`, where
 every earlier run reported 4.37 GB. The cause was not investigated.
 
 ### Superseded
 
 The "when to revisit" conditions this attempt listed no longer apply — see
-Variant 1 at the top of this document.
+`sglang-nvfp4-ram` at the top of this document.

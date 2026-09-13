@@ -1,38 +1,21 @@
 #!/usr/bin/env bash
-# Show which launcher variant is serving, where it lives, and how to stop it.
+# Show which profile is serving, where it lives, and how to stop it.
 #
 #   scripts/status.sh
 #
-# Detects the native Variant 3 through its PID file and the Docker variants through
-# the "flashnext" container. Docker variants are identified by their
-# flashnext.variant label; containers started before that label existed are
-# identified from their image and environment instead.
+# The native pennyroyal profile is found through its PID file, Docker profiles
+# through the "rtxpro6000-llm" container and its rtxpro6000-llm.profile label.
 set -uo pipefail
-ROOT="$(cd "$(dirname "$0")/.." && pwd)"
-V3_PIDFILE="$ROOT/sglang/v3-pennyroyal/server.pid"
-V3_LOG="$ROOT/logs/pennyroyal-serve.log"
-CONTAINER=flashnext
+source "$(dirname "$0")/_lib.sh"
+PENNYROYAL_LOG="$ROOT/logs/pennyroyal-serve.log"
 
-describe() {
-  case "$1" in
-    v0-nvme)           echo "NVMe baseline — Docker, local image, PLE streamed from NVMe" ;;
-    v1-ram)            echo "Variant 1 — Docker, local image, PLE in RAM" ;;
-    v2-official-image) echo "Variant 2 — Docker, official lmsysorg image, PLE in RAM" ;;
-    v3-pennyroyal)     echo "Variant 3 — native jpezzulli fork, PLE in RAM" ;;
-  esac
-}
-launcher() {
-  case "$1" in
-    v0-nvme) echo "sglang/v0-nvme/serve-nvfp4-nvme.sh" ;;
-    *)       echo "sglang/$1/serve-nvfp4-ram.sh" ;;
-  esac
-}
-
-report() {  # variant port log-command hicache kv-dtype started
-  local variant=$1 port=$2 logcmd=$3 hicache=$4 kvdtype=$5 started=$6
-  echo "RUNNING   $(describe "$variant")"
-  echo "  directory  sglang/$variant/"
-  echo "  launcher   $(launcher "$variant")"
+report() {  # profile port log-command hicache kv-dtype started
+  local profile=$1 port=$2 logcmd=$3 hicache=$4 kvdtype=$5 started=$6
+  echo "RUNNING   $profile"
+  echo "  about      $(profile_field "$profile" desc || echo '?')"
+  echo "  directory  $(profile_field "$profile" dir || echo '?')/"
+  echo "  model      models/$(profile_field "$profile" model || echo '?')/"
+  echo "  start      scripts/start-$profile.sh"
   echo "  stop       scripts/stop.sh"
   echo "  started    $started"
   echo "  endpoint   http://127.0.0.1:$port/v1"
@@ -42,14 +25,14 @@ report() {  # variant port log-command hicache kv-dtype started
     echo "$models" | python3 -c "
 import sys, json
 for m in json.load(sys.stdin)['data']:
-    print('  model      {}, context window {:,}'.format(m['id'], m.get('max_model_len') or 0))"
+    print('  served as  {}, context window {:,}'.format(m['id'], m.get('max_model_len') or 0))"
   else
-    echo "  model      (not answering yet — still starting?)"
+    echo "  served as  (not answering yet — still starting?)"
   fi
   local kv
-  kv=$(eval "$logcmd" 2>/dev/null | grep -ao "max_total_num_tokens=[0-9]*" | tail -1 | cut -d= -f2)
+  kv=$(eval "$logcmd" 2>/dev/null | grep -aoE "max_total_num_tokens=[0-9]+|GPU KV cache size: [0-9,]+ tokens" | tail -1 | grep -oE "[0-9][0-9,]*" | tail -1 | tr -d ,)
   [ -n "$kv" ] && printf "  KV cache   %'d tokens, %s\n" "$kv" "$kvdtype"
-  echo "  HiCache    $hicache"
+  [ -n "$hicache" ] && echo "  HiCache    $hicache"
   local vram
   vram=$(nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader 2>/dev/null | head -1)
   [ -n "$vram" ] && echo "  VRAM       $vram"
@@ -58,30 +41,22 @@ for m in json.load(sys.stdin)['data']:
 
 found=0
 
-# ── Variant 3: native process ───────────────────────────────────────────────
-if [ -f "$V3_PIDFILE" ] && kill -0 "$(cat "$V3_PIDFILE")" 2>/dev/null; then
-  pid=$(cat "$V3_PIDFILE")
+if [ -f "$NATIVE_PIDFILE" ] && kill -0 "$(cat "$NATIVE_PIDFILE")" 2>/dev/null; then
+  pid=$(cat "$NATIVE_PIDFILE")
   cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
   port=$(grep -oE -- "--port [0-9]+" <<<"$cmd" | awk '{print $2}')
   kvd=$(grep -oE -- "--kv-cache-dtype [a-z0-9_]+" <<<"$cmd" | awk '{print $2}')
   hc="off"; grep -q -- "--enable-hierarchical-cache" <<<"$cmd" && hc="on (NIXL persistence)"
-  report v3-pennyroyal "${port:-8090}" "cat '$V3_LOG'" "$hc" "${kvd:-?}" "$(ps -o lstart= -p "$pid") (PID $pid)"
+  report qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal "${port:-8090}" "cat '$PENNYROYAL_LOG'" "$hc" "${kvd:-?}" "$(ps -o lstart= -p "$pid") (PID $pid)"
   found=1
 fi
 
-# ── Docker variants ─────────────────────────────────────────────────────────
 if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$CONTAINER"; then
-  variant=$(docker inspect "$CONTAINER" --format '{{index .Config.Labels "flashnext.variant"}}' 2>/dev/null)
-  if [ -z "$variant" ]; then
-    image=$(docker inspect "$CONTAINER" --format '{{.Config.Image}}')
-    if [[ "$image" == lmsysorg/* ]]; then variant=v2-official-image
-    elif docker inspect "$CONTAINER" --format '{{range .Config.Env}}{{println .}}{{end}}' | grep -q "^SGLANG_QWEN4_PLE_NVME_PATH="; then variant=v0-nvme
-    else variant=v1-ram; fi
-  fi
+  profile=$(docker inspect "$CONTAINER" --format '{{index .Config.Labels "rtxpro6000-llm.profile"}}' 2>/dev/null)
   port=$(docker port "$CONTAINER" 8000/tcp 2>/dev/null | head -1 | awk -F: '{print $NF}')
-  kvd=$(docker inspect "$CONTAINER" --format '{{index .Config.Labels "flashnext.quant.kv_cache"}}' 2>/dev/null)
+  kvd=$(docker inspect "$CONTAINER" --format '{{index .Config.Labels "rtxpro6000-llm.quant.kv_cache"}}' 2>/dev/null)
   started=$(docker inspect "$CONTAINER" --format '{{.State.StartedAt}}' | cut -c1-19 | tr T ' ')
-  report "$variant" "${port:-8090}" "docker logs $CONTAINER" "off" "${kvd:-?}" "$started UTC (container $CONTAINER)"
+  report "${profile:-unknown-docker-profile}" "${port:-8090}" "docker logs $CONTAINER" "" "${kvd:-?}" "$started UTC (container $CONTAINER)"
   found=1
 elif docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "$CONTAINER"; then
   echo "STOPPED   container $CONTAINER exists but is not running"
@@ -89,7 +64,7 @@ elif docker ps -a --format '{{.Names}}' 2>/dev/null | grep -qx "$CONTAINER"; the
 fi
 
 if [ "$found" = 0 ]; then
-  echo "NOT RUNNING   no variant is serving"
+  echo "NOT RUNNING   no profile is serving"
   holder=$(ss -ltnp 2>/dev/null | grep ":8090 " | grep -oE 'users:\(\("[^"]+",pid=[0-9]+' | sed 's/users:(("//; s/",pid=/ PID /')
   [ -n "$holder" ] && echo "  port 8090 is held by: $holder"
   gpu=$(nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv,noheader 2>/dev/null)
@@ -97,16 +72,13 @@ if [ "$found" = 0 ]; then
   echo
 fi
 
-[ "$found" = 1 ] && [ -f "$V3_PIDFILE" ] && kill -0 "$(cat "$V3_PIDFILE")" 2>/dev/null \
-  && docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$CONTAINER" \
-  && echo "WARNING   Variant 3 and a Docker variant are both running; only one can use the GPU and port." && echo
+[ "$(running_profiles | wc -l)" -gt 1 ] \
+  && echo "WARNING   two profiles are running; only one can use the GPU and port 8090." && echo
 
-cat <<'EOF'
-Profiles (one at a time; stop any of them with scripts/stop.sh):
-  scripts/start-v0-nvme.sh               NVMe baseline   sglang/v0-nvme/
-  scripts/start-v1-ram.sh                Variant 1       sglang/v1-ram/
-  scripts/start-v2-official-image.sh     Variant 2       sglang/v2-official-image/
-  scripts/start-v3-pennyroyal.sh         Variant 3       sglang/v3-pennyroyal/
-  scripts/start-v3-pennyroyal-hicache.sh Variant 3 + HiCache
-  scripts/start-ui.sh / stop-ui.sh       chat UI on http://127.0.0.1:5173/
-EOF
+echo "Profiles (one at a time; stop any of them with scripts/stop.sh):"
+for line in "${PROFILES[@]}"; do
+  IFS='|' read -r id dir launcher model desc <<<"$line"
+  printf "  scripts/start-%-50s %s\n" "$id.sh" "$desc"
+done
+printf "  scripts/start-%-50s %s\n" "qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-hicache.sh" "the pennyroyal profile with HiCache/NIXL persistence"
+printf "  scripts/%-56s %s\n" "start-ui.sh / stop-ui.sh" "chat UI on http://127.0.0.1:5173/"

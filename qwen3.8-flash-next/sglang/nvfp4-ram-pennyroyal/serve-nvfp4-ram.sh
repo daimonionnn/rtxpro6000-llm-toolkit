@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Variant 3: Qwen3.8-Flash-Next on the jpezzulli/sglang-rtxpro6000 fork
+# Profile sglang-nvfp4-ram-pennyroyal: Qwen3.8-Flash-Next on the jpezzulli/sglang-rtxpro6000 fork
 # ("Pennyroyal", tag pennyroyal-v2.5.0), PLE table in RAM. Native, not Docker.
 #
 #   MODEL_DIR=/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
@@ -19,7 +19,7 @@
 # the GPU KV pool. Needs NIXL built into ./nixl (./build-nixl.sh). Watermarks for
 # this machine's disk are in nixl-posix-local.toml — read its header.
 #
-# What the fork adds over variants 1 and 2:
+# What the fork adds over the other SGLang profiles:
 #   --gdn-mtp-cache-mode none   drops the ~1.05 GB intermediate SSM buffer used by
 #                               MTP verify; recomputes the state after verify instead
 #   --mem-fraction-static 0.981 lets automatic KV sizing use the freed memory
@@ -29,7 +29,7 @@
 # The server runs as a background process; its PID is kept in ./server.pid.
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
-TOOLKIT="$(cd "$HERE/../.." && pwd)"
+TOOLKIT="$(cd "$HERE/../../.." && pwd)"
 
 REPO_ROOT="${REPO_ROOT:-$(cd "$HERE/../pennyroyal-fork" && pwd)}"
 SGLANG_EXE="$REPO_ROOT/.venv/bin/sglang"
@@ -71,7 +71,7 @@ busy=$(nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv
 if [ -n "$busy" ]; then
   echo "the GPU is in use — stop the other server first:" >&2
   echo "$busy" | sed 's/^/  /' >&2
-  echo "  (a Docker variant: its own stop.sh, e.g. ../v1-ram/stop.sh)" >&2
+  echo "  (stop whichever profile holds it with scripts/stop.sh)" >&2
   exit 2
 fi
 
@@ -88,7 +88,7 @@ if [ "$HICACHE" = 1 ]; then
   [ -r "$NIXL_CONFIG" ] || { echo "NIXL config missing: $NIXL_CONFIG" >&2; exit 2; }
 fi
 
-python3 "$TOOLKIT/sglang/common/quant_info.py" "$MODEL_DIR" \
+python3 "$HERE/../../quant_info.py" "$MODEL_DIR" \
   --weight-quant modelopt_fp4 --kv-dtype "$KV_DTYPE" --fp4-gemm-backend auto --ple-mode ram || exit 2
 echo "fork: $(git -C "$REPO_ROOT" describe --tags 2>/dev/null) ($(git -C "$REPO_ROOT" rev-parse --short=10 HEAD))"
 echo "context $CONTEXT_LENGTH, max-running-requests $MAXRUN, mamba slots $MAMBA_SLOTS, gdn-mtp-cache-mode $GDN_MTP_CACHE_MODE"
