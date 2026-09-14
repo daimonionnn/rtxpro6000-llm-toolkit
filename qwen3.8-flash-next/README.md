@@ -49,7 +49,7 @@ recommendations: [RESULTS.md](../RESULTS.md).
   Slovak check.
 - **Fastest single-stream decode with 16-bit activations:** `exllamav3-exl3-5.05bpw`.
 - **8-bit weights:** use ik_llama.cpp with a Q8_0 GGUF, not `vllm-fp8-offload`.
-- On code, all measured quantizations are within noise of each other.
+- On code, all seven measured profiles are within noise of each other.
 
 ## TODO
 
@@ -66,17 +66,12 @@ amount of expert weight offloaded.
       in-place UVA reads versus ik_llama's copy of the selected experts
 - [ ] Record the result in `docs/profiles/vllm-fp8-offload.md`
 
-### Benchmarks on the remaining profiles
+### Remaining benchmarks
 
-| Profile | Differs from the measured ones in |
-|---|---|
-| `sglang-nvfp4-ram` | SSM state BF16 instead of `sglang-nvfp4-nvme`'s FP32 |
-| `sglang-nvfp4-ram-official` | BF16 KV cache instead of uncalibrated FP8 |
-| `sglang-nvfp4-ram-pennyroyal` | YaRN ×2 applied to every prompt |
-| `vllm-fp8-offload` | FP8 experts; ~16 tok/s makes a code run take ~1 h |
-
-- [ ] Code benchmarks (`bench/evalplus_codegen.py` + `bench/evalplus_evaluate.sh`) on these
-- [ ] Slovak samples (`bench/language_samples.py`) on the SGLang profiles
+- [x] Code benchmarks on all profiles except `vllm-fp8-offload`
+- [ ] Code benchmarks on `vllm-fp8-offload` (1–2 h at ~16 tok/s)
+- [ ] Blind Slovak grading including the SGLang profiles (answers collected for
+      `sglang-nvfp4-ram`, `-official`, `-pennyroyal`)
 - [ ] Optionally the best one or two with thinking on (`--thinking on`)
 
 ## Layout

@@ -74,5 +74,8 @@ The needle test inserts a 10-character code at 10/50/90% depth into 57K, 115K,
 It covers the FP8 KV cache, chunked prefill across dozens of chunks, and the RAM
 PLE path together.
 
-Code benchmarks have not been run on this profile; it differs from the benchmarked
-`sglang-nvfp4-nvme` in SSM state precision only (BF16 instead of FP32).
+### Code benchmarks
+
+HumanEval 0.970 / HumanEval+ 0.957, MBPP 0.929 / MBPP+ 0.794 — 457 of 542 plus tests,
+the same as `sglang-nvfp4-nvme` despite the BF16 SSM state
+([RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)).

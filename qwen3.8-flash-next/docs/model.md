@@ -100,9 +100,10 @@ Beyond the checkpoint, three settings differ between profiles:
   the price of its 524K window.
 - **Speculative decoding does not change output.** Verification against the target
   model is exact; the draft's precision affects speed only.
-- Of these, only `sglang-nvfp4-nvme` has been benchmarked on code; given that NVFP4
-  already matches the 16-bit-activation formats there, the rest are unlikely to
-  matter much for code, but remain unmeasured.
+- **None of these showed on code.** HumanEval+ and MBPP+ put all four SGLang
+  profiles within 456–458 of 542 plus tests, level with the AWQ and EXL3 profiles
+  ([RESULTS.md](../../RESULTS.md#code-humaneval-and-mbpp)). Effects on other tasks —
+  long reasoning, non-English output — are not measured.
 
 ## Published quality results
 

@@ -72,4 +72,7 @@ larger FP8 pool mostly buys prefix-cache retention across turns. This profile
 trades that for full-precision KV, no local build and ~5% faster decode — within
 the spread of three warm runs, so suggestive rather than established.
 
-Code benchmarks have not been run on this profile.
+## Code benchmarks
+
+HumanEval 0.976 / HumanEval+ 0.951, MBPP 0.929 / MBPP+ 0.799 — 458 of 542 plus tests,
+within noise of the FP8-KV profiles ([RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)).

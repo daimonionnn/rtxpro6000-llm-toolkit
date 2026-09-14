@@ -20,7 +20,7 @@ section; the start script is always `scripts/start-<model>-<profile>.sh`.
 | 8-bit weights (FP8 / Q8_0) | **ik_llama.cpp**, not a profile here | `vllm-fp8-offload` must keep experts in RAM and decodes at ~16 tok/s; a Q8_0 GGUF under ik_llama.cpp on this machine reaches ~36–40 tok/s |
 | A dense model | `qwen3.6-27b-sglang-bf16` | full BF16 precision, but it solved fewer code tasks than every Flash-Next quantization and decodes slower (62–87 tok/s) |
 
-**On quality in one line:** the Flash-Next quantizations are indistinguishable on
+**On quality in one line:** all seven Flash-Next profiles are indistinguishable on
 code and all beat Qwen3.6-27B at BF16 there; they differ in non-English output,
 where weight-only INT4 with group 32 held up best.
 
@@ -62,6 +62,9 @@ tests, **plus** EvalPlus's stricter extended tests.
 | Model | Profile | HumanEval | HumanEval+ | MBPP | MBPP+ | Plus tests passed, of 542 |
 |---|---|---|---|---|---|---|
 | Qwen3.8-Flash-Next | `sglang-nvfp4-nvme` | **0.982** | **0.963** | 0.923 | 0.791 | 457 |
+| | `sglang-nvfp4-ram` | 0.970 | 0.957 | 0.929 | 0.794 | 457 |
+| | `sglang-nvfp4-ram-official` | 0.976 | 0.951 | 0.929 | 0.799 | 458 |
+| | `sglang-nvfp4-ram-pennyroyal` | 0.963 | 0.951 | 0.918 | 0.794 | 456 |
 | | `vllm-awq-w4a16` | 0.976 | 0.951 | 0.934 | 0.788 | 454 |
 | | `vllm-awq-w4a16-g32` | 0.970 | 0.951 | **0.937** | 0.796 | 457 |
 | | `exllamav3-exl3-5.05bpw` | 0.976 | 0.957 | **0.937** | **0.802** | **460** |
@@ -69,14 +72,17 @@ tests, **plus** EvalPlus's stricter extended tests.
 
 **Comments**
 
-- **The four Flash-Next quantizations are indistinguishable.** Task by task,
-  `vllm-awq-w4a16-g32` and each of the others disagree on 11–16 of 542 tasks, split
-  about evenly (sign test p = 0.55–1.0). NVFP4's 4-bit activations did not
-  measurably lose to the 16-bit-activation formats.
-- **Every Flash-Next quantization beat Qwen3.6-27B at full BF16 precision** by 8–14
-  tasks: 22–23 tasks only Flash-Next solved against 9–15 only the 27B solved
-  (p = 0.02 for EXL3, 0.08–0.26 for the others). The gap is in the plus tests;
-  base pass rates are close.
+- **All seven Flash-Next profiles are indistinguishable on code.** 439 of the 542
+  plus tests were solved by every one of them and 69 by none; only 34 tasks vary.
+  No pair differs significantly (task-by-task sign test, lowest p = 0.11 over all
+  21 pairs). That covers the quantization (NVFP4 W4A4, INT4 g128 and g32, EXL3) and
+  the runtime settings that differ between the SGLang profiles: FP8 or BF16 KV
+  cache, FP32 or BF16 SSM state, and pennyroyal's YaRN ×2 on every prompt.
+- **Every Flash-Next profile beat Qwen3.6-27B at full BF16 precision** by 10–14
+  tasks: 20–23 tasks only Flash-Next solved against 9–15 only the 27B solved
+  (p = 0.02 for EXL3, 0.06–0.10 for the SGLang profiles and g32, 0.26 for g128).
+  Each comparison alone is at most borderline; seven of seven pointing the same way
+  is the stronger evidence. The gap is in the plus tests; base pass rates are close.
 - **Compare within this table, not across sources.** On `sglang-nvfp4-nvme` this
   harness scores HumanEval 0.982 / 0.963, against 0.939 / 0.921 published for the
   same configuration with a different harness.
@@ -137,9 +143,9 @@ were identical in all four.
 
 ## Not measured yet
 
-- **Code benchmarks** on `qwen3.8-flash-next-sglang-nvfp4-ram`, `-official`,
-  `-pennyroyal` (they differ from `sglang-nvfp4-nvme` only in KV / SSM precision and,
-  for pennyroyal, YaRN) and `vllm-fp8-offload` (~1 h per run at its speed).
-- **Slovak check** on the SGLang NVFP4 profiles and Qwen3.6-27B.
+- **Code benchmarks** on `qwen3.8-flash-next-vllm-fp8-offload` (1–2 h per run at
+  its speed).
+- **Slovak check** grading for the SGLang NVFP4 profiles — answers for `sglang-nvfp4-ram`,
+  `-official` and `-pennyroyal` are collected, not yet graded — and Qwen3.6-27B.
 - **Qwen3.6-27B**: prefill, KV pool, long-context retrieval.
 - Anything with thinking on, knowledge benchmarks, agentic tool use.
