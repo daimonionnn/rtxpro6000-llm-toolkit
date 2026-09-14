@@ -1,7 +1,7 @@
 # rtxpro6000-llm-toolkit
 
 Launch profiles, scripts and measurements for running large language models on a
-**single NVIDIA RTX PRO 6000 Blackwell 96 GB**, with SGLang or vLLM.
+**single NVIDIA RTX PRO 6000 Blackwell 96 GB**, with SGLang, vLLM or ExLlamaV3.
 
 Every profile serves an OpenAI-compatible API on `http://127.0.0.1:8090/v1`. Only
 one profile can hold the GPU at a time; the scripts in `scripts/` start, stop and
@@ -11,7 +11,8 @@ report on them.
 
 | Model | Profiles | Engines | Details |
 |---|---|---|---|
-| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K context | 5 | SGLang, vLLM | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
+| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K context | 8 | SGLang, vLLM, ExLlamaV3 | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
+| **Qwen3.6-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.6-27b/README.md](qwen3.6-27b/README.md) |
 
 Each model directory has its own README with checkpoints, a comparison of its
 profiles, measurements and open TODOs, and a `docs/` folder with setup,
@@ -36,6 +37,10 @@ Current profiles:
 | `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh` | SGLang pennyroyal fork (native), NVFP4, PLE table in RAM, 524K context |
 | `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-hicache.sh` | the same with HiCache/NIXL prefix persistence |
 | `start-qwen3.8-flash-next-vllm-awq-w4a16.sh` | vLLM, official image, AWQ W4A16, PLE table in RAM |
+| `start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh` | vLLM, official image, AWQ W4A16 group 32, PLE table in RAM |
+| `start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw.sh` | ExLlamaV3 via TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP |
+| `start-qwen3.8-flash-next-vllm-fp8-offload.sh` | vLLM, official image, official FP8, 50 GiB of experts and the PLE table in RAM |
+| `start-qwen3.6-27b-sglang-bf16.sh` | Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation |
 
 ```bash
 scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh
@@ -63,7 +68,14 @@ scripts/start-ui.sh          # http://127.0.0.1:5173
 ```
 
 Shows time-to-first-token, decode and prefill speed and token counts for every
-turn, and works with any profile. See [docs/ui.md](docs/ui.md).
+turn, and works with any profile. See [ui/README.md](ui/README.md).
+
+### Benchmarks
+
+`bench/prefill.py` measures prefill (cold and prefix-cached), `bench/evalplus_*`
+scores code ability (HumanEval+ / MBPP+) in a sandbox, and
+`bench/language_samples.py` compares non-English output between profiles blind.
+See [bench/README.md](bench/README.md).
 
 ## Layout
 
@@ -78,10 +90,11 @@ turn, and works with any profile. See [docs/ui.md](docs/ui.md).
 │   ├── docs/
 │   ├── quant_info.py
 │   ├── sglang/<variant>/         launcher + stop per profile
-│   └── vllm/<variant>/
-├── bench/prefill.py              prefill benchmark (cold vs prefix-cached), any engine
-├── ui/                           local chat UI
-├── docs/ui.md
+│   ├── vllm/<variant>/
+│   └── exllamav3/<variant>/
+├── qwen3.6-27b/                  README.md, sglang/bf16/
+├── bench/                        README.md, prefill.py, evalplus_*, language_samples.py — any engine
+├── ui/                           README.md, local chat UI
 ├── models/                       checkpoints (not tracked)
 └── logs/                         build and serve logs (not tracked)
 ```

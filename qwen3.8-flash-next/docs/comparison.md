@@ -346,55 +346,111 @@ faster than 220K for that reason, not because it is.
   (the published cookbook cell, 2a, trades context for 16). These setups are for
   one agent, not many users.
 
-## Alternatives considered but not run
+## Alternatives considered
 
-| Checkpoint | Quantization | Size | Why not |
+| Checkpoint | Quantization | Size | Status |
 |---|---|---|---|
-| Qwen/Qwen3.8-Flash-Next | BF16 original | 360 GB (model card) | Does not fit one 96 GB card |
-| Qwen/Qwen3.8-Flash-Next-FP8 | FP8, near-lossless | ~125 GB of non-PLE weights (estimate) | Does not fit one 96 GB card |
-| nvidia/…-NVFP4 (ModelOpt mixed) | NVFP4 experts, FP8 PLE, **FP8 MTP experts** | not downloaded | Smaller draft, so more KV (cookbook: ~170K vs ~78K for RadixArk at 16 requests); needs the loader in the official image. A candidate for a later test. |
-| wtdcode/…-AWQ-W4A16 | **INT4 weight-only**, group 128, activations BF16; PLE in BF16 | 180.8 GB (PLE shard 102.4 GB) | No fast FP4 path on Blackwell, and the BF16 PLE table needs ~95 GB of RAM |
-| unsloth GGUF (LM Studio, llama.cpp) | K-quants; largest that fits in VRAM ≈ UD-IQ3_XXS | 76.3 GiB (Q4_K_XL: 103.7 GiB) | ~3-bit to stay on the GPU; no NEXTN speculation or PLE offload, much smaller KV |
-
+| Qwen/Qwen3.8-Flash-Next | BF16 original | 360 GB (model card) | Not run: does not fit one 96 GB card |
+| Qwen/Qwen3.8-Flash-Next-FP8 | FP8 W8A8, routed experts only | 172.8 GiB | **Run** as `vllm-fp8-offload`, with 50 GiB of experts in RAM: ~16 tok/s decode ([vllm-fp8-offload.md](vllm-fp8-offload.md)). For 8-bit weights on one card use ik_llama.cpp instead. |
+| wtdcode/…-AWQ-W4A16 | INT4 weight-only, group 128, activations BF16; PLE in BF16 | 168.3 GiB | **Run** as `vllm-awq-w4a16` ([vllm-awq.md](vllm-awq.md)) |
+| cyankiwi/…-AWQ-INT4 | INT4 weight-only, group 32 asymmetric, multilingual calibration | 175.3 GiB | **Run** as `vllm-awq-w4a16-g32` ([vllm-awq-g32.md](vllm-awq-g32.md)) |
+| turboderp/…-exl3 5.05 bpw | EXL3 trellis, all linear layers; n-gram table 6 bpw | 114.6 GiB | **Run** as `exllamav3-exl3-5.05bpw` ([exllamav3-exl3.md](exllamav3-exl3.md)) |
+| nvidia/…-NVFP4 (ModelOpt mixed) | NVFP4 experts, FP8 PLE, **FP8 MTP experts** | not downloaded | Smaller draft, so more KV (cookbook: ~170K vs ~78K for RadixArk at 16 requests); still W4A4 experts |
+| unsloth GGUF (LM Studio, llama.cpp) | K-quants; largest that fits in VRAM ≈ UD-IQ3_XXS | 76.3 GiB (Q4_K_XL: 103.7 GiB) | Not run here: ~3-bit to stay on the GPU; Q8_0 with experts in RAM is served by ik_llama.cpp in a separate toolkit |
 
 **Comments**
 
-- **NVFP4 is the best quantization that runs entirely on this card.** Anything
-  more precise does not fit in 96 GB.
-- **AWQ W4A16 is not simply worse.** It leaves activations in BF16, while NVFP4
-  quantizes activations to 4 bits too; NVFP4 compensates with much finer blocks
-  (16 vs 128) and floating-point FP8 scales. Which loses less on this model is an
-  open question, but AWQ would be slower here and much heavier on host RAM.
-- **GGUF was a real option.** LM Studio's llama.cpp runtime 2.37.0 knows the
-  architecture (`qwen4exp`). The quant that fits entirely in VRAM is about 3-bit,
-  though, and llama.cpp offers neither the NEXTN speculation nor the long KV pool.
+- **W4A4 (NVFP4) is the fastest format on this card, not the most precise.**
+  Weight-only INT4 with finer groups (`vllm-awq-w4a16-g32`) and EXL3 5.05 bpw also
+  fit entirely on the GPU; EXL3 5.05 bpw has by far the lowest published KL
+  divergence of the formats that fit (0.0040 against 0.0241 for NVFP4 W4A4).
+- **Activations matter.** NVFP4 quantizes activations to 4 bits; the AWQ and EXL3
+  checkpoints keep them in 16-bit. Published comparisons show W4A4 more than
+  doubling KL divergence over W4A16 with the same weights.
+- **8-bit weights do not fit.** The FP8 experts alone are 112 GiB; any 8-bit
+  profile keeps part of them in host RAM and is bound by PCIe.
 
 ## Which one is highest quality?
 
-**Not measured yet.** The needle tests confirm long-context retrieval works in every
-launcher; they say nothing about reasoning or code. With identical weights,
-quality can only differ through three settings:
+**On code, no measurable difference.** HumanEval+ and MBPP+ (thinking off) were
+run on `sglang-nvfp4-nvme`, `vllm-awq-w4a16`, `vllm-awq-w4a16-g32` and
+`exllamav3-exl3-5.05bpw`: 454–460 of 542 plus tests passed, and task-by-task
+disagreements between any two are few and evenly split. Full table in the
+[README](../README.md#code-benchmarks). All four scored above Qwen3.6-27B at BF16
+(446).
+
+Where differences did show up is non-English output (below). The SGLang profiles
+not yet benchmarked differ from `sglang-nvfp4-nvme` only in runtime precision:
 
 | | KV cache | Mamba SSM state | RoPE |
 |---|---|---|---|
-| `sglang-nvfp4-nvme` | FP8, uncalibrated | **FP32** | native |
+| `sglang-nvfp4-nvme` (measured) | FP8, uncalibrated | **FP32** | native |
 | `sglang-nvfp4-ram` | FP8, uncalibrated | BF16 | native |
 | `sglang-nvfp4-ram-official` | **BF16** | BF16 | native |
 | `sglang-nvfp4-ram-pennyroyal` | FP8, uncalibrated | BF16 | **YaRN ×2** |
 
 **Comments**
 
-- **`sglang-nvfp4-ram-official`** keeps the full-precision KV cache, so the 12 full-attention layers
-  see exact keys and values.
-- **`sglang-nvfp4-nvme`** keeps the recurrent state of the 36 linear-attention layers
-  in FP32 — the most precise — but pays with uncalibrated FP8 KV.
-- **`sglang-nvfp4-ram`** is one step lower than one of those on each axis.
-- **`sglang-nvfp4-ram-pennyroyal`** has `sglang-nvfp4-ram`'s precisions plus static YaRN on every prompt. On
-  paper it carries the most risk at short context — and it is the only launcher
-  with a window beyond 262K.
-- These effects are probably small, and which dominates cannot be reasoned out.
-  The only quality figures that exist are the yepapa-nest author's for the NVMe
-  `sglang-nvfp4-nvme` configuration: **HumanEval+ 0.939 / 0.921** non-thinking and
-  0.957 / 0.927 thinking, **GSM8K 0.98**.
-- Running HumanEval+ on the four launchers above is the open TODO in
-  [README.md](../README.md#todo).
+- **`sglang-nvfp4-ram-official`** keeps the full-precision KV cache, so the 12
+  full-attention layers see exact keys and values.
+- **`sglang-nvfp4-ram-pennyroyal`** applies static YaRN to every prompt; on paper it
+  carries the most risk at short context — and it is the only launcher with a
+  window beyond 262K.
+- Given that NVFP4 W4A4 already matches the 16-bit-activation formats on code,
+  these runtime settings are unlikely to matter much there; they remain unmeasured.
+
+## Non-English spot check (Slovak)
+
+Benchmarks in English understate what quantization does to lower-resource
+languages. On 2026-09-14 four profiles answered the same ten Slovak prompts with
+`bench/language_samples.py` (greedy, thinking off): an explanation, a formal
+email, noun inflection, numeral agreement, idioms, a translation, a summary, a
+code explanation, a short story and a grammar correction.
+
+The answers were then graded blind: `language_samples.py blind` shuffled them
+into a sheet labelled A–D per prompt, and a separate LLM grader that saw only the
+sheet listed every error (quoted, with a fix and severity 1–3), scored each answer
+1–10 and ranked the four per prompt. Letters were mapped back to profiles only
+afterwards.
+
+| Profile | Weights | Score, sum of 10 | Error penalty | Mean rank¹ | Ranked first¹ |
+|---|---|---|---|---|---|
+| `vllm-fp8-offload` | FP8 experts | **71** | 48 | 2.25 | **4** |
+| `vllm-awq-w4a16-g32` | INT4 group 32 | **70** | **46** | **2.00** | 2 |
+| `vllm-awq-w4a16` | INT4 group 128 | 62 | 63 | 2.50 | 2 |
+| `exllamav3-exl3-5.05bpw` | EXL3 5.05 bpw | 61 | 58 | 3.25 | 0 |
+
+¹ Over the 8 prompts whose answers differed; numeral agreement and the translation
+were identical in all four.
+
+| Prompt | FP8 | AWQ g32 | AWQ g128 | EXL3 |
+|---|---|---|---|---|
+| explain | 9 | 8 | 6 | 8 |
+| formal-email | 6 | 7 | 8 | 7 |
+| inflection | 9 | 6 | 3 | 2 |
+| numbers-agreement | 10 | 10 | 10 | 10 |
+| idioms | 6 | 4 | 3 | 5 |
+| translate | 8 | 8 | 8 | 8 |
+| summary | 8 | 9 | 8 | 7 |
+| code-explain | 7 | 8 | 8 | 6 |
+| story | 4 | 7 | 5 | 6 |
+| grammar-fix | 4 | 3 | 3 | 2 |
+
+**Comments**
+
+- **AWQ group 32 matched FP8; group 128 and EXL3 5.05 bpw trailed.** The gap comes
+  mostly from three prompts (inflection, idioms, story), so it is a direction, not a
+  measurement: one greedy answer per prompt, where a single early token can change
+  the rest of an answer.
+- **EXL3's low place contradicts its KL divergence**, the best of these formats on
+  in-domain English text. Unlike the vLLM checkpoints it also quantizes attention,
+  linear attention and the shared experts; whether that matters more for Slovak was
+  not tested.
+- **The worst errors are the model's own.** All four, FP8 included, wrote the
+  non-word „vereta“, left „tri jablka“ uncorrected (should be „jablká“) and called
+  „čo“ a conjunction. Recurring across the sheet: missing vocalized prepositions
+  („v fáze“, „z štandardnej“), Czech forms („v Pythonu“, „plácl“, „marné“), dropped
+  reflexive „sa“, and non-words („previn“, „pstružina“).
+- An LLM grader is not a native speaker; its individual calls can be wrong. A
+  larger prompt set, several samples per prompt, or a human read of the same blind
+  sheet would firm this up.

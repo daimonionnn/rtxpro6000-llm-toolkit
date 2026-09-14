@@ -1,0 +1,22 @@
+# Qwen's recommended sampling for Qwen3.8-Flash-Next (its generation_config.json),
+# used when a client does not send its own values — the same fallback vLLM
+# applies. force: false lets client values win; set force: true if a client sends
+# settings that make the model emit mixed-language gibberish in its reasoning.
+temperature:
+  override: 1.0
+  force: false
+top_k:
+  override: 20
+  force: false
+top_p:
+  override: 0.95
+  force: false
+min_p:
+  override: 0.0
+  force: false
+presence_penalty:
+  override: 0.0
+  force: false
+repetition_penalty:
+  override: 1.0
+  force: false

@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Print what precision each part of a Qwen3.8-Flash-Next checkpoint has, and where it runs.
 
-    python3 quant_info.py MODEL_DIR [--require nvfp4|w4a16] [--kv-dtype D]
-                          [--ple-mode nvme|ram] [--engine NAME]
+    python3 quant_info.py MODEL_DIR [--require nvfp4|w4a16|fp8|exl3] [--kv-dtype D]
+                          [--ple-mode nvme|ram] [--experts-ram-gib N] [--engine NAME]
 
 Detects the checkpoint format from its own metadata:
 
@@ -10,6 +10,11 @@ Detects the checkpoint format from its own metadata:
           FP4 W4A4, the rest BF16, PLE table FP8
   w4a16   compressed-tensors INT4 weight-only (config.json quantization_config) —
           routed experts INT4, activations and the rest BF16, PLE table BF16
+  fp8     block FP8 (config.json quantization_config, quant_method fp8) — routed
+          experts FP8 W8A8 with dynamic activation scales, the rest BF16
+  exl3    ExLlamaV3 trellis quantization (quant_method exl3) — every linear layer at
+          the bit rate in its config; sizes only, since packed tensors do not
+          reveal parameter counts
 
 Parameter counts, bits per parameter and sizes are read from the safetensors
 headers, not assumed. With --require, exits 2 if the checkpoint is a different
@@ -25,7 +30,7 @@ import sys
 
 DTYPE_BITS = {"F64": 64, "F32": 32, "BF16": 16, "F16": 16, "F8_E4M3": 8, "F8_E5M2": 8,
               "I64": 64, "I32": 32, "I16": 16, "I8": 8, "U8": 8, "BOOL": 8}
-AUX_SUFFIXES = ("weight_scale", "weight_scale_2", "input_scale", "weight_zero_point",
+AUX_SUFFIXES = ("weight_scale", "weight_scale_2", "weight_scale_inv", "input_scale", "weight_zero_point",
                 "weight_shape", "weight_global_scale", "k_scale", "v_scale")
 
 
@@ -36,7 +41,9 @@ def detect(model_dir):
         q = json.load(open(hq))
         if q.get("quantization", {}).get("quant_algo") == "NVFP4":
             return "nvfp4", cfg, q
-    qc = cfg.get("quantization_config") or {}
+    qc = cfg.get("quantization_config") or (cfg.get("text_config") or {}).get("quantization_config") or {}
+    if qc.get("quant_method") in ("fp8", "exl3"):
+        return qc["quant_method"], cfg, qc
     if qc.get("quant_method") == "compressed-tensors":
         for group in (qc.get("config_groups") or {}).values():
             w = group.get("weights") or {}
@@ -75,9 +82,11 @@ def component(name):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("model_dir")
-    ap.add_argument("--require", choices=("nvfp4", "w4a16"))
+    ap.add_argument("--require", choices=("nvfp4", "w4a16", "fp8", "exl3"))
     ap.add_argument("--kv-dtype", default="auto")
     ap.add_argument("--ple-mode", default="ram", choices=("nvme", "ram"))
+    ap.add_argument("--experts-ram-gib", type=float, default=0,
+                    help="GiB of routed experts the engine keeps in host RAM")
     ap.add_argument("--engine", default="")
     # accepted for compatibility with older launchers
     ap.add_argument("--weight-quant")
@@ -119,6 +128,13 @@ def main():
         w = next(iter(qmeta["config_groups"].values()))["weights"]
         label = f"INT4 W4A16, group {w.get('group_size')}, {'symmetric' if w.get('symmetric') else 'asymmetric'}"
         origin = f"compressed-tensors {qmeta.get('version', '')}".strip()
+    elif fmt == "fp8":
+        block = qmeta.get("weight_block_size")
+        label = f"FP8 W8A8, block {'x'.join(map(str, block)) if block else 'per-tensor'}, {qmeta.get('activation_scheme', '?')} act."
+        origin = "fp8"
+    elif fmt == "exl3":
+        label = f"EXL3 {qmeta.get('bits')} bpw (head {qmeta.get('head_bits')} bpw)"
+        origin = f"exllamav3 {qmeta.get('version', '?')}"
     else:
         label, origin = "unrecognised", "?"
 
@@ -128,7 +144,8 @@ def main():
 
     where_ple = {"nvme": "NVMe (streamed)", "ram": "host RAM"}[a.ple_mode]
     rows = [
-        ("routed experts", label, "experts", "VRAM"),
+        ("routed experts", label, "experts",
+         f"VRAM + {a.experts_ram_gib:g} GiB host RAM" if a.experts_ram_gib else "VRAM"),
         ("attention, router, shared expert, MTP, vision, embeddings", dt("rest"), "rest", "VRAM"),
         ("PLE n-gram table", dt("ple"), "ple", where_ple),
     ]
@@ -139,9 +156,16 @@ def main():
     for title, prec, c, where in rows:
         p, b = params[c], nbytes[c]
         tot_p += p; tot_b += b
+        if fmt == "exl3":
+            prec = label if c == "experts" else "EXL3 (packed)" if c == "ple" else "EXL3 / BF16"
+            print(f"  {title:<58}{prec:<40}{'—':>9}{'—':>8}{b/2**30:>7.1f} GiB  {where}")
+            continue
         bits = b * 8 / p if p else 0
         print(f"  {title:<58}{prec:<40}{p/1e9:>8.1f}B{bits:>8.2f}{b/2**30:>7.1f} GiB  {where}")
-    print(f"  {'model total':<58}{'':<40}{tot_p/1e9:>8.1f}B{tot_b*8/tot_p:>8.2f}{tot_b/2**30:>7.1f} GiB")
+    if fmt == "exl3":
+        print(f"  {'model total':<58}{'':<40}{'180.0B':>9}{tot_b*8/180.0e9:>8.2f}{tot_b/2**30:>7.1f} GiB")
+    else:
+        print(f"  {'model total':<58}{'':<40}{tot_p/1e9:>8.1f}B{tot_b*8/tot_p:>8.2f}{tot_b/2**30:>7.1f} GiB")
     kv = a.kv_dtype if a.kv_dtype != "auto" else "auto (BF16)"
     print(f"  {'KV cache':<58}{kv}\n")
     return 0

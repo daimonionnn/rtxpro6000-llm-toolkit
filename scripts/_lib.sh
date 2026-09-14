@@ -13,6 +13,10 @@ PROFILES=(
   "qwen3.8-flash-next-sglang-nvfp4-ram-official|qwen3.8-flash-next/sglang/nvfp4-ram-official|serve-nvfp4-ram.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, official lmsysorg image, NVFP4, PLE table in RAM"
   "qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal|qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal|serve-nvfp4-ram.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang pennyroyal fork (native), NVFP4, PLE table in RAM, 524K context"
   "qwen3.8-flash-next-vllm-awq-w4a16|qwen3.8-flash-next/vllm/awq-w4a16|serve-awq-w4a16-ram.sh|Qwen3.8-Flash-Next-AWQ-W4A16|Qwen3.8-Flash-Next · vLLM, official image, AWQ W4A16, PLE table in RAM"
+  "qwen3.8-flash-next-vllm-awq-w4a16-g32|qwen3.8-flash-next/vllm/awq-w4a16-g32|serve-awq-w4a16-g32-ram.sh|Qwen3.8-Flash-Next-AWQ-INT4-g32|Qwen3.8-Flash-Next · vLLM, official image, AWQ W4A16 group 32 (cyankiwi), PLE table in RAM"
+  "qwen3.8-flash-next-exllamav3-exl3-5.05bpw|qwen3.8-flash-next/exllamav3/exl3-5.05bpw|serve-exl3-5.05bpw.sh|Qwen3.8-Flash-Next-EXL3-5.05bpw|Qwen3.8-Flash-Next · ExLlamaV3 + TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP"
+  "qwen3.8-flash-next-vllm-fp8-offload|qwen3.8-flash-next/vllm/fp8-offload|serve-fp8-offload.sh|Qwen3.8-Flash-Next-FP8|Qwen3.8-Flash-Next · vLLM, official image, official FP8, part of the experts and PLE table in RAM"
+  "qwen3.6-27b-sglang-bf16|qwen3.6-27b/sglang/bf16|serve-bf16.sh|Qwen3.6-27B|Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation"
 )
 
 # profile_field ID FIELD — FIELD is dir, launcher, model or desc

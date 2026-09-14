@@ -50,6 +50,33 @@ hf download wtdcode/Qwen3.8-Flash-Next-AWQ-W4A16 \
   --local-dir models/Qwen3.8-Flash-Next-AWQ-W4A16
 ```
 
+For the `vllm-awq-w4a16-g32` profile (175 GiB, 38 shards):
+
+```bash
+hf download cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4 \
+  --revision d39638a0e740fccb3e24ae0ea5cab34c15371ae6 \
+  --local-dir models/Qwen3.8-Flash-Next-AWQ-INT4-g32
+```
+
+For the `exllamav3-exl3-5.05bpw` profile, one branch of the EXL3 repository (115 GiB):
+
+```bash
+hf download turboderp/Qwen3.8-Flash-Next-exl3 \
+  --revision 7cef615f7fd3681295b68848018876dfabc336c7 \
+  --local-dir models/Qwen3.8-Flash-Next-EXL3-5.05bpw
+```
+
+The revision is the head of branch `5.05bpw_h6_ng6`; the other branches hold the
+2.05–6.05 bpw quants.
+
+For the `vllm-fp8-offload` profile, Qwen's FP8 checkpoint (173 GiB, 131 shards):
+
+```bash
+hf download Qwen/Qwen3.8-Flash-Next-FP8 \
+  --revision 236dfdf285828023ca3bcd3f37366c58a3469b13 \
+  --local-dir models/Qwen3.8-Flash-Next-FP8
+```
+
 The NVFP4 checkpoint is 126 GiB, 206 shards. Verify nothing is missing before building:
 
 ```bash
@@ -228,7 +255,7 @@ reuse it. The launcher refuses to start while another process holds the GPU, so
 stop any Docker profile first. It runs as a background process with its PID in
 `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/server.pid` and does not restart after a reboot.
 
-## 6. The vLLM profile
+## 6. The vLLM profiles
 
 ```bash
 docker pull vllm/vllm-openai:qwen38-flash-next      # 19.8 GB
@@ -240,14 +267,40 @@ table. First start is about three minutes. See [vllm-awq.md](vllm-awq.md) for th
 launcher options, measurements, and why it must run with
 `--distributed-executor-backend mp` on a single GPU.
 
+```bash
+scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh
+```
+
+Same image and settings as `vllm-awq-w4a16`, group-32 checkpoint. See
+[vllm-awq-g32.md](vllm-awq-g32.md).
+
+```bash
+scripts/start-qwen3.8-flash-next-vllm-fp8-offload.sh
+```
+
+Same image, FP8 checkpoint. Keeps 50 GiB of routed experts in pinned RAM next to
+the PLE table, so it needs ~106 GiB of free host RAM; first start is about eight
+minutes. See [vllm-fp8-offload.md](vllm-fp8-offload.md).
+
+## 7. The ExLlamaV3 profile
+
+```bash
+docker pull ghcr.io/theroyallab/tabbyapi@sha256:a0befeadd9b4609e5a39334aa587b5bd8da33f4eeb6c68c482f2d1751fad79d3
+scripts/start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw.sh
+```
+
+TabbyAPI with ExLlamaV3 1.5.0 and the EXL3 5.05 bpw checkpoint. Needs ~50 GiB of
+free host RAM for the n-gram table; loads in under a minute, and the first request
+compiles kernels for ~45 s. See [exllamav3-exl3.md](exllamav3-exl3.md).
+
 ## Re-measuring after a config change
 
 ```bash
-python3 bench/prefill.py              # 4K / 32K / 128K, cold and prefix-cached
-python3 bench/prefill.py 8192 65536   # or pick your own sizes
+python3 bench/prefill.py                                   # 4K / 32K / 128K, cold and prefix-cached
+python3 bench/language_samples.py collect <profile>         # Slovak answers for the blind comparison
 ```
 
-Standard library only; it flushes the prefix cache before each cold run.
+See [bench/README.md](../../bench/README.md) for both scripts.
 
 ## Notes on the launch flags
 

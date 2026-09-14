@@ -22,8 +22,9 @@ http://127.0.0.1:5173/?api=http://<host>:8090
 
 Opening `ui/index.html` with `file://` does **not** work. A `file://` page sends
 `Origin: null` and the request is refused. SGLang reflects whatever `Origin` it
-is given, so any real http origin is accepted and no proxy is needed —
-`ui/serve.py` is just `http.server` with caching disabled.
+is given, and vLLM and TabbyAPI allow any origin by default, so any real http
+origin is accepted and no proxy is needed — `ui/serve.py` is just `http.server`
+with caching disabled.
 
 ## What it shows
 

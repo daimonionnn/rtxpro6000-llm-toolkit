@@ -22,10 +22,15 @@ report() {  # profile port log-command hicache kv-dtype started
   local models
   models=$(curl -s --max-time 5 "http://127.0.0.1:$port/v1/models" 2>/dev/null)
   if [ -n "$models" ]; then
-    echo "$models" | python3 -c "
-import sys, json
+    # vLLM and SGLang report max_model_len; TabbyAPI reports it on /v1/model instead
+    local tabby_ctx
+    tabby_ctx=$(curl -s --max-time 5 "http://127.0.0.1:$port/v1/model" 2>/dev/null \
+      | python3 -c "import sys, json; print(json.load(sys.stdin)['parameters']['max_seq_len'])" 2>/dev/null)
+    echo "$models" | TABBY_CTX="$tabby_ctx" python3 -c "
+import os, sys, json
 for m in json.load(sys.stdin)['data']:
-    print('  served as  {}, context window {:,}'.format(m['id'], m.get('max_model_len') or 0))"
+    ctx = m.get('max_model_len') or int(os.environ.get('TABBY_CTX') or 0)
+    print('  served as  {}, context window {}'.format(m['id'], f'{ctx:,}' if ctx else '?'))"
   else
     echo "  served as  (not answering yet — still starting?)"
   fi
