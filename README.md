@@ -14,9 +14,22 @@ report on them.
 | **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K context | 8 | SGLang, vLLM, ExLlamaV3 | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
 | **Qwen3.6-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.6-27b/README.md](qwen3.6-27b/README.md) |
 
-Each model directory has its own README with checkpoints, a comparison of its
-profiles, measurements and open TODOs, and a `docs/` folder with setup,
-troubleshooting and the full results.
+Each model directory has a README with its checkpoints, profiles and open TODOs;
+the Flash-Next one also has `docs/` with setup, troubleshooting, the model's
+architecture and one document per profile (`docs/profiles/<profile>.md`).
+
+## Results
+
+**[RESULTS.md](RESULTS.md)** puts every profile of every model side by side: speed,
+context and memory, HumanEval+ / MBPP+, a blind Slovak check, and recommendations.
+In short:
+
+- **Most context and fastest prefill:** `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal`
+  (524K window); `-sglang-nvfp4-ram` for plain Docker.
+- **Best non-English output:** `qwen3.8-flash-next-vllm-awq-w4a16-g32`.
+- **On code** the Flash-Next quantizations are within noise of each other, and all
+  beat Qwen3.6-27B at BF16.
+- **8-bit weights on one card:** ik_llama.cpp, not vLLM.
 
 ## Scripts
 
@@ -82,17 +95,18 @@ See [bench/README.md](bench/README.md).
 ```
 .
 ├── README.md
+├── RESULTS.md                    all profiles side by side, benchmarks, recommendations
 ├── scripts/                      start-<profile>.sh, stop.sh, status.sh, start-ui.sh, stop-ui.sh
 │   └── _lib.sh                   the profile registry (PROFILES) shared by the scripts
 ├── common/                       stop-docker.sh, shared by every Docker profile
 ├── qwen3.8-flash-next/           one directory per model
 │   ├── README.md
-│   ├── docs/
+│   ├── docs/                     model.md, setup, troubleshooting, profiles/<profile>.md
 │   ├── quant_info.py
 │   ├── sglang/<variant>/         launcher + stop per profile
 │   ├── vllm/<variant>/
 │   └── exllamav3/<variant>/
-├── qwen3.6-27b/                  README.md, sglang/bf16/
+├── qwen3.6-27b/                  README.md, docs/profiles/, sglang/bf16/
 ├── bench/                        README.md, prefill.py, evalplus_*, language_samples.py — any engine
 ├── ui/                           README.md, local chat UI
 ├── models/                       checkpoints (not tracked)
@@ -109,7 +123,8 @@ See [bench/README.md](bench/README.md).
 2. Add a line to `PROFILES` in `scripts/_lib.sh`: id, directory, launcher,
    checkpoint directory under `models/`, description.
 3. Add `scripts/start-<id>.sh`: source `_lib.sh` and call `start_profile <id>`.
-4. Document it in the model's README and `docs/`.
+4. Document it in `<model>/docs/profiles/<engine>-<variant>.md`, add a row to the
+   model's README, and its measurements to `RESULTS.md`.
 
 ## Hardware
 

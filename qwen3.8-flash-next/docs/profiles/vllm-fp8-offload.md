@@ -123,4 +123,4 @@ a long conversation behind it waits for the cached prefix (~10 s at 69K) plus
 
 The launcher refuses to start unless the checkpoint is FP8 and host RAM covers
 the PLE table plus `OFFLOAD_GIB` plus 8 GiB. `--distributed-executor-backend mp`
-is required on one GPU, as for `vllm-awq-w4a16` ([vllm-awq.md](vllm-awq.md)).
+is required on one GPU, as for `vllm-awq-w4a16` ([vllm-awq-w4a16.md](vllm-awq-w4a16.md)).

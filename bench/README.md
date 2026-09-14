@@ -1,6 +1,6 @@
 # Benchmarks
 
-Two standalone scripts for measuring whichever profile is serving. Both talk to
+Standalone scripts for measuring whichever profile is serving. They talk to
 the OpenAI-compatible API on `http://127.0.0.1:8090` (override with the `BASE`
 environment variable), work with SGLang, vLLM and TabbyAPI alike, and use the
 Python standard library only.
@@ -121,7 +121,7 @@ explanation, a short story with dialogue, and a grammar correction. To add a
 language, add a list to `PROMPTS` in the script.
 
 **Judging.** Read the sheet before opening the key. For the Slovak comparison in
-[qwen3.8-flash-next/docs/comparison.md](../qwen3.8-flash-next/docs/comparison.md#non-english-spot-check-slovak)
+[RESULTS.md](../RESULTS.md#non-english-slovak-blind-check)
 the sheet was copied alone to a separate directory and graded by an LLM that saw
 nothing else — every error quoted with a fix and a severity, a 1–10 score per
 answer and a ranking per prompt — and the letters were mapped to profiles only

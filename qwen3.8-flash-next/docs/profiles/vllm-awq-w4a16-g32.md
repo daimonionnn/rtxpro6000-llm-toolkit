@@ -6,7 +6,7 @@ started with `scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh`.
 It runs
 [cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4](https://huggingface.co/cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4)
 @ `d39638a0` on the same vLLM preview image and with the same launcher settings as
-`vllm-awq-w4a16` ([vllm-awq.md](vllm-awq.md)). Measured 2026-09-14.
+`vllm-awq-w4a16` ([vllm-awq-w4a16.md](vllm-awq-w4a16.md)). Measured 2026-09-14.
 
 ## Checkpoint
 
@@ -51,5 +51,11 @@ The finer groups cost nothing measurable in speed: prefill is identical and deco
 is ~7% faster, likely from the Marlin kernel configuration for group 32 rather than
 from the checkpoint itself (not investigated).
 
-For output quality see the Slovak spot check in
-[comparison.md](comparison.md#non-english-spot-check-slovak).
+## Quality
+
+- Code: HumanEval 0.970 / HumanEval+ 0.951, MBPP 0.937 / MBPP+ 0.796 — within noise of
+  every other Flash-Next quantization.
+- Slovak blind check: 70 of 100, level with FP8 (71) and ahead of group 128 (62) and
+  EXL3 (61).
+
+Both in [RESULTS.md](../../../RESULTS.md).

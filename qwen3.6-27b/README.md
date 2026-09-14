@@ -7,7 +7,7 @@ any quantization.
 
 ## Checkpoint
 
-| Checkpoint | Weights | Size | Used by |
+| Checkpoint | Weights | Size | Profiles |
 |---|---|---|---|
 | [Qwen/Qwen3.6-27B](https://huggingface.co/Qwen/Qwen3.6-27B) @ `6a9e13bd` | BF16, unquantized | 51.7 GiB (15 shards) | `sglang-bf16` |
 
@@ -17,41 +17,24 @@ decoding.
 
 ## Profiles
 
-Serves `http://127.0.0.1:8090/v1` as model `Qwen3.6-27B`, like every profile in the
-toolkit one at a time. Start with `scripts/start-qwen3.6-27b-sglang-bf16.sh`.
+One at a time with every other profile, on `http://127.0.0.1:8090/v1` as model
+`Qwen3.6-27B`.
 
-| Profile | Runtime | Weights | KV cache | Context | Decode, tok/s | VRAM in use |
+| Profile | Runtime | Weights | KV cache | Context | Decode, tok/s | HumanEval+ / MBPP+ |
 |---|---|---|---|---|---|---|
-| `sglang-bf16` | SGLang, `lmsysorg/sglang:dev-qwen38-next-local` | BF16 | BF16 | 262,144 | **87 code, 62 prose** (NEXTN, 3 steps) | 86.5 GiB |
+| [`sglang-bf16`](docs/profiles/sglang-bf16.md) | SGLang, official image | BF16 | BF16 | 262,144 | 87 code, 62 prose | 0.927 / 0.778 |
 
-- **KV cache stays BF16.** FP8 KV needs calibrated scales, which an unquantized
-  checkpoint does not carry; without them the output is corrupted.
-- NEXTN draft acceptance is much higher on code than on prose (accept length ~2.5
-  of 4 on Slovak prose), hence the two decode figures.
-- Settings follow a published single-card BF16 27B setup; `MEMFRAC` (0.88),
-  `MAXRUN` (4), `SPEC_STEPS` (3), `CTX` and `EXTRA_ARGS` can be overridden from the
-  environment.
-
-## Code benchmarks
-
-HumanEval+ and MBPP+ with `bench/evalplus_codegen.py` and
-`bench/evalplus_evaluate.sh`, greedy, thinking off, 2026-09-14:
-
-| | HumanEval | HumanEval+ | MBPP | MBPP+ | Plus tests passed, of 542 |
-|---|---|---|---|---|---|
-| `qwen3.6-27b-sglang-bf16` | 0.976 | 0.927 | 0.931 | 0.778 | 446 |
-| Qwen3.8-Flash-Next quantizations (4 profiles) | 0.970–0.982 | 0.951–0.963 | 0.923–0.937 | 0.788–0.802 | 454–460 |
-
-The 27B at full precision solved 8–14 fewer tasks than each Flash-Next
-quantization, mostly on the stricter plus tests. Per-profile numbers and the
-task-by-task comparison are in the
-[Flash-Next README](../qwen3.8-flash-next/README.md#code-benchmarks).
+Setup, configuration and measurements: [docs/profiles/sglang-bf16.md](docs/profiles/sglang-bf16.md).
+Against the Qwen3.8-Flash-Next profiles: [RESULTS.md](../RESULTS.md) — every
+Flash-Next quantization solved more of the code tasks.
 
 ## Layout
 
 ```
 qwen3.6-27b/
 ├── README.md
+├── docs/
+│   └── profiles/sglang-bf16.md
 └── sglang/
     └── bf16/                     launcher + stop
 ```

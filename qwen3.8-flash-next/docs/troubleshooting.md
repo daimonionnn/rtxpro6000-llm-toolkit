@@ -118,8 +118,8 @@ with per-layer KV descale — switch when it merges.
 The hierarchical KV cache attaches and reopens 2.4× faster, but after a restore a
 needle-in-haystack probe answers "there is no code in the context" — silent
 context loss, most likely because the QSA indexer's side cache is not tiered
-along with KV. Off by default; leave it off in the NVMe launcher and Profiles 1
-and 2.
+along with KV. Off by default; leave it off in `sglang-nvfp4-nvme`, `sglang-nvfp4-ram` and
+`sglang-nvfp4-ram-official`.
 
 The `sglang-nvfp4-ram-pennyroyal` fork fixes this. Tested here: 57K- and 220K-token needle prompts
 restored from NIXL after a full restart and still answered correctly. Use
@@ -226,7 +226,7 @@ The log stops after `Graph capturing finished` and `Free memory on device …`,
 With `VLLM_PLE_CPU_OFFLOAD=1` on a single GPU, vLLM runs the model in-process
 (uniproc executor), but only the multiprocess executor spawns and waits for the PLE
 offload worker. Start with `--distributed-executor-backend mp`, as the
-`vllm-awq-w4a16` launcher does. Details in [vllm-awq.md](vllm-awq.md).
+`vllm-awq-w4a16` launcher does. Details in [vllm-awq-w4a16.md](profiles/vllm-awq-w4a16.md).
 
 ## Benchmarks fail with HTTP 404 on `/flush_cache`
 

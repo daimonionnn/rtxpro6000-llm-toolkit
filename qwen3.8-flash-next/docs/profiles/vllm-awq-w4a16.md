@@ -47,8 +47,8 @@ pool differently.
 
 ## Measurements
 
-Same prompts and scripts as the SGLang profiles ([benchmarks.md](benchmarks.md),
-[comparison.md](comparison.md)). MTP speculative decoding is **off** (`SPEC_TOKENS=0`).
+Same prompts and scripts as the SGLang profiles ([sglang-nvfp4-nvme.md](sglang-nvfp4-nvme.md),
+[RESULTS.md](../../../RESULTS.md)). MTP speculative decoding is **off** (`SPEC_TOKENS=0`).
 
 ### Decode
 
@@ -84,6 +84,12 @@ The first 4K request after startup took 1.28 s (warmup). Cold prefill is within
 
 Needle test (a 10-character code at 10/50/90% depth in 57K, 115K, 176K and
 220K-token prompts): **12/12**.
+
+### Code benchmarks
+
+HumanEval 0.976 / HumanEval+ 0.951, MBPP 0.934 / MBPP+ 0.788 (greedy, thinking off;
+[RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)). Slovak check: 62 of 100, third of
+four ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
 
 ## Setup notes
 

@@ -81,8 +81,14 @@ prefixes come back faster.
 - Tool calls (`tool_format: qwen3_coder`) and `reasoning_content` work with thinking
   on and off.
 
-For output quality see the Slovak spot check in
-[comparison.md](comparison.md#non-english-spot-check-slovak).
+### Quality
+
+- Code: HumanEval 0.976 / HumanEval+ 0.957, MBPP 0.937 / MBPP+ 0.802 — the most plus
+  tests passed (460 of 542), within noise of the other quantizations.
+- Slovak blind check: 61 of 100, last of four, despite the lowest published KL
+  divergence.
+
+Both in [RESULTS.md](../../../RESULTS.md).
 
 ## Configuration
 

@@ -1,8 +1,39 @@
-# Measurements
+# SGLang, NVFP4, PLE table streamed from NVMe
 
-Taken 2026-09-12 on this machine: one RTX PRO 6000 Blackwell Workstation (96 GB,
-SM120), driver 610.57.04, the image built by our `build.sh`, launch flags exactly
-as in `serve-nvfp4-nvme.sh`.
+Profile `sglang-nvfp4-nvme`, directory `qwen3.8-flash-next/sglang/nvfp4-nvme/`,
+started with `scripts/start-qwen3.8-flash-next-sglang-nvfp4-nvme.sh`.
+
+The yepapa-nest recipe as vendored in `sglang/build-local-image/`: RadixArk NVFP4
+checkpoint, local Docker image `sglang-flashnext-sm120:local`, NEXTN speculation,
+FP8 KV cache, and the 47.7 GiB PLE table read per token from NVMe instead of held
+in RAM. The lowest host-RAM footprint of all profiles, and the slowest prefill of
+the SGLang ones. Setup: [setup.md](../setup.md) sections 1–4.
+
+Measured 2026-09-12: one RTX PRO 6000 Blackwell Workstation (96 GB, SM120), driver
+610.57.04, the image built by `build.sh`, launch flags exactly as in
+`serve-nvfp4-nvme.sh`.
+
+## Where it lives
+
+| | Size | Where |
+|---|---|---|
+| Model weights (experts + BF16 part) | 78.2 GiB | **VRAM** |
+| PLE table | 47.7 GiB | **NVMe**, read per token with io_uring (`O_DIRECT`, not cached in RAM) |
+| **Model total** | **125.9 GiB** | 78.2 GiB VRAM + 47.7 GiB NVMe |
+| KV cache — 231,936 tokens, FP8 | 2.9 GiB | VRAM |
+| Mamba cache — 25 slots, **FP32** state | 5.3 GiB | VRAM |
+| Free after CUDA graph capture | 5.5 GiB | VRAM |
+| **VRAM in use** | **91.3 GiB** of 95.6 GiB | |
+| **Host RAM** | **~0** beyond page cache | |
+| Disk besides the checkpoint | Docker image 36.9 GB | |
+
+KV, mamba and free figures come from the startup log (SGLang labels them GB but
+counts GiB); "VRAM in use" from `nvidia-smi`.
+
+## Code benchmarks
+
+HumanEval 0.982 / HumanEval+ 0.963, MBPP 0.923 / MBPP+ 0.791 (greedy, thinking
+off; [RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)).
 
 ## Single-stream throughput
 
@@ -76,7 +107,7 @@ The caveat from upstream applies: the prefix cache holds 233K tokens here agains
 roughly 1.8M for a dense 27B at the same memory, so long shared prefixes get
 evicted and re-prefilled sooner than they would on a smaller model.
 
-## Memory breakdown
+## Memory breakdown, as the engine reports it
 
 | Item | GB |
 |---|---|

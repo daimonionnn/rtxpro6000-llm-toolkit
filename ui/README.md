@@ -56,5 +56,5 @@ and best decode speed, total output tokens, and the current context size.
   answer. It expands while streaming and collapses when the turn finishes.
 - The conversation is re-sent in full each turn, which is exactly the pattern
   that benefits from the prefix cache. Watch TTFT drop after the first turn — see
-  the cold-versus-cached table in [benchmarks.md](../qwen3.8-flash-next/docs/benchmarks.md).
+  the cold-versus-cached table in [sglang-nvfp4-nvme.md](../qwen3.8-flash-next/docs/profiles/sglang-nvfp4-nvme.md).
 - State lives in the page only. Reloading clears the conversation.

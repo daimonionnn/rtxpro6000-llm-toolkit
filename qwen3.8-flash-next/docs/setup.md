@@ -263,7 +263,7 @@ scripts/start-qwen3.8-flash-next-vllm-awq-w4a16.sh
 ```
 
 Needs the AWQ checkpoint and at least 100 GiB of free host RAM for the BF16 PLE
-table. First start is about three minutes. See [vllm-awq.md](vllm-awq.md) for the
+table. First start is about three minutes. See [vllm-awq-w4a16.md](profiles/vllm-awq-w4a16.md) for the
 launcher options, measurements, and why it must run with
 `--distributed-executor-backend mp` on a single GPU.
 
@@ -272,7 +272,7 @@ scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh
 ```
 
 Same image and settings as `vllm-awq-w4a16`, group-32 checkpoint. See
-[vllm-awq-g32.md](vllm-awq-g32.md).
+[vllm-awq-w4a16-g32.md](profiles/vllm-awq-w4a16-g32.md).
 
 ```bash
 scripts/start-qwen3.8-flash-next-vllm-fp8-offload.sh
@@ -280,7 +280,7 @@ scripts/start-qwen3.8-flash-next-vllm-fp8-offload.sh
 
 Same image, FP8 checkpoint. Keeps 50 GiB of routed experts in pinned RAM next to
 the PLE table, so it needs ~106 GiB of free host RAM; first start is about eight
-minutes. See [vllm-fp8-offload.md](vllm-fp8-offload.md).
+minutes. See [vllm-fp8-offload.md](profiles/vllm-fp8-offload.md).
 
 ## 7. The ExLlamaV3 profile
 
@@ -291,7 +291,7 @@ scripts/start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw.sh
 
 TabbyAPI with ExLlamaV3 1.5.0 and the EXL3 5.05 bpw checkpoint. Needs ~50 GiB of
 free host RAM for the n-gram table; loads in under a minute, and the first request
-compiles kernels for ~45 s. See [exllamav3-exl3.md](exllamav3-exl3.md).
+compiles kernels for ~45 s. See [exllamav3-exl3-5.05bpw.md](profiles/exllamav3-exl3-5.05bpw.md).
 
 ## Re-measuring after a config change
 

@@ -1,5 +1,10 @@
 # Keeping the PLE table in RAM instead of NVMe
 
+> **History.** This is the record of how the SGLang RAM profiles came about, kept
+> for the reasoning and the failures. Current configuration and measurements of
+> each profile are in [profiles/](profiles/); all profiles side by side in
+> [RESULTS.md](../../RESULTS.md).
+
 **Solved, three ways.** The first attempt (at the bottom of this document) failed:
 pinned-host PLE cost 1.83 GB of VRAM and the KV cache collapsed. On 2026-09-12
 three approaches found on the web were tested, all with the table in RAM, all
@@ -66,7 +71,7 @@ under the overlap scheduler.
 | VRAM in use | 91.3 GiB | 92.1–92.9 GiB |
 | Host RAM | ~0 | +67 GB used (+64 GB shared) |
 
-Same prompts, settings and scripts as [benchmarks.md](benchmarks.md). Decode is
+Same prompts, settings and scripts as [sglang-nvfp4-nvme.md](profiles/sglang-nvfp4-nvme.md). Decode is
 three warm runs after a warmup, so treat the ~10% gain as a range.
 
 **Prefill gains the most** — a prefill step gathers PLE rows for every prompt
@@ -383,7 +388,7 @@ NVMe.
 
 ### It is faster
 
-Same prompt and settings as [benchmarks.md](benchmarks.md):
+Same prompt and settings as [sglang-nvfp4-nvme.md](profiles/sglang-nvfp4-nvme.md):
 
 | Mode | Run 1 | Run 2 | Run 3 |
 |---|---|---|---|

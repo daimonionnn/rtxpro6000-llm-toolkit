@@ -20,11 +20,11 @@
 # closest path the preview image supports. Measured with the defaults: decode
 # 15.6 tok/s, prefill ~700-800 tok/s — both bound by PCIe (~23 GB/s host-to-GPU
 # during decode, Gen5 x16), since every forward pass reads the offloaded experts it
-# touches. Offloading less is the only lever that helps. See docs/vllm-fp8-offload.md.
+# touches. Offloading less is the only lever that helps. See docs/profiles/vllm-fp8-offload.md.
 #
 # --cpu-offload-params experts matters: without it vLLM offloads parameters in
 # declaration order and moves the hot dense weights to RAM first.
-# --distributed-executor-backend mp is required on one GPU (see vllm-awq.md).
+# --distributed-executor-backend mp is required on one GPU (see docs/profiles/vllm-awq-w4a16.md).
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 
