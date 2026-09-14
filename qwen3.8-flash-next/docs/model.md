@@ -64,7 +64,8 @@ not on it.
   the routed experts, which individually see few tokens.
 - **Activations matter.** W4A4 more than doubles KL divergence over W4A16 with the
   same weights. On code this did not show (see [RESULTS.md](../../RESULTS.md#code-humaneval-and-mbpp));
-  in the Slovak check the weight-only group-32 checkpoint held up best.
+  in the Slovak check the weight-only group-32 checkpoint made the fewest errors,
+  though the NVFP4 profiles were close.
 - **8-bit weights do not fit one card.** The FP8 experts alone are 112.5 GiB, so any
   8-bit profile keeps part of them in host RAM and is bound by PCIe
   ([profiles/vllm-fp8-offload.md](profiles/vllm-fp8-offload.md)).
@@ -172,7 +173,7 @@ somewhat more on less common languages.**
   machine every quantization solved more HumanEval+/MBPP+ tasks than Qwen3.6-27B at
   full precision.
 - **Quantization shows in non-English output first.** Code scores do not separate
-  NVFP4, AWQ and EXL3; the Slovak check does, and even FP8 keeps the model's own
+  NVFP4, AWQ and EXL3; the Slovak check separates them a little, and even FP8 keeps the model's own
   grammar slips.
 - **Weak spots to plan for:** it is verbose and thinks at length — budget
   `max_tokens` generously or turn thinking off for routine steps. It is a preview;

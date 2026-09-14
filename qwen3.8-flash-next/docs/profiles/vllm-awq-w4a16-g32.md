@@ -55,7 +55,7 @@ from the checkpoint itself (not investigated).
 
 - Code: HumanEval 0.970 / HumanEval+ 0.951, MBPP 0.937 / MBPP+ 0.796 — within noise of
   every other Flash-Next quantization.
-- Slovak blind check: 70 of 100, level with FP8 (71) and ahead of group 128 (62) and
-  EXL3 (61).
+- Slovak blind check: 68 of 100 with the fewest errors and best mean rank of seven
+  profiles; in an earlier four-way run 70, level with FP8 (71).
 
 Both in [RESULTS.md](../../../RESULTS.md).

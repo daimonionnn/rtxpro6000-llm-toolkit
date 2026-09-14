@@ -45,8 +45,9 @@ recommendations: [RESULTS.md](../RESULTS.md).
 
 - **Most context, fastest prefill:** `sglang-nvfp4-ram-pennyroyal` — a personal fork
   with YaRN on every prompt; `sglang-nvfp4-ram` or `-official` for plain Docker.
-- **Best non-English output:** `vllm-awq-w4a16-g32`, level with FP8 in a blind
-  Slovak check.
+- **Best non-English output:** `vllm-awq-w4a16-g32` — fewest errors in a blind
+  Slovak check of seven profiles, level with FP8 in an earlier one; the differences
+  are small.
 - **Fastest single-stream decode with 16-bit activations:** `exllamav3-exl3-5.05bpw`.
 - **8-bit weights:** use ik_llama.cpp with a Q8_0 GGUF, not `vllm-fp8-offload`.
 - On code, all seven measured profiles are within noise of each other.
@@ -70,8 +71,9 @@ amount of expert weight offloaded.
 
 - [x] Code benchmarks on all profiles except `vllm-fp8-offload`
 - [ ] Code benchmarks on `vllm-fp8-offload` (1–2 h at ~16 tok/s)
-- [ ] Blind Slovak grading including the SGLang profiles (answers collected for
-      `sglang-nvfp4-ram`, `-official`, `-pennyroyal`)
+- [x] Blind Slovak grading of all seven profiles
+- [ ] A larger Slovak prompt set or several samples per prompt, to separate profiles
+      that are now within a few prompts of each other
 - [ ] Optionally the best one or two with thinking on (`--thinking on`)
 
 ## Layout

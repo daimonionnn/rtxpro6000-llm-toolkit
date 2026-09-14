@@ -76,3 +76,7 @@ the spread of three warm runs, so suggestive rather than established.
 
 HumanEval 0.976 / HumanEval+ 0.951, MBPP 0.929 / MBPP+ 0.799 — 458 of 542 plus tests,
 within noise of the FP8-KV profiles ([RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)).
+
+Slovak blind check: 68 of 100, tied first on score with `vllm-awq-w4a16-g32` (which
+made fewer errors), with the only fully correct noun-inflection answer
+([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).

@@ -85,8 +85,8 @@ prefixes come back faster.
 
 - Code: HumanEval 0.976 / HumanEval+ 0.957, MBPP 0.937 / MBPP+ 0.802 — the most plus
   tests passed (460 of 542), within noise of the other quantizations.
-- Slovak blind check: 61 of 100, last of four, despite the lowest published KL
-  divergence.
+- Slovak blind check: 64 of 100, fifth of seven (61, last of four, in an earlier
+  run), despite the lowest published KL divergence.
 
 Both in [RESULTS.md](../../../RESULTS.md).
 

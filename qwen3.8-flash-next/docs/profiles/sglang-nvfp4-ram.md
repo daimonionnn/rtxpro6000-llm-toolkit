@@ -79,3 +79,5 @@ PLE path together.
 HumanEval 0.970 / HumanEval+ 0.957, MBPP 0.929 / MBPP+ 0.794 — 457 of 542 plus tests,
 the same as `sglang-nvfp4-nvme` despite the BF16 SSM state
 ([RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)).
+
+Slovak blind check: 64 of 100, fourth of seven ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).

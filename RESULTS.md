@@ -15,14 +15,14 @@ section; the start script is always `scripts/start-<model>-<profile>.sh`.
 |---|---|---|
 | The most context and the fastest prefill | `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal` | 524K window, 831K-token KV pool, 235–254 tok/s; prefix cache survives restarts with HiCache. Depends on one person's fork and applies YaRN to every prompt. |
 | Fast and conservative | `qwen3.8-flash-next-sglang-nvfp4-ram` (or `-official` for no local build) | 236–260 tok/s, 262K window, plain Docker |
-| The best non-English output at interactive speed | `qwen3.8-flash-next-vllm-awq-w4a16-g32` | level with FP8 in a blind Slovak check, ~110 tok/s, 262K window |
-| The fastest single-stream decode with 16-bit activations | `qwen3.8-flash-next-exllamav3-exl3-5.05bpw` | 119 tok/s on prose, 216 on code; loads in under a minute. Prefill ~1.6× slower than vLLM, last in the Slovak check. |
+| The best non-English output at interactive speed | `qwen3.8-flash-next-vllm-awq-w4a16-g32` | fewest errors and best mean rank of seven profiles in a blind Slovak check, level with FP8 in an earlier one; ~110 tok/s, 262K window |
+| The fastest single-stream decode with 16-bit activations | `qwen3.8-flash-next-exllamav3-exl3-5.05bpw` | 119 tok/s on prose, 216 on code; loads in under a minute. Prefill ~1.6× slower than vLLM, lower half in both Slovak checks. |
 | 8-bit weights (FP8 / Q8_0) | **ik_llama.cpp**, not a profile here | `vllm-fp8-offload` must keep experts in RAM and decodes at ~16 tok/s; a Q8_0 GGUF under ik_llama.cpp on this machine reaches ~36–40 tok/s |
 | A dense model | `qwen3.6-27b-sglang-bf16` | full BF16 precision, but it solved fewer code tasks than every Flash-Next quantization and decodes slower (62–87 tok/s) |
 
 **On quality in one line:** all seven Flash-Next profiles are indistinguishable on
-code and all beat Qwen3.6-27B at BF16 there; they differ in non-English output,
-where weight-only INT4 with group 32 held up best.
+code and all beat Qwen3.6-27B at BF16 there; in non-English output the differences
+are small, with weight-only INT4 group 32 the most consistent.
 
 ## Speed and capacity
 
@@ -93,59 +93,76 @@ tests, **plus** EvalPlus's stricter extended tests.
 
 Ten Slovak prompts — an explanation, a formal email, noun inflection, numeral
 agreement, idioms, a translation, a summary, a code explanation, a short story, a
-grammar correction — answered by four Flash-Next profiles with
-`bench/language_samples.py` (greedy, thinking off). The answers were shuffled into
-a sheet labelled A–D per prompt, and a separate LLM grader that saw only the sheet
-listed every error with a quote, fix and severity, scored each answer 1–10 and
-ranked the four per prompt. Letters were mapped back to profiles afterwards.
+grammar correction — answered with `bench/language_samples.py` (greedy, thinking
+off). The answers were shuffled into a sheet labelled per prompt, and a separate LLM
+grader that saw only the sheet listed every error with a quote, fix and severity,
+scored each answer 1–10 and ranked the answers per prompt. Letters were mapped back
+to profiles afterwards.
 
-| Profile | Weights | Score, sum of 10 | Error penalty | Mean rank¹ | Ranked first¹ |
+**All seven Flash-Next profiles from the code benchmarks, one grader** (2026-09-14):
+
+| Profile | Weights | Score, sum of 10 | Error penalty | Mean rank¹ | Ranked first / last¹ |
 |---|---|---|---|---|---|
-| `vllm-fp8-offload` | FP8 experts | **71** | 48 | 2.25 | **4** |
-| `vllm-awq-w4a16-g32` | INT4 group 32 | **70** | **46** | **2.00** | 2 |
-| `vllm-awq-w4a16` | INT4 group 128 | 62 | 63 | 2.50 | 2 |
-| `exllamav3-exl3-5.05bpw` | EXL3 5.05 bpw | 61 | 58 | 3.25 | 0 |
+| `vllm-awq-w4a16-g32` | INT4 W4A16 g32 | **68** | **42** | **3.14** | 1 / 0 |
+| `sglang-nvfp4-ram-official` | NVFP4 W4A4, BF16 KV | **68** | 48 | 4.29 | 1 / 1 |
+| `sglang-nvfp4-ram-pennyroyal` | NVFP4 W4A4, YaRN ×2 | 65 | 45 | 3.57 | 2 / 1 |
+| `sglang-nvfp4-ram` | NVFP4 W4A4 | 64 | 48 | 4.00 | 0 / 0 |
+| `exllamav3-exl3-5.05bpw` | EXL3 5.05 bpw | 64 | 55 | 4.29 | 1 / 2 |
+| `vllm-awq-w4a16` | INT4 W4A16 g128 | 63 | 52 | 4.14 | 1 / 1 |
+| `sglang-nvfp4-nvme` | NVFP4 W4A4, FP32 SSM | 61 | 74² | 4.57 | 1 / 2 |
 
-¹ Over the 8 prompts whose answers differed; numeral agreement and the translation
-were identical in all four.
+¹ Over the 7 prompts whose answers differed; numeral agreement, the translation and
+the summary scored the same for all seven.
+² Includes a grammar-correction answer that rambled into its 800-token limit (28
+penalty points on that prompt alone).
 
-| Prompt | FP8 | AWQ g32 | AWQ g128 | EXL3 |
-|---|---|---|---|---|
-| explain | 9 | 8 | 6 | 8 |
-| formal-email | 6 | 7 | 8 | 7 |
-| inflection | 9 | 6 | 3 | 2 |
-| numbers-agreement | 10 | 10 | 10 | 10 |
-| idioms | 6 | 4 | 3 | 5 |
-| translate | 8 | 8 | 8 | 8 |
-| summary | 8 | 9 | 8 | 7 |
-| code-explain | 7 | 8 | 8 | 6 |
-| story | 4 | 7 | 5 | 6 |
-| grammar-fix | 4 | 3 | 3 | 2 |
+| Prompt | AWQ g32 | official | pennyroyal | ram | EXL3 | AWQ g128 | nvme |
+|---|---|---|---|---|---|---|---|
+| explain | 8 | 6 | 8 | 7 | 8 | 7 | 9 |
+| formal-email | 7 | 6 | 4 | 5 | 7 | 8 | 5 |
+| inflection | 6 | **10** | 4 | 3 | 2 | 4 | 6 |
+| numbers-agreement | 10 | 10 | 10 | 10 | 10 | 10 | 10 |
+| idioms | 4 | 3 | 5 | 3 | 6 | 4 | 2 |
+| translate | 8 | 8 | 8 | 8 | 8 | 8 | 8 |
+| summary | 9 | 9 | 9 | 9 | 9 | 9 | 9 |
+| code-explain | 7 | 8 | 9 | 9 | 6 | 7 | 8 |
+| story | 6 | 5 | 4 | 6 | 6 | 3 | 3 |
+| grammar-fix | 3 | 3 | 4 | 4 | 2 | 3 | 1 |
+
+**An earlier four-way grading with the FP8 reference** (same method, a different
+grader run) gave `vllm-fp8-offload` 71, `vllm-awq-w4a16-g32` 70, `vllm-awq-w4a16` 62
+and `exllamav3-exl3-5.05bpw` 61. The three profiles in both runs were graded on
+identical answers; the two graders' per-prompt scores differed by 0.2–0.7 points on
+average and the sums by at most 3, so the grading itself is fairly repeatable.
 
 **Comments**
 
-- **AWQ group 32 matched FP8; group 128 and EXL3 5.05 bpw trailed.** The gap comes
-  mostly from three prompts (inflection, idioms, story): a direction, not a
-  measurement — one greedy answer per prompt, where one early token can change the
-  rest of an answer.
-- **EXL3's place contradicts its KL divergence**, the best of these formats on
-  in-domain English text. Unlike the vLLM checkpoints it also quantizes attention,
-  linear attention and the shared experts; whether that matters more for Slovak was
-  not tested.
-- **The worst errors are the model's own.** All four, FP8 included, wrote the
-  non-word „vereta“, left „tri jablka“ uncorrected (should be „jablká“) and called
-  „čo“ a conjunction. Recurring across the sheet: missing vocalized prepositions
-  („v fáze“, „z štandardnej“), Czech forms („v Pythonu“, „plácl“, „marné“), dropped
-  reflexive „sa“, non-words („previn“, „pstružina“).
-- An LLM grader is not a native speaker; individual calls can be wrong. A larger
-  prompt set, several samples per prompt or a human read of the same sheet would
+- **AWQ group 32 has the fewest errors and the best mean rank**, and matched FP8 in
+  the earlier run. It is the most consistent choice for Slovak, not a clear winner:
+  the spread between 61 and 68 is a few prompts' worth, with one greedy answer per
+  prompt.
+- **NVFP4 is not clearly worse at this sample size.** `sglang-nvfp4-ram-official`
+  tied g32 on score thanks to the only fully correct inflection answer; the NVFP4
+  profiles otherwise sit between g32 and g128. `sglang-nvfp4-nvme` placed last,
+  mostly from one runaway answer.
+- **EXL3 5.05 bpw placed in the lower half in both runs**, despite the lowest
+  published KL divergence on English and code. Unlike the vLLM checkpoints it also
+  quantizes attention, linear attention and the shared experts.
+- **The worst errors are the model's own.** Every profile, FP8 included, wrote the
+  non-word „vereta“ and missed „tri jablka“ → „jablká“. Recurring across the sheet:
+  missing vocalized prepositions („v fáze“, „z štandardnej“), missing reflexive
+  „sa“ („ospravedlniť Vás“, „sťažujú mestu“), Czech forms („v Pythonu“, „plácl“),
+  gender agreement slips („Vašu pochopenie“, „pstruha“), and non-words from wrong
+  diacritics („hádzat“, „chybujúca“).
+- An LLM grader is not a native speaker; individual calls can be wrong. More
+  prompts, several samples per prompt, or a human read of the same sheet would
   firm this up.
 
 ## Not measured yet
 
 - **Code benchmarks** on `qwen3.8-flash-next-vllm-fp8-offload` (1–2 h per run at
   its speed).
-- **Slovak check** grading for the SGLang NVFP4 profiles — answers for `sglang-nvfp4-ram`,
-  `-official` and `-pennyroyal` are collected, not yet graded — and Qwen3.6-27B.
+- **Slovak check** on Qwen3.6-27B, and with more prompts or several samples per
+  prompt to separate the Flash-Next profiles.
 - **Qwen3.6-27B**: prefill, KV pool, long-context retrieval.
 - Anything with thinking on, knowledge benchmarks, agentic tool use.
