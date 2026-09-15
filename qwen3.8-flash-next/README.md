@@ -49,11 +49,13 @@ recommendations: [RESULTS.md](../RESULTS.md).
 
 - **Most context, fastest prefill:** `sglang-nvfp4-ram-pennyroyal` — a personal fork
   with YaRN on every prompt; `sglang-nvfp4-ram` or `-official` for plain Docker.
-- **Best non-English output:** `vllm-awq-w4a16-g32` — first in three blind Slovak
-  checks, level with FP8 in a fourth; the differences between profiles are small,
+- **Best non-English output at interactive speed:** `vllm-awq-w4a16-g32` — first in
+  three blind Slovak checks, level with FP8 in the two runs with FP8; the differences between profiles are small,
   and both dense 27B models at BF16 placed well below it.
 - **Fastest single-stream decode with 16-bit activations:** `exllamav3-exl3-5.05bpw`.
-- **8-bit weights:** use ik_llama.cpp with a Q8_0 GGUF, not `vllm-fp8-offload`.
+- **8-bit weights:** use ik_llama.cpp with a Q8_0 GGUF, not `vllm-fp8-offload` —
+  38 tok/s, the best Slovak score measured (73 against 70 for `vllm-awq-w4a16-g32`)
+  and no better on code (454 of 542).
 - **Without refusals:** `vllm-awq-w4a16-g32-uncensored` — the most code tests passed
   of any profile (needs a small vLLM patch). `sglang-nvfp4-ram-official-abliterated`
   lost measurable code ability to its abliteration.

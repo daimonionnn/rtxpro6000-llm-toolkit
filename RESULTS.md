@@ -9,6 +9,12 @@ Configuration, memory breakdown and full measurements per profile:
 Profile ids below drop the model prefix where the model is obvious from the
 section; the start script is always `scripts/start-<model>-<profile>.sh`.
 
+One setup is not a profile here: `ik_llama.cpp Q8_0`, the Q8_0 GGUF of
+Qwen3.8-Flash-Next served by ik_llama.cpp from
+[ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit), measured
+through its API with the same benchmarks as the profiles (2026-09-15), as the
+reference for 8-bit weights.
+
 ## Recommendations
 
 | If you want | Use | Why |
@@ -16,19 +22,20 @@ section; the start script is always `scripts/start-<model>-<profile>.sh`.
 | The most context and the fastest prefill | `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal` | 524K window, 831K-token KV pool, 235–254 tok/s; prefix cache survives restarts with HiCache. Depends on one person's fork and applies YaRN to every prompt. |
 | Fast and conservative | `qwen3.8-flash-next-sglang-nvfp4-ram` (or `-official` for no local build) | 236–260 tok/s, 262K window, plain Docker |
 | Little free host RAM | `qwen3.8-flash-next-sglang-nvfp4-nvme` | reads the PLE table from NVMe instead of holding ~65 GB in RAM; 214–222 tok/s, but the smallest KV pool and the slowest prefill of the SGLang profiles |
-| The best non-English output at interactive speed | `qwen3.8-flash-next-vllm-awq-w4a16-g32` | first in three blind Slovak checks (seven and nine Flash-Next profiles, and against the dense 27B models), level with FP8 in a fourth; ~110 tok/s, 262K window |
+| The best non-English output at interactive speed | `qwen3.8-flash-next-vllm-awq-w4a16-g32` | first in three blind Slovak checks (seven and nine Flash-Next profiles, and against the dense 27B models), level with FP8 in the two runs with FP8, 3 points behind ik_llama.cpp Q8_0; ~110 tok/s, 262K window |
 | The fastest single-stream decode with 16-bit activations | `qwen3.8-flash-next-exllamav3-exl3-5.05bpw` | 119 tok/s on prose, 216 on code; loads in under a minute. Prefill ~1.6× slower than vLLM, lower half in every Slovak check. |
 | No refusals | `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` | leoncca's uncensored AWQ g32 with a small vLLM patch; 461 of 542 code tests, the best measured, no loss against the original. One unexplained crash under the first concurrent load. |
 | — not this one | `qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated` | dealignai's abliterated NVFP4 lost 16 code tasks net against the same profile without abliteration (p = 0.02) |
 | — superseded | `qwen3.8-flash-next-vllm-awq-w4a16` | INT4 group 128: the largest vLLM KV pool (605K), but in the bottom two of every Slovak check; group 32 is slightly faster (110 against 102 tok/s) |
-| 8-bit weights (FP8 / Q8_0) | **ik_llama.cpp**, not a profile here | `vllm-fp8-offload` must keep experts in RAM and decodes at ~16 tok/s; a Q8_0 GGUF under ik_llama.cpp on this machine reaches ~36–40 tok/s |
+| 8-bit weights (FP8 / Q8_0), the best Slovak measured | **ik_llama.cpp with a Q8_0 GGUF**, not a profile here | first of four in its blind Slovak check with the fewest weighted errors (73 against 70 for AWQ g32), but no better on code (454 of 542). 38 tok/s, 131K window, ~105 GiB host RAM. `vllm-fp8-offload` also keeps experts in RAM and decodes at ~16 tok/s. |
 | A dense model | `qwen3.8-27b-sglang-bf16` or `qwen3.6-27b-sglang-bf16` | full BF16 precision, but both solved fewer code tasks than every measured Flash-Next quantization except the abliterated one, scored 21–27 points below AWQ g32 in the Slovak check, and decode slower (57–87 tok/s) |
 
-**On quality in one line:** the seven original-weight Flash-Next profiles are
-indistinguishable on code, and they and the uncensored AWQ g32 all solved more tasks
-than both dense 27B models at BF16; in Slovak the differences between Flash-Next
-profiles are small, with weight-only INT4 group 32 the most consistent, and the
-dense 27B models are clearly behind.
+**On quality in one line:** the seven original-weight Flash-Next profiles and
+ik_llama.cpp Q8_0 are indistinguishable on code, and they and the uncensored AWQ g32
+all solved more tasks than both dense 27B models at BF16; in Slovak the differences
+between Flash-Next setups are small — ik_llama.cpp Q8_0 narrowly best, weight-only
+INT4 group 32 the most consistent of the profiles — and the dense 27B models are
+clearly behind.
 
 ## Speed and capacity
 
@@ -44,10 +51,15 @@ dense 27B models are clearly behind.
 | | `vllm-awq-w4a16-g32-uncensored` | vLLM preview image + PLE patch | INT4 W4A16 g32, uncensored | 339,153 BF16 | 262,144 | not measured | 110 | 87.4 GiB | ~50 GB (est.) |
 | | `exllamav3-exl3-5.05bpw` | ExLlamaV3 1.5.0 / TabbyAPI | EXL3 5.05 bpw | 262,144 FP16 | 262,144 | 0.68 / 4.83 / 19.4 s | **119 prose, 216 code** | 92.0–93.4 GiB | ~43 GB |
 | | `vllm-fp8-offload` | vLLM preview image | FP8, 50 GiB of experts in RAM | 313,483 BF16 | 262,144 | 8K 11.9 s · 69K 86.3 s | 15.6–16.6 | ~88 GiB | ~131 GB |
+| Qwen3.8-Flash-Next, not a profile | `ik_llama.cpp Q8_0` | ik_llama.cpp `d5f53d9f`, native | Q8_0 GGUF; routed experts of 17 of 48 layers in RAM | 131,072 Q8_0 | 131,072 | 2.20 / 17.4 / 86.6 s² | 38 | 92.2 GiB | ~105 GiB |
 | Qwen3.6-27B | `sglang-bf16` | SGLang, official image | BF16 | not recorded | 262,144 | not measured | 87 code, 62 prose | 86.5 GiB | ~0 (no offload) |
 | Qwen3.8-27B | `sglang-bf16` | SGLang, official image | BF16 | 295,344 BF16 | 262,144 | not measured | 85 code, 57 prose | 84.4 GiB | ~0 (no offload) |
 
 ¹ Prefix-cached; the first cold 4K request after startup took 1.83 s with warmup.
+² The third size is 124K tokens, the largest prompt that fits its 131K window; cached
+prompts return in 0.12–0.26 s. `llama-server -ngl 99 -ncmoe 17 -c 131072 -fa on
+-ctk q8_0 -ctv q8_0 -b 2048 -ub 2048 -t 8 -tb 24 -thp --parallel 1`, one request at
+a time, no speculative decoding.
 
 - **Decode barely falls with context on Flash-Next**: three of four layers keep a
   fixed-size recurrent state and the rest attend to 2,048 selected tokens —
@@ -81,6 +93,7 @@ tests, **plus** EvalPlus's stricter extended tests.
 | | `vllm-fp8-offload` | — | — | — | — | not measured (1–2 h per run at 16 tok/s) |
 | Qwen3.8-Flash-Next, uncensored | `vllm-awq-w4a16-g32-uncensored` | **0.988** | **0.970** | **0.942** | 0.799 | **461** |
 | | `sglang-nvfp4-ram-official-abliterated` | 0.933 | 0.890 | 0.921 | 0.783 | 442 |
+| Qwen3.8-Flash-Next, not a profile | `ik_llama.cpp Q8_0` | 0.970 | 0.951 | 0.926 | 0.788 | 454 |
 | Qwen3.6-27B | `sglang-bf16` | 0.976 | 0.927 | 0.931 | 0.778 | 446 |
 | Qwen3.8-27B | `sglang-bf16` | 0.970 | 0.933 | 0.910 | 0.780 | 448 |
 
@@ -107,6 +120,10 @@ tests, **plus** EvalPlus's stricter extended tests.
     same launcher, same quantization format, only the abliteration differs — it
     lost 30 tasks and gained 14 (p = 0.02). Its author's MMLU (−0.18 pp) did not
     catch this.
+- **8-bit weights did not help on code.** `ik_llama.cpp Q8_0` passed 454, the same
+  as INT4 g128 and within noise of every original-weight profile: against each it
+  solved 5–9 tasks the other missed and missed 9–12 the other solved (lowest
+  p = 0.21, against EXL3). All eight solved 437 tasks, none solved 68.
 - **Qwen3.8-27B is no better than Qwen3.6-27B on these benchmarks**: 448 against 446,
   18 tasks only the newer model solved against 16 only the older one solved
   (p = 0.86). Against `vllm-awq-w4a16-g32-uncensored` it solved 11 tasks the MoE
@@ -194,11 +211,41 @@ The two Flash-Next answers are the same greedy outputs as in the nine-way run an
 scored 77 and 70 here against 75 and 70 in the nine-way run — this grader was about
 as strict.
 
+**ik_llama.cpp Q8_0 against FP8 and both AWQ g32 checkpoints, one grader**
+(2026-09-15):
+
+| Setup | Weights | Score, sum of 10 | Error penalty | Mean rank, 1–4¹ | Ranked first / last¹ |
+|---|---|---|---|---|---|
+| `ik_llama.cpp Q8_0` | Q8_0 GGUF, Q8_0 KV | **73** | **36** | **2.00** | 2 / 1 |
+| `qwen3.8-flash-next-vllm-awq-w4a16-g32` | INT4 W4A16 g32 | 70 | 47 | 2.62 | 1 / 0 |
+| `qwen3.8-flash-next-vllm-fp8-offload` | FP8 | 69 | 53 | 2.88 | 2 / 4 |
+| `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` | INT4 W4A16 g32, uncensored | 68 | 50 | 2.50 | **3** / 3 |
+
+¹ Over the 8 prompts where the answers differed; all four numeral-agreement and
+translation answers were identical.
+
+| Prompt | ik_llama.cpp Q8_0 | AWQ g32 | FP8 | g32 uncensored |
+|---|---|---|---|---|
+| explain | 9 | 9 | 8 | 9 |
+| formal-email | 8 | 7 | 6 | 8 |
+| inflection | 4 | 6 | **9** | 4 |
+| numbers-agreement | 10 | 10 | 10 | 10 |
+| idioms | 5 | 4 | 6 | 3 |
+| translate | 8 | 8 | 8 | 8 |
+| summary | 8 | 9 | 8 | 7 |
+| code-explain | 9 | 8 | 7 | 9 |
+| story | **8** | 6 | 4 | **8** |
+| grammar-fix | 4 | 3 | 3 | 2 |
+
+The three vLLM answers are the same outputs as in the earlier runs: g32 70 and FP8 69
+here against 70 and 71 in the first four-way run, a grader of similar strictness.
+
 **Comments**
 
-- **AWQ group 32 came first in every run but one**, and in that one matched FP8
-  (70 against 71). Among the Flash-Next profiles it is the most consistent choice for
-  Slovak, not a clear winner: the spread is a few prompts' worth, with one greedy
+- **AWQ group 32 came first in every run of the profiles here but one**, and in that
+  one matched FP8 (70 against 71); only ik_llama.cpp Q8_0 scored above it (73 against 70).
+  Among the profiles here it is the most consistent choice for Slovak, not a clear
+  winner: the spread is a few prompts' worth, with one greedy
   answer per prompt.
 - **Removing refusals did not clearly hurt Slovak.** The abliterated NVFP4 checkpoint
   made the fewest weighted errors in the nine-way run and was the only profile that
@@ -206,6 +253,13 @@ as strict.
   rank and the most first places there, though it scored 5–7 points below the
   original g32 in both runs that graded the two side by side. On code the two
   checkpoints differ sharply (see above) — the Slovak check is too small to show that.
+- **ik_llama.cpp Q8_0 wrote the best Slovak of its run, narrowly.** It led AWQ g32
+  by 3 points with the fewest weighted errors (36 against 47–53) and the best mean
+  rank; it was first or second on every differing prompt except inflection, where it
+  was last. It is not a different class: its grammar correction also opened with the
+  non-word „vereta“ and missed „jablká“, its idioms answer had „previn“ and
+  „Hádzat“, and it got two of the five cases wrong where FP8 got all five right. FP8, also 8-bit, placed third —
+  bit width alone does not explain the lead.
 - **The dense 27B models write clearly worse Slovak than Flash-Next, despite full
   BF16 precision**: 14–27 points below the two AWQ g32 checkpoints, 1.5–2× their
   weighted errors, each last on four of ten prompts. Qwen3.8-27B scored 6 points

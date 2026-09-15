@@ -35,7 +35,8 @@ In short:
   of each other.
 - **Dense Qwen3.6-27B and Qwen3.8-27B at BF16** trail Flash-Next on code and
   clearly in Slovak; 3.8 is no measurable step over 3.6.
-- **8-bit weights on one card:** ik_llama.cpp, not vLLM.
+- **8-bit weights on one card:** ik_llama.cpp with a Q8_0 GGUF, not vLLM — the best
+  Slovak score measured, narrowly, at 38 tok/s; no better on code.
 
 ## Scripts
 
