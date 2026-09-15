@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Print what precision each part of a Qwen3.8-Flash-Next checkpoint has, and where it runs.
 
-    python3 quant_info.py MODEL_DIR [--require nvfp4|w4a16|fp8|exl3] [--kv-dtype D]
+    python3 quant_info.py MODEL_DIR [--require nvfp4|w4a16|awq|fp8|exl3] [--kv-dtype D]
                           [--ple-mode nvme|ram] [--experts-ram-gib N] [--engine NAME]
 
 Detects the checkpoint format from its own metadata:
@@ -10,6 +10,8 @@ Detects the checkpoint format from its own metadata:
           FP4 W4A4, the rest BF16, PLE table FP8
   w4a16   compressed-tensors INT4 weight-only (config.json quantization_config) —
           routed experts INT4, activations and the rest BF16, PLE table BF16
+  awq     AutoAWQ / GPTQModel INT4 (config.json quantization_config, quant_method awq)
+          — routed experts INT4 with zero points, the rest as the checkpoint stores it
   fp8     block FP8 (config.json quantization_config, quant_method fp8) — routed
           experts FP8 W8A8 with dynamic activation scales, the rest BF16
   exl3    ExLlamaV3 trellis quantization (quant_method exl3) — every linear layer at
@@ -31,6 +33,7 @@ import sys
 DTYPE_BITS = {"F64": 64, "F32": 32, "BF16": 16, "F16": 16, "F8_E4M3": 8, "F8_E5M2": 8,
               "I64": 64, "I32": 32, "I16": 16, "I8": 8, "U8": 8, "BOOL": 8}
 AUX_SUFFIXES = ("weight_scale", "weight_scale_2", "weight_scale_inv", "input_scale", "weight_zero_point",
+                "qzeros", "scales",
                 "weight_shape", "weight_global_scale", "k_scale", "v_scale")
 
 
@@ -42,7 +45,7 @@ def detect(model_dir):
         if q.get("quantization", {}).get("quant_algo") == "NVFP4":
             return "nvfp4", cfg, q
     qc = cfg.get("quantization_config") or (cfg.get("text_config") or {}).get("quantization_config") or {}
-    if qc.get("quant_method") in ("fp8", "exl3"):
+    if qc.get("quant_method") in ("fp8", "exl3", "awq"):
         return qc["quant_method"], cfg, qc
     if qc.get("quant_method") == "compressed-tensors":
         for group in (qc.get("config_groups") or {}).values():
@@ -82,7 +85,7 @@ def component(name):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("model_dir")
-    ap.add_argument("--require", choices=("nvfp4", "w4a16", "fp8", "exl3"))
+    ap.add_argument("--require", choices=("nvfp4", "w4a16", "awq", "fp8", "exl3"))
     ap.add_argument("--kv-dtype", default="auto")
     ap.add_argument("--ple-mode", default="ram", choices=("nvme", "ram"))
     ap.add_argument("--experts-ram-gib", type=float, default=0,
@@ -113,7 +116,7 @@ def main():
             continue
         if fmt == "nvfp4" and c == "experts" and dtype == "U8":
             params[c] += 2 * numel          # two FP4 values per byte
-        elif fmt == "w4a16" and c == "experts" and dtype == "I32":
+        elif fmt in ("w4a16", "awq") and c == "experts" and dtype == "I32":
             params[c] += 8 * numel          # eight INT4 values per int32
         else:
             params[c] += numel
@@ -128,6 +131,9 @@ def main():
         w = next(iter(qmeta["config_groups"].values()))["weights"]
         label = f"INT4 W4A16, group {w.get('group_size')}, {'symmetric' if w.get('symmetric') else 'asymmetric'}"
         origin = f"compressed-tensors {qmeta.get('version', '')}".strip()
+    elif fmt == "awq":
+        label = f"INT4 AWQ W4A16, group {qmeta.get('group_size')}, {'zero point' if qmeta.get('zero_point') else 'symmetric'}"
+        origin = f"awq {qmeta.get('version', '')}".strip()
     elif fmt == "fp8":
         block = qmeta.get("weight_block_size")
         label = f"FP8 W8A8, block {'x'.join(map(str, block)) if block else 'per-tensor'}, {qmeta.get('activation_scheme', '?')} act."

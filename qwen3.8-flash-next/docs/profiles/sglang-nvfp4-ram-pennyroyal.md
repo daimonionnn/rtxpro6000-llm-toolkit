@@ -121,7 +121,7 @@ needles still answered correctly. Those two prompts wrote 5.6 GB in 13,053 files
   short context. On code it did not: HumanEval 0.963 / HumanEval+ 0.951, MBPP 0.918 /
   MBPP+ 0.794, 456 of 542 plus tests — within noise of every other profile
   ([RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)). Slovak blind check:
-  65 of 100, third of seven. Long reasoning is not measured.
+  sixth of nine, third of seven before. Long reasoning is not measured.
 - **Thinking is on by default** in the fork's recipe (`reasoning_effort: medium`,
   its own chat template `froggeric-v22.5.jinja`); `enable_thinking: false` is
   respected.

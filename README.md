@@ -11,12 +11,13 @@ report on them.
 
 | Model | Profiles | Engines | Details |
 |---|---|---|---|
-| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K context | 8 | SGLang, vLLM, ExLlamaV3 | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
+| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K context | 10 | SGLang, vLLM, ExLlamaV3 | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
 | **Qwen3.6-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.6-27b/README.md](qwen3.6-27b/README.md) |
+| **Qwen3.8-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.8-27b/README.md](qwen3.8-27b/README.md) |
 
-Each model directory has a README with its checkpoints, profiles and open TODOs;
-the Flash-Next one also has `docs/` with setup, troubleshooting, the model's
-architecture and one document per profile (`docs/profiles/<profile>.md`).
+Each model directory has a README with its checkpoints and profiles, and one
+document per profile in `docs/profiles/<profile>.md`; the Flash-Next one also has
+setup, troubleshooting, the model's architecture and open TODOs.
 
 ## Results
 
@@ -27,8 +28,13 @@ In short:
 - **Most context and fastest prefill:** `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal`
   (524K window); `-sglang-nvfp4-ram` for plain Docker.
 - **Best non-English output:** `qwen3.8-flash-next-vllm-awq-w4a16-g32`.
-- **On code** the Flash-Next quantizations are within noise of each other, and all
-  beat Qwen3.6-27B at BF16.
+- **No refusals:** `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` — no measurable
+  loss on code, a few points below g32 in Slovak; dealignai's abliterated NVFP4 lost
+  code ability.
+- **On code** the Flash-Next quantizations of the original weights are within noise
+  of each other.
+- **Dense Qwen3.6-27B and Qwen3.8-27B at BF16** trail Flash-Next on code and
+  clearly in Slovak; 3.8 is no measurable step over 3.6.
 - **8-bit weights on one card:** ik_llama.cpp, not vLLM.
 
 ## Scripts
@@ -47,13 +53,16 @@ Current profiles:
 | `start-qwen3.8-flash-next-sglang-nvfp4-nvme.sh` | SGLang, local Docker image, NVFP4, PLE table streamed from NVMe |
 | `start-qwen3.8-flash-next-sglang-nvfp4-ram.sh` | SGLang, local Docker image, NVFP4, PLE table in RAM |
 | `start-qwen3.8-flash-next-sglang-nvfp4-ram-official.sh` | SGLang, official lmsysorg image, NVFP4, PLE table in RAM |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated.sh` | the same launcher with dealignai's abliterated NVFP4 |
 | `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh` | SGLang pennyroyal fork (native), NVFP4, PLE table in RAM, 524K context |
 | `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-hicache.sh` | the same with HiCache/NIXL prefix persistence |
 | `start-qwen3.8-flash-next-vllm-awq-w4a16.sh` | vLLM, official image, AWQ W4A16, PLE table in RAM |
 | `start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh` | vLLM, official image, AWQ W4A16 group 32, PLE table in RAM |
+| `start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored.sh` | vLLM, official image + FP8 PLE patch, leoncca's uncensored AWQ W4A16 group 32 |
 | `start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw.sh` | ExLlamaV3 via TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP |
 | `start-qwen3.8-flash-next-vllm-fp8-offload.sh` | vLLM, official image, official FP8, 50 GiB of experts and the PLE table in RAM |
 | `start-qwen3.6-27b-sglang-bf16.sh` | Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation |
+| `start-qwen3.8-27b-sglang-bf16.sh` | Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation |
 
 ```bash
 scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh
@@ -107,6 +116,7 @@ See [bench/README.md](bench/README.md).
 │   ├── vllm/<variant>/
 │   └── exllamav3/<variant>/
 ├── qwen3.6-27b/                  README.md, docs/profiles/, sglang/bf16/
+├── qwen3.8-27b/                  README.md, docs/profiles/, sglang/bf16/
 ├── bench/                        README.md, prefill.py, evalplus_*, language_samples.py — any engine
 ├── ui/                           README.md, local chat UI
 ├── models/                       checkpoints (not tracked)

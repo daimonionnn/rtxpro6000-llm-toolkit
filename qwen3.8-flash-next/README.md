@@ -15,8 +15,10 @@ that use it.
 | Checkpoint | Routed experts | Rest | PLE table | Size | Profiles |
 |---|---|---|---|---|---|
 | [RadixArk/Qwen3.8-Flash-Next-NVFP4](https://huggingface.co/RadixArk/Qwen3.8-Flash-Next-NVFP4) @ `7b719225242a` | NVFP4 W4A4, 4.50 bits | BF16 | FP8 | 125.9 GiB | `sglang-nvfp4-*` |
+| [dealignai/Qwen3.8-Flash-Next-ABLITERATED-NVFP4](https://huggingface.co/dealignai/Qwen3.8-Flash-Next-ABLITERATED-NVFP4) @ `be794b99` — abliterated | NVFP4 W4A4, 4.50 bits | BF16 | FP8 | 125.9 GiB | `sglang-nvfp4-ram-official-abliterated` |
 | [wtdcode/Qwen3.8-Flash-Next-AWQ-W4A16](https://huggingface.co/wtdcode/Qwen3.8-Flash-Next-AWQ-W4A16) @ `0939125b` | INT4 W4A16 g128, 4.13 bits | BF16 | BF16 | 168.3 GiB | `vllm-awq-w4a16` |
 | [cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4](https://huggingface.co/cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4) @ `d39638a0` | INT4 W4A16 g32 asymmetric, 4.63 bits | BF16 | BF16 | 175.3 GiB | `vllm-awq-w4a16-g32` |
+| [leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32](https://huggingface.co/leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32) @ `fa561462` — uncensored | INT4 AWQ g32, zero points, 4.65 bits | BF16 | FP8 | 128.6 GiB | `vllm-awq-w4a16-g32-uncensored` |
 | [turboderp/Qwen3.8-Flash-Next-exl3](https://huggingface.co/turboderp/Qwen3.8-Flash-Next-exl3) `5.05bpw_h6_ng6` @ `7cef615f` | EXL3 5.05 bpw | EXL3 5.05 bpw, head 6 | 6 bpw | 114.6 GiB | `exllamav3-exl3-5.05bpw` |
 | [Qwen/Qwen3.8-Flash-Next-FP8](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) @ `236dfdf2` | FP8 W8A8, 128×128 blocks | BF16 | FP8 | 172.8 GiB | `vllm-fp8-offload` |
 
@@ -33,8 +35,10 @@ is documented in `docs/profiles/<engine>-<variant>.md`.
 | [`sglang-nvfp4-ram`](docs/profiles/sglang-nvfp4-ram.md) | SGLang, local image | NVFP4 W4A4 | pinned RAM | 262,144 | 236–249 | ~65 GB |
 | [`sglang-nvfp4-ram-official`](docs/profiles/sglang-nvfp4-ram-official.md) | SGLang, official image | NVFP4 W4A4 | pinned RAM | 262,144 | 258–260 | ~65 GB |
 | [`sglang-nvfp4-ram-pennyroyal`](docs/profiles/sglang-nvfp4-ram-pennyroyal.md) | SGLang fork, native | NVFP4 W4A4 | pinned RAM | **524,288** | 235–254 | ~65 GB |
+| [`sglang-nvfp4-ram-official-abliterated`](docs/profiles/sglang-nvfp4-ram-official-abliterated.md) | SGLang, official image | NVFP4 W4A4, abliterated | pinned RAM | 262,144 | 200–216 | ~65 GB |
 | [`vllm-awq-w4a16`](docs/profiles/vllm-awq-w4a16.md) | vLLM preview image | INT4 W4A16 g128 | RAM | 262,144 | 102–103 | ~115 GB |
 | [`vllm-awq-w4a16-g32`](docs/profiles/vllm-awq-w4a16-g32.md) | vLLM preview image | INT4 W4A16 g32 | RAM | 262,144 | 110 | ~115 GB |
+| [`vllm-awq-w4a16-g32-uncensored`](docs/profiles/vllm-awq-w4a16-g32-uncensored.md) | vLLM preview image + PLE patch | INT4 AWQ g32, uncensored | RAM, FP8 | 262,144 | 110 | ~50 GB (est.) |
 | [`exllamav3-exl3-5.05bpw`](docs/profiles/exllamav3-exl3-5.05bpw.md) | ExLlamaV3 / TabbyAPI | EXL3 5.05 bpw | RAM | 262,144 | **119 prose, 216 code** | ~43 GB |
 | [`vllm-fp8-offload`](docs/profiles/vllm-fp8-offload.md) | vLLM preview image | FP8, 50 GiB of experts in RAM | RAM | 262,144 | 15.6–16.6 | ~131 GB |
 
@@ -45,12 +49,16 @@ recommendations: [RESULTS.md](../RESULTS.md).
 
 - **Most context, fastest prefill:** `sglang-nvfp4-ram-pennyroyal` — a personal fork
   with YaRN on every prompt; `sglang-nvfp4-ram` or `-official` for plain Docker.
-- **Best non-English output:** `vllm-awq-w4a16-g32` — fewest errors in a blind
-  Slovak check of seven profiles, level with FP8 in an earlier one; the differences
-  are small.
+- **Best non-English output:** `vllm-awq-w4a16-g32` — first in three blind Slovak
+  checks, level with FP8 in a fourth; the differences between profiles are small,
+  and both dense 27B models at BF16 placed well below it.
 - **Fastest single-stream decode with 16-bit activations:** `exllamav3-exl3-5.05bpw`.
 - **8-bit weights:** use ik_llama.cpp with a Q8_0 GGUF, not `vllm-fp8-offload`.
-- On code, all seven measured profiles are within noise of each other.
+- **Without refusals:** `vllm-awq-w4a16-g32-uncensored` — the most code tests passed
+  of any profile (needs a small vLLM patch). `sglang-nvfp4-ram-official-abliterated`
+  lost measurable code ability to its abliteration.
+- On code, the seven profiles with the original weights are within noise of each
+  other.
 
 ## TODO
 
@@ -71,7 +79,8 @@ amount of expert weight offloaded.
 
 - [x] Code benchmarks on all profiles except `vllm-fp8-offload`
 - [ ] Code benchmarks on `vllm-fp8-offload` (1–2 h at ~16 tok/s)
-- [x] Blind Slovak grading of all seven profiles
+- [x] Blind Slovak grading of every profile except `vllm-fp8-offload` (graded earlier
+      against g32, g128 and EXL3)
 - [ ] A larger Slovak prompt set or several samples per prompt, to separate profiles
       that are now within a few prompts of each other
 - [ ] Optionally the best one or two with thinking on (`--thinking on`)
@@ -99,6 +108,7 @@ qwen3.8-flash-next/
 ├── vllm/
 │   ├── awq-w4a16/                launcher + stop
 │   ├── awq-w4a16-g32/            launcher + stop
+│   ├── awq-w4a16-g32-uncensored/ launcher + stop, PLE patch, index filter
 │   └── fp8-offload/              launcher + stop
 └── exllamav3/
     └── exl3-5.05bpw/             launcher + stop, TabbyAPI config template, sampler preset

@@ -35,8 +35,8 @@ counts GiB); "VRAM in use" from `nvidia-smi`.
 HumanEval 0.982 / HumanEval+ 0.963, MBPP 0.923 / MBPP+ 0.791 (greedy, thinking
 off; [RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)).
 
-Slovak blind check: 61 of 100, last of seven — mostly one grammar-correction answer
-that rambled into its 800-token limit ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
+Slovak blind check: eighth of nine and last of seven — mostly one grammar-correction
+answer that rambled into its 800-token limit ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
 
 ## Single-stream throughput
 

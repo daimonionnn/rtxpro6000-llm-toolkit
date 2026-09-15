@@ -25,3 +25,4 @@ __pycache__/
 /*/*/*/nixl-storage/
 /*/*/*/cache/
 /*/*/*/config.generated.yml
+/*/*/*/patches/.build/

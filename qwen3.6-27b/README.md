@@ -26,7 +26,8 @@ One at a time with every other profile, on `http://127.0.0.1:8090/v1` as model
 
 Setup, configuration and measurements: [docs/profiles/sglang-bf16.md](docs/profiles/sglang-bf16.md).
 Against the Qwen3.8-Flash-Next profiles: [RESULTS.md](../RESULTS.md) — every
-Flash-Next quantization solved more of the code tasks.
+Flash-Next quantization solved more of the code tasks, and in the Slovak blind check
+it scored 50 of 100 against 77 for Flash-Next AWQ g32 (Qwen3.8-27B: 56).
 
 ## Layout
 

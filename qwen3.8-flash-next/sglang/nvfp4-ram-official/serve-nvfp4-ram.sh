@@ -54,7 +54,7 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 docker run -d --name "$NAME" --restart unless-stopped --gpus '"device=0"' \
   --ipc host --shm-size 32g \
   --ulimit memlock=-1 \
-  --label "rtxpro6000-llm.profile=qwen3.8-flash-next-sglang-nvfp4-ram-official" \
+  --label "rtxpro6000-llm.profile=${PROFILE_ID:-qwen3.8-flash-next-sglang-nvfp4-ram-official}" \
   --label "rtxpro6000-llm.quant.experts=NVFP4-W4A4" \
   --label "rtxpro6000-llm.quant.rest=BF16" \
   --label "rtxpro6000-llm.quant.kv_cache=$KV_DTYPE" \
@@ -87,6 +87,7 @@ docker run -d --name "$NAME" --restart unless-stopped --gpus '"device=0"' \
     --mamba-ssm-dtype "$MAMBA_SSM_DTYPE" \
     --ple-offload-embedding \
     --reasoning-parser qwen3 \
+    --tool-call-parser qwen3_coder \
     --mem-fraction-static "$MEMFRAC" \
     --enable-metrics \
     $EXTRA_ARGS

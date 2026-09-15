@@ -217,6 +217,24 @@ to 8 MB, so starting `sglang-nvfp4-ram-pennyroyal` from a service would fail. It
 Pinned memory does not show in a process's `VmLck` or `VmRSS`; look at host
 `used`/`shared` in `free -g` instead, which rise by about 65 GB.
 
+## vLLM: `has no parameter 'w2_weight' for checkpoint weight '…down_proj.weight'`
+
+The checkpoint's shard files contain tensors its `model.safetensors.index.json`
+does not list, and vLLM loads every tensor in a file regardless of the index. Seen
+with `leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32`, which reuses complete PLE
+shard files from the official FP8 checkpoint. Serve a filtered view with only the
+listed tensors: `qwen3.8-flash-next/vllm/awq-w4a16-g32-uncensored/index_filter.py`
+(hard links plus rewritten files; the download stays untouched).
+
+## vLLM: an FP8 PLE table in a non-FP8 checkpoint loads without its scale
+
+No error — the model just produces worse or garbled output. The preview image uses
+its FP8 PLE embedding method only for FP8 checkpoints (`Fp8Config`); with AWQ or
+another quantization the table is created in BF16 and the FP8 bytes are copied in
+unscaled. The `vllm-awq-w4a16-g32-uncensored` launcher patches the selection to
+honour `text_config.ple_embedding_dtype`. A quick check that a PLE path is right:
+HumanEval+ in line with the other profiles ([RESULTS.md](../../RESULTS.md)).
+
 ## vLLM hangs at startup after capturing CUDA graphs
 
 The log stops after `Graph capturing finished` and `Free memory on device …`,

@@ -64,8 +64,8 @@ not on it.
   the routed experts, which individually see few tokens.
 - **Activations matter.** W4A4 more than doubles KL divergence over W4A16 with the
   same weights. On code this did not show (see [RESULTS.md](../../RESULTS.md#code-humaneval-and-mbpp));
-  in the Slovak check the weight-only group-32 checkpoint made the fewest errors,
-  though the NVFP4 profiles were close.
+  in the Slovak checks the weight-only group-32 checkpoint came first, though the
+  NVFP4 profiles were close.
 - **8-bit weights do not fit one card.** The FP8 experts alone are 112.5 GiB, so any
   8-bit profile keeps part of them in host RAM and is bound by PCIe
   ([profiles/vllm-fp8-offload.md](profiles/vllm-fp8-offload.md)).

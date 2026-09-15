@@ -58,8 +58,14 @@ The KV pool size was not recorded.
 | HumanEval / HumanEval+ | 0.976 / 0.927 |
 | MBPP / MBPP+ | 0.931 / 0.778 |
 | Plus tests passed | 446 of 542 |
+| Slovak blind check, score of 100 | 50 (Qwen3.8-27B 56, Flash-Next AWQ g32 77) |
 
 Code benchmarks: `bench/evalplus_*`, greedy, thinking off. Against the
 Qwen3.8-Flash-Next profiles: [RESULTS.md](../../../RESULTS.md).
 
-Not measured: prefill, KV pool size, long-context retrieval, Slovak output.
+In the four-way Slovak blind check (2026-09-15) it placed last, 27 points below
+Flash-Next AWQ g32. It wrote digits with plural verbs („sú 5 žien“) where words and
+singular agreement were asked for, used Czech forms („srozumiteľnejšou“, „Kľudne“),
+and misread „mať maslo na hlave“; it gave the best grammar correction of the four.
+
+Not measured: prefill, KV pool size, long-context retrieval.

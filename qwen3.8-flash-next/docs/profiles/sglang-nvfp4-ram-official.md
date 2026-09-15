@@ -43,6 +43,11 @@ one agent:
 - **2c is the usable configuration.** 256,832 BF16 tokens cover nearly the whole
   262,144-token window for one request.
 
+The launcher passes `--reasoning-parser qwen3 --tool-call-parser qwen3_coder`. The
+tool-call parser was missing until 2026-09-15: tool calls came back as
+`<tool_call>` XML inside `content` instead of in `tool_calls`, which breaks agents.
+The code benchmarks and the Slovak check did not use tools and are unaffected.
+
 ## Where it lives
 
 | | Size | Where |
@@ -77,6 +82,6 @@ the spread of three warm runs, so suggestive rather than established.
 HumanEval 0.976 / HumanEval+ 0.951, MBPP 0.929 / MBPP+ 0.799 — 458 of 542 plus tests,
 within noise of the FP8-KV profiles ([RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)).
 
-Slovak blind check: 68 of 100, tied first on score with `vllm-awq-w4a16-g32` (which
-made fewer errors), with the only fully correct noun-inflection answer
+Slovak blind check: second of nine (72 of 100) and tied first of seven before, with
+the only fully correct noun-inflection answer in both runs
 ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).

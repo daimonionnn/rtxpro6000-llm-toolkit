@@ -88,8 +88,8 @@ Needle test (a 10-character code at 10/50/90% depth in 57K, 115K, 176K and
 ### Code benchmarks
 
 HumanEval 0.976 / HumanEval+ 0.951, MBPP 0.934 / MBPP+ 0.788 (greedy, thinking off;
-[RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)). Slovak check: 63 of 100, sixth of
-seven ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
+[RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)). Slovak check: last of nine, sixth of
+seven before ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
 
 ## Setup notes
 

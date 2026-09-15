@@ -1,0 +1,32 @@
+--- a/vllm/models/qwen3_8_flash_next/nvidia/ple_layer.py
++++ b/vllm/models/qwen3_8_flash_next/nvidia/ple_layer.py
+@@ -210,6 +210,19 @@
+     return Qwen3_8FlashNextPLEFp8EmbeddingMethod()
+ 
+ 
++def _get_ple_embedding_quant_method_from_config(config) -> QuantizeMethodBase | None:
++    """Local patch: an FP8 PLE table next to a non-FP8 main quantization.
++
++    The upstream selector only recognises FP8 PLE shards when the whole checkpoint
++    is FP8 (Fp8Config). An AWQ checkpoint that splices in the official FP8 PLE table
++    declares it with text_config.ple_embedding_dtype instead; without this the table
++    is created in BF16 and the FP8 bytes are copied in without their global scale.
++    """
++    if str(getattr(config, "ple_embedding_dtype", "")).endswith("float8_e4m3fn"):
++        return Qwen3_8FlashNextPLEFp8EmbeddingMethod()
++    return None
++
++
+ class Qwen3_8FlashNextNGramEmbedding(PleOffloadLayer):
+     def __init__(
+         self,
+@@ -287,7 +300,8 @@
+             prefix=f"{prefix}.ngram_embedding",
+             quant_method=_get_ple_embedding_quant_method(
+                 quant_config, f"{prefix}.ngram_embedding"
+-            ),
++            )
++            or _get_ple_embedding_quant_method_from_config(config),
+         )
+         self.register_buffer(
+             "positions_buffer",
