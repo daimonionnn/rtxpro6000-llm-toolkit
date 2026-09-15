@@ -90,7 +90,7 @@ tests, **plus** EvalPlus's stricter extended tests.
 | | `vllm-awq-w4a16` | 0.976 | 0.951 | 0.934 | 0.788 | 454 |
 | | `vllm-awq-w4a16-g32` | 0.970 | 0.951 | **0.937** | 0.796 | 457 |
 | | `exllamav3-exl3-5.05bpw` | 0.976 | 0.957 | **0.937** | **0.802** | **460** |
-| | `vllm-fp8-offload` | — | — | — | — | not measured (1–2 h per run at 16 tok/s) |
+| | `vllm-fp8-offload` | — | — | — | — | not run: ik_llama.cpp Q8_0 covers 8-bit weights |
 | Qwen3.8-Flash-Next, uncensored | `vllm-awq-w4a16-g32-uncensored` | **0.988** | **0.970** | **0.942** | 0.799 | **461** |
 | | `sglang-nvfp4-ram-official-abliterated` | 0.933 | 0.890 | 0.921 | 0.783 | 442 |
 | Qwen3.8-Flash-Next, not a profile | `ik_llama.cpp Q8_0` | 0.970 | 0.951 | 0.926 | 0.788 | 454 |
@@ -124,6 +124,9 @@ tests, **plus** EvalPlus's stricter extended tests.
   as INT4 g128 and within noise of every original-weight profile: against each it
   solved 5–9 tasks the other missed and missed 9–12 the other solved (lowest
   p = 0.21, against EXL3). All eight solved 437 tasks, none solved 68.
+  `vllm-fp8-offload` was not run for that reason: Q8_0 already answers what 8-bit
+  weights do on this benchmark, and FP8 also keeps everything but the routed experts
+  in BF16, so a 1–2 h run at 16 tok/s would add little.
 - **Qwen3.8-27B is no better than Qwen3.6-27B on these benchmarks**: 448 against 446,
   18 tasks only the newer model solved against 16 only the older one solved
   (p = 0.86). Against `vllm-awq-w4a16-g32-uncensored` it solved 11 tasks the MoE
@@ -289,8 +292,6 @@ here against 70 and 71 in the first four-way run, a grader of similar strictness
 
 ## Not measured yet
 
-- **Code benchmarks** on `qwen3.8-flash-next-vllm-fp8-offload` (1–2 h per run at
-  its speed).
 - **Slovak check** with more prompts or several samples per prompt, to separate the
   Flash-Next profiles.
 - **Dense 27B models**: prefill and long-context retrieval; the KV pool of

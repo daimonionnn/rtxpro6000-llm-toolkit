@@ -105,7 +105,9 @@ to GPU buffers before running the kernel.
   70, g128 62 and EXL3 61), third of four in a second run (69, against
   ik_llama.cpp Q8_0 73, AWQ g32 70 and the uncensored g32 68). Its answers still
   carry the model's own errors — „vereta“, the missed „jablká“.
-- Code benchmarks: not run, 1–2 hours at this speed.
+- Code benchmarks: not run. ik_llama.cpp Q8_0 already covers 8-bit weights — 454 of
+  542, within noise of every profile with the original weights — and a run here would take 1–2 hours at
+  this speed.
 
 Both in [RESULTS.md](../../../RESULTS.md).
 
