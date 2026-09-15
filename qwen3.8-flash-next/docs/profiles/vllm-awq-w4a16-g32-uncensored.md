@@ -25,6 +25,22 @@ is not needed and was not downloaded.
 > **Refusals are removed** in the source model. Output is the operator's
 > responsibility.
 
+## Setup
+
+```bash
+docker pull vllm/vllm-openai:qwen38-flash-next      # 19.8 GB
+hf download leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32 \
+  --revision fa56146238f9fcd5ab591b7052b31e28efdca5c3 --exclude "mtp-fp8/*" \
+  --local-dir models/Qwen3.8-Flash-Next-Uncensored-AWQ-g32
+scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored.sh
+```
+
+Serves `http://127.0.0.1:8090/v1` as model `Qwen3.8-Flash-Next`. Needs ~60 GiB of
+free host RAM for the FP8 PLE table and ~1.5 GiB of extra disk for the filtered
+view (below). The first start builds the view, patches the image's PLE layer and
+loads 129 GiB — allow 10–20 minutes. Send a few requests after it reports ready
+(see Caveats).
+
 ## Why it needs a patch and a filtered view
 
 The checkpoint's author states that generic AWQ support is not enough to load it.
@@ -68,8 +84,9 @@ measurable code ability. No crash during the MBPP+ run at concurrency 4.
 
 Slovak blind check: fourth of nine on score (70 of 100) with the best mean rank and
 the most first places; second of four against the dense 27B models (70, original g32
-77). No clear cost, though it scored below the original g32 in both runs
-([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
+77); last of four against ik_llama.cpp Q8_0, FP8 and the original g32 (68, 69–73 for
+the others). No clear cost, though it scored 2–7 points below the original g32 in
+all three runs ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
 
 ## Caveats
 

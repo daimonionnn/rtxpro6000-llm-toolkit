@@ -55,7 +55,9 @@ from the checkpoint itself (not investigated).
 
 - Code: HumanEval 0.970 / HumanEval+ 0.951, MBPP 0.937 / MBPP+ 0.796 — within noise of
   every other Flash-Next quantization.
-- Slovak blind check: first of nine (75 of 100) and first of seven in the run before;
-  in a four-way run level with FP8 (70 vs 71).
+- Slovak blind check: first of nine (75 of 100), first of seven in the run before,
+  and first of four against the dense 27B models (77); level with FP8 in both runs
+  with FP8 (70 against 71 and 69), and 3 points behind ik_llama.cpp Q8_0 (70
+  against 73) in the second of them.
 
 Both in [RESULTS.md](../../../RESULTS.md).

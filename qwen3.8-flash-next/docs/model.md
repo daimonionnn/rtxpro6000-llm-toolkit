@@ -41,9 +41,11 @@ Parameter counts and sizes read from the safetensors headers by
 
 | Checkpoint | Routed experts (120.8B) | Attention, router, shared expert, embeddings, MTP, vision (8.0B) | PLE table (51.2B) | Size | Profiles |
 |---|---|---|---|---|---|
-| RadixArk NVFP4 | **NVFP4 W4A4**, group 16, FP8 scales — 4.50 bits, 63.3 GiB | BF16, 14.9 GiB | FP8, 47.7 GiB | 125.9 GiB | the four `sglang-nvfp4-*` |
+| RadixArk NVFP4 | **NVFP4 W4A4**, group 16, FP8 scales — 4.50 bits, 63.3 GiB | BF16, 14.9 GiB | FP8, 47.7 GiB | 125.9 GiB | the four `sglang-nvfp4-*` with the original weights |
+| dealignai NVFP4, abliterated | same layout as RadixArk NVFP4 | BF16, 14.9 GiB | FP8, 47.7 GiB | 125.9 GiB | `sglang-nvfp4-ram-official-abliterated` |
 | wtdcode AWQ W4A16 | INT4 weight-only, group 128, symmetric — 4.13 bits, 58.0 GiB | BF16, 14.9 GiB | BF16, 95.4 GiB | 168.3 GiB | `vllm-awq-w4a16` |
 | cyankiwi AWQ INT4 | INT4 weight-only, **group 32, asymmetric** — 4.63 bits, 65.0 GiB | BF16, 14.9 GiB | BF16, 95.4 GiB | 175.3 GiB | `vllm-awq-w4a16-g32` |
+| leoncca AWQ g32, uncensored | INT4 AutoAWQ, group 32, zero points — 4.65 bits, 65.8 GiB | BF16, 15.1 GiB | FP8 (the official table), 47.7 GiB | 128.6 GiB | `vllm-awq-w4a16-g32-uncensored` |
 | turboderp EXL3 5.05 bpw | EXL3 5.05 bpw, 70.8 GiB | **EXL3** (head 6 bpw) + BF16 norms, 7.5 GiB | EXL3 6 bpw, 36.4 GiB | 114.6 GiB | `exllamav3-exl3-5.05bpw` |
 | Qwen FP8 | FP8 W8A8, 128×128 blocks — 8.00 bits, 112.5 GiB | BF16 (MTP experts FP8), 12.6 GiB | FP8, 47.7 GiB | 172.8 GiB | `vllm-fp8-offload` |
 | *Qwen BF16 original (not used)* | 16 | 16 | 16 | ~335 GiB | — |
@@ -80,10 +82,11 @@ Beyond the checkpoint, three settings differ between profiles:
 |---|---|---|---|
 | `sglang-nvfp4-nvme` | FP8, uncalibrated | **FP32** (model default) | native |
 | `sglang-nvfp4-ram` | FP8, uncalibrated | BF16 | native |
-| `sglang-nvfp4-ram-official` | **BF16** | BF16 | native |
+| `sglang-nvfp4-ram-official`, `sglang-nvfp4-ram-official-abliterated` | **BF16** | BF16 | native |
 | `sglang-nvfp4-ram-pennyroyal` | FP8, uncalibrated | BF16 | **YaRN ×2 on every prompt** |
-| `vllm-awq-w4a16`, `vllm-awq-w4a16-g32`, `vllm-fp8-offload` | BF16 | model default | native |
+| `vllm-awq-w4a16`, `vllm-awq-w4a16-g32`, `vllm-awq-w4a16-g32-uncensored`, `vllm-fp8-offload` | BF16 | model default | native |
 | `exllamav3-exl3-5.05bpw` | FP16 | engine default | native |
+| ik_llama.cpp Q8_0 (not a profile here) | Q8_0 | engine default | native |
 
 **Comments**
 
@@ -103,8 +106,9 @@ Beyond the checkpoint, three settings differ between profiles:
   model is exact; the draft's precision affects speed only.
 - **None of these showed on code.** HumanEval+ and MBPP+ put all four SGLang
   profiles within 456–458 of 542 plus tests, level with the AWQ and EXL3 profiles
-  ([RESULTS.md](../../RESULTS.md#code-humaneval-and-mbpp)). Effects on other tasks —
-  long reasoning, non-English output — are not measured.
+  ([RESULTS.md](../../RESULTS.md#code-humaneval-and-mbpp)). In the Slovak check the
+  four placed within 66–72 of 100, too close to pin on a setting. Long reasoning is
+  not measured.
 
 ## Published quality results
 
@@ -173,8 +177,9 @@ somewhat more on less common languages.**
   machine every quantization solved more HumanEval+/MBPP+ tasks than Qwen3.6-27B at
   full precision.
 - **Quantization shows in non-English output first.** Code scores do not separate
-  NVFP4, AWQ and EXL3; the Slovak check separates them a little, and even FP8 keeps the model's own
-  grammar slips.
+  NVFP4, AWQ, EXL3 and Q8_0; the Slovak check separates them a little — ik_llama.cpp
+  Q8_0 narrowly first, AWQ group 32 the most consistent 4-bit — and even the 8-bit
+  FP8 and Q8_0 keep the model's own grammar slips.
 - **Weak spots to plan for:** it is verbose and thinks at length — budget
   `max_tokens` generously or turn thinking off for routine steps. It is a preview;
   tool calling is good but trails Qwen3.8-27B in independent runs. On the hardest
@@ -191,4 +196,5 @@ somewhat more on less common languages.**
 | turboderp/…-exl3 5.05 bpw | EXL3 trellis, all linear layers | 114.6 GiB | **Run** as `exllamav3-exl3-5.05bpw` |
 | nvidia/…-NVFP4 (ModelOpt mixed) | NVFP4 experts, FP8 PLE, FP8 MTP experts | not downloaded | Smaller draft, so more KV (cookbook: ~170K vs ~78K at 16 requests); still W4A4 experts |
 | Intel/…-W4A16-AutoRound | INT4, group 128 | ~181 GB | Not run: same group size as `vllm-awq-w4a16` |
-| unsloth GGUF (llama.cpp) | K-quants; largest that fits in VRAM ≈ UD-IQ4_XS | 87.2 GiB (Q8_0 175 GiB) | Not run here: ~4-bit to stay on the GPU; Q8_0 with experts in RAM runs under ik_llama.cpp in a separate toolkit |
+| unsloth GGUF (llama.cpp) | K-quants; largest that fits in VRAM ≈ UD-IQ4_XS | 87.2 GiB (Q8_0 175 GiB) | Not run here: ~4-bit to stay on the GPU |
+| lmstudio-community GGUF Q8_0 | Q8_0 | 175.3 GiB | Not a profile here: runs under ik_llama.cpp in [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit) with the experts of 17 layers in RAM; measured through its API as the 8-bit reference — 38 tok/s, best Slovak score, 454 code tests ([RESULTS.md](../../RESULTS.md)) |

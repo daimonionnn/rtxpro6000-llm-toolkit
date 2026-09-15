@@ -47,7 +47,7 @@ launcher, which labels the container with it.
 
 ## Measurements
 
-Quick checks on 2026-09-15, same machine; not a full benchmark run.
+2026-09-15, same machine.
 
 | | |
 |---|---|
@@ -56,7 +56,8 @@ Quick checks on 2026-09-15, same machine; not a full benchmark run.
 | Decode, LRU-cache prompt with code | 216.0 / 203.3 / 200.4 tok/s |
 | Decode, Slovak prose | 133 tok/s |
 | Tool calls (`qwen3_coder`), thinking on and off | parsed into `tool_calls` |
-| Slovak output | fluent in a short sample; not blind-graded |
+| HumanEval+ / MBPP+ | 0.890 / 0.783 — 442 of 542 plus tests (below) |
+| Slovak blind check | 71 of 100, third of nine (below) |
 
 ### Code benchmarks
 
@@ -68,7 +69,8 @@ Quick checks on 2026-09-15, same machine; not a full benchmark run.
 
 Same launcher, same quantization format; only the abliteration differs. Task by
 task it lost 30 plus tests and gained 14 (sign test p = 0.02) — the fewest passes
-of any Flash-Next profile, below Qwen3.6-27B at BF16 (446). The author's MMLU check
+of any Flash-Next profile, below both dense 27B models at BF16 (Qwen3.6-27B 446,
+Qwen3.8-27B 448). The author's MMLU check
 (−0.18 pp) does not show this. For a refusal-free Flash-Next,
 [`vllm-awq-w4a16-g32-uncensored`](vllm-awq-w4a16-g32-uncensored.md) kept its code
 ability.

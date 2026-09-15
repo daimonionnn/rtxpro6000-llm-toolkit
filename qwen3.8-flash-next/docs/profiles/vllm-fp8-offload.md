@@ -99,6 +99,16 @@ was not measured. The mechanisms differ: vLLM's UVA offloader lets the GPU
 kernels read pinned memory in place, while ik_llama copies the selected experts
 to GPU buffers before running the kernel.
 
+## Quality
+
+- Slovak blind check: first of four in its first run (71 of 100, against AWQ g32
+  70, g128 62 and EXL3 61), third of four in a second run (69, against
+  ik_llama.cpp Q8_0 73, AWQ g32 70 and the uncensored g32 68). Its answers still
+  carry the model's own errors — „vereta“, the missed „jablká“.
+- Code benchmarks: not run, 1–2 hours at this speed.
+
+Both in [RESULTS.md](../../../RESULTS.md).
+
 ## When to use it
 
 Rarely. **For 8-bit weights on one card, ik_llama.cpp with a Q8_0 GGUF is the

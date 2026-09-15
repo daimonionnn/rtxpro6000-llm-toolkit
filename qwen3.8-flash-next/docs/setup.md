@@ -186,7 +186,7 @@ without anyone asking. A container stopped by hand stays stopped across reboots.
 
 The steps above build the image for `sglang-nvfp4-nvme`, which `sglang-nvfp4-ram` also uses.
 The results of all four launchers are compared in
-[ple-ram-experiment.md](ple-ram-experiment.md). All three RAM profiles need
+[ple-ram-experiment.md](ple-ram-experiment.md). All the SGLang RAM profiles need
 **at least ~65 GB of free host RAM** for the pinned 47.7 GiB PLE table.
 
 ### `sglang-nvfp4-ram` — same image
@@ -214,6 +214,16 @@ MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
 Without overrides it reproduces the published cookbook cell (16 requests,
 ~77K KV tokens). **Keep `KV_DTYPE=auto`**: with `fp8_e4m3` the image crashes on
 the first long prompt. Stop it with `./stop.sh`.
+
+`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official.sh` sets those three
+variables. The same launcher also serves dealignai's abliterated NVFP4 checkpoint,
+whose layout is identical:
+
+```bash
+scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated.sh
+```
+
+Download command and results: [sglang-nvfp4-ram-official-abliterated.md](profiles/sglang-nvfp4-ram-official-abliterated.md).
 
 ### `sglang-nvfp4-ram-pennyroyal` — jpezzulli fork, native
 
@@ -273,6 +283,16 @@ scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh
 
 Same image and settings as `vllm-awq-w4a16`, group-32 checkpoint. See
 [vllm-awq-w4a16-g32.md](profiles/vllm-awq-w4a16-g32.md).
+
+```bash
+scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored.sh
+```
+
+Same image, leoncca's uncensored AWQ g32 checkpoint with an FP8 PLE table, so ~60
+GiB of free host RAM is enough. The launcher patches one function of the image's
+PLE layer and serves a hard-linked view of the checkpoint without the unindexed
+tensors that stop vLLM; the first start takes 10–20 minutes. See
+[vllm-awq-w4a16-g32-uncensored.md](profiles/vllm-awq-w4a16-g32-uncensored.md).
 
 ```bash
 scripts/start-qwen3.8-flash-next-vllm-fp8-offload.sh

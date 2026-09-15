@@ -81,8 +81,8 @@ amount of expert weight offloaded.
 
 - [x] Code benchmarks on all profiles except `vllm-fp8-offload`
 - [ ] Code benchmarks on `vllm-fp8-offload` (1–2 h at ~16 tok/s)
-- [x] Blind Slovak grading of every profile except `vllm-fp8-offload` (graded earlier
-      against g32, g128 and EXL3)
+- [x] Blind Slovak grading of every profile (`vllm-fp8-offload` in the two four-way
+      runs), plus ik_llama.cpp Q8_0 as the 8-bit reference
 - [ ] A larger Slovak prompt set or several samples per prompt, to separate profiles
       that are now within a few prompts of each other
 - [ ] Optionally the best one or two with thinking on (`--thinking on`)
