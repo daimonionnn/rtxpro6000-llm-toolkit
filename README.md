@@ -42,6 +42,7 @@ In short:
 
 | Script | Does |
 |---|---|
+| `scripts/start.sh` | Start the default profile (`qwen3.8-flash-next-vllm-awq-w4a16-g32`); it only calls that profile's script |
 | `scripts/start-<model>-<engine>-<variant>.sh` | Start one profile (listed below) |
 | `scripts/stop.sh` | Stop whichever profile is running (`--rm` also removes a Docker container) |
 | `scripts/status.sh` | What is running, from which directory, with which checkpoint, context and KV cache |
@@ -66,7 +67,7 @@ Current profiles:
 | `start-qwen3.8-27b-sglang-bf16.sh` | Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation |
 
 ```bash
-scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh
+scripts/start.sh                     # the default profile
 scripts/status.sh
 scripts/stop.sh
 ```
