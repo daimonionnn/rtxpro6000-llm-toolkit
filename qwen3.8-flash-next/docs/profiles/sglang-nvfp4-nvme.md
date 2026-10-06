@@ -1,7 +1,7 @@
 # SGLang, NVFP4, PLE table streamed from NVMe
 
 Profile `sglang-nvfp4-nvme`, directory `qwen3.8-flash-next/sglang/nvfp4-nvme/`,
-started with `scripts/start-qwen3.8-flash-next-sglang-nvfp4-nvme.sh`.
+started with `scripts/start-qwen3.8-flash-next-sglang-nvfp4-nvme-256k.sh`.
 
 The yepapa-nest recipe as vendored in `sglang/build-local-image/`: RadixArk NVFP4
 checkpoint, local Docker image `sglang-flashnext-sm120:local`, NEXTN speculation,
@@ -11,7 +11,7 @@ the SGLang ones. Setup: [setup.md](../setup.md) sections 1–4.
 
 Measured 2026-09-12: one RTX PRO 6000 Blackwell Workstation (96 GB, SM120), driver
 610.57.04, the image built by `build.sh`, launch flags exactly as in
-`serve-nvfp4-nvme.sh`.
+`serve-nvfp4-nvme-256k.sh`.
 
 ## Where it lives
 

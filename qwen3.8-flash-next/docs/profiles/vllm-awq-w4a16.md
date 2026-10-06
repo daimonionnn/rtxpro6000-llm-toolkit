@@ -1,7 +1,7 @@
 # vLLM with the AWQ W4A16 checkpoint
 
 Profile `vllm-awq-w4a16`, directory `qwen3.8-flash-next/vllm/awq-w4a16/`, started with
-`scripts/start-qwen3.8-flash-next-vllm-awq-w4a16.sh`.
+`scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-256k.sh`.
 
 It runs a different checkpoint from the SGLang profiles —
 [wtdcode/Qwen3.8-Flash-Next-AWQ-W4A16](https://huggingface.co/wtdcode/Qwen3.8-Flash-Next-AWQ-W4A16)

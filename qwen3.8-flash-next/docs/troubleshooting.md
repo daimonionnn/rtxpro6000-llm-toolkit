@@ -63,7 +63,7 @@ cherry-pick actually applied (`build.sh` step 2 prints `ok #36556`).
 ## First run dies with an io_uring error
 
 Docker's default seccomp profile blocks `io_uring_setup`, `io_uring_enter` and
-`io_uring_register`, so the PLE reader cannot start. `serve-nvfp4-nvme.sh` passes
+`io_uring_register`, so the PLE reader cannot start. `serve-nvfp4-nvme-256k.sh` passes
 `--security-opt seccomp=seccomp-iouring.json`, which is the default profile plus
 those three syscalls. If you launch the container by hand, carry that flag.
 
@@ -138,7 +138,7 @@ ROCm installed for the Radeon AI PRO R9700, including `/usr/bin/hipcc`, and
 TileLang detects ROCm with `which hipcc` before it checks CUDA. It happens only
 natively — Docker containers have no `hipcc`.
 
-`qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/serve-nvfp4-ram.sh` fixes it by putting `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/shim/`
+`qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/serve-nvfp4-ram-512k.sh` fixes it by putting `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/shim/`
 first on `PATH`; the `which` there reports `hipcc` as not found and defers to
 `/usr/bin/which` for everything else. If you launch the fork any other way, carry
 that `PATH`. To check what TileLang will pick:

@@ -1,7 +1,7 @@
 # SGLang, BF16
 
 Profile `sglang-bf16`, directory `qwen3.6-27b/sglang/bf16/`, started with
-`scripts/start-qwen3.6-27b-sglang-bf16.sh`.
+`scripts/start-qwen3.6-27b-sglang-bf16-256k.sh`.
 
 Qwen/Qwen3.6-27B @ `6a9e13bd` with its original BF16 weights on the official SGLang
 image `lmsysorg/sglang:dev-qwen38-next-local` (the one
@@ -14,7 +14,7 @@ model and MTP code). Measured 2026-09-14.
 hf download Qwen/Qwen3.6-27B --revision 6a9e13bd6fc8f0983b9b99948120bc37f49c13e9 \
   --local-dir models/Qwen3.6-27B
 docker pull lmsysorg/sglang:dev-qwen38-next-local      # 33 GB, if not already present
-scripts/start-qwen3.6-27b-sglang-bf16.sh
+scripts/start-qwen3.6-27b-sglang-bf16-256k.sh
 ```
 
 Serves `http://127.0.0.1:8090/v1` as model `Qwen3.6-27B`.

@@ -2,7 +2,7 @@
 # Profile exllamav3-exl3-5.05bpw: Qwen3.8-Flash-Next EXL3 5.05 bpw on ExLlamaV3 via
 # TabbyAPI, n-gram table in RAM, MTP drafting, one RTX PRO 6000 Blackwell (96 GB).
 #
-#   MODEL_DIR=/models/Qwen3.8-Flash-Next-EXL3-5.05bpw ./serve-exl3-5.05bpw.sh
+#   MODEL_DIR=/models/Qwen3.8-Flash-Next-EXL3-5.05bpw ./serve-exl3-5.05bpw-256k.sh
 #   ./stop.sh
 #
 # Checkpoint turboderp/Qwen3.8-Flash-Next-exl3, branch 5.05bpw_h6_ng6: ExLlamaV3's

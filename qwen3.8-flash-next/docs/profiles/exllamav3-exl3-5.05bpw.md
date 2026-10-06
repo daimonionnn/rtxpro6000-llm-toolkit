@@ -1,7 +1,7 @@
 # ExLlamaV3 (TabbyAPI) with the EXL3 5.05 bpw checkpoint
 
 Profile `exllamav3-exl3-5.05bpw`, directory `qwen3.8-flash-next/exllamav3/exl3-5.05bpw/`,
-started with `scripts/start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw.sh`.
+started with `scripts/start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw-256k.sh`.
 
 It runs
 [turboderp/Qwen3.8-Flash-Next-exl3](https://huggingface.co/turboderp/Qwen3.8-Flash-Next-exl3),
@@ -92,7 +92,7 @@ Both in [RESULTS.md](../../../RESULTS.md).
 
 ## Configuration
 
-`serve-exl3-5.05bpw.sh` fills `config.template.yml` into `config.generated.yml` and
+`serve-exl3-5.05bpw-256k.sh` fills `config.template.yml` into `config.generated.yml` and
 mounts it as `/app/config.yml`. The settings that matter for this model:
 
 | Key | Value | Why |

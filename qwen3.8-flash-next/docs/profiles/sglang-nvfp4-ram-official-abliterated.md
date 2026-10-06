@@ -1,7 +1,7 @@
 # SGLang official image, abliterated NVFP4, PLE table in RAM
 
 Profile `sglang-nvfp4-ram-official-abliterated`, started with
-`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated.sh`. It
+`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated-256k.sh`. It
 reuses the launcher in `qwen3.8-flash-next/sglang/nvfp4-ram-official/` unchanged —
 image, memory settings, BF16 KV cache, NEXTN speculation — with a different
 checkpoint. Everything in [sglang-nvfp4-ram-official.md](sglang-nvfp4-ram-official.md)
@@ -37,7 +37,7 @@ MTP speculation and image and video input are reported to work.
 hf download dealignai/Qwen3.8-Flash-Next-ABLITERATED-NVFP4 \
   --revision be794b990578ef3031eccf9f28e675a289a09ee9 \
   --local-dir models/Qwen3.8-Flash-Next-ABLITERATED-NVFP4
-scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated.sh
+scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated-256k.sh
 ```
 
 Serves `http://127.0.0.1:8090/v1` as model `Qwen3.8-Flash-Next`, like the other

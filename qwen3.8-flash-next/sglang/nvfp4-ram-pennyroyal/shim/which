@@ -7,7 +7,7 @@
 # "N must be divisible by 16, but got 8" from tilelang/rocm/op/gemm. In Docker there
 # is no hipcc, which is why the container variants never hit this.
 #
-# serve-nvfp4-ram.sh puts this directory first on PATH for the server process only.
+# serve-nvfp4-ram-512k.sh puts this directory first on PATH for the server process only.
 for arg in "$@"; do
   [ "$arg" = hipcc ] && exit 1
 done

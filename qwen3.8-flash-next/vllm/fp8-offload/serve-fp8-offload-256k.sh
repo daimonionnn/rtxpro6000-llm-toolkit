@@ -2,7 +2,7 @@
 # Profile vllm-fp8-offload: the official Qwen3.8-Flash-Next FP8 checkpoint on vLLM,
 # one RTX PRO 6000 Blackwell (96 GB), with part of the routed experts in host RAM.
 #
-#   MODEL_DIR=/models/Qwen3.8-Flash-Next-FP8 ./serve-fp8-offload.sh
+#   MODEL_DIR=/models/Qwen3.8-Flash-Next-FP8 ./serve-fp8-offload-256k.sh
 #   ./stop.sh
 #
 # Checkpoint Qwen/Qwen3.8-Flash-Next-FP8: routed experts in block FP8 (128x128,

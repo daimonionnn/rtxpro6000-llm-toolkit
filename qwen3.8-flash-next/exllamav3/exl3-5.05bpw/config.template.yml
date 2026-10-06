@@ -1,4 +1,4 @@
-# TabbyAPI config for the exllamav3-exl3-5.05bpw profile. serve-exl3-5.05bpw.sh
+# TabbyAPI config for the exllamav3-exl3-5.05bpw profile. serve-exl3-5.05bpw-256k.sh
 # fills in the __VARIABLES__ and mounts the result as /app/config.yml.
 network:
   host: 0.0.0.0

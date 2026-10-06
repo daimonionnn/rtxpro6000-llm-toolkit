@@ -2,18 +2,21 @@
 
 Every profile in the toolkit, measured on the same machine — one RTX PRO 6000
 Blackwell 96 GB, 244 GB RAM ([hardware](README.md#hardware)) — between 2026-09-12
-and 2026-09-15. How the benchmarks work: [bench/README.md](bench/README.md).
+and 2026-09-15, with the Strata Q8/Q6 speed measurements added on 2026-10-06.
+How the benchmarks work: [bench/README.md](bench/README.md).
 Configuration, memory breakdown and full measurements per profile:
 `<model>/docs/profiles/<profile>.md`.
 
 Profile ids below drop the model prefix where the model is obvious from the
-section; the start script is always `scripts/start-<model>-<profile>.sh`.
+section; start scripts include the default context:
+`scripts/start-<model>-<profile>-<context>k.sh`, with 1K = 1,024 tokens.
 
 One setup is not a profile here: `ik_llama.cpp Q8_0`, the Q8_0 GGUF of
 Qwen3.8-Flash-Next served by ik_llama.cpp from
 [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit), measured
 through its API with the same benchmarks as the profiles (2026-09-15), as the
-reference for 8-bit weights.
+reference for 8-bit weights. A later Q8/Q6 comparison with Strata
+(2026-10-06) is recorded separately below; it uses MTP and different settings.
 
 ## Recommendations
 
@@ -28,6 +31,8 @@ reference for 8-bit weights.
 | — not this one | `qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated` | dealignai's abliterated NVFP4 lost 16 code tasks net against the same profile without abliteration (p = 0.02) |
 | — superseded | `qwen3.8-flash-next-vllm-awq-w4a16` | INT4 group 128: the largest vLLM KV pool (605K), but in the bottom two of every Slovak check; group 32 is slightly faster (110 against 102 tok/s) |
 | 8-bit weights (FP8 / Q8_0), the best Slovak measured | **ik_llama.cpp with a Q8_0 GGUF**, not a profile here | first of four in its blind Slovak check with the fewest weighted errors (73 against 70 for AWQ g32), but no better on code (454 of 542). 38 tok/s, 131K window, ~105 GiB host RAM. `vllm-fp8-offload` also keeps experts in RAM and decodes at ~16 tok/s. |
+| Q8 generation speed with MTP | [`strata-q8`](qwen3.8-flash-next/strata/README.md#run) | 101.7 prose / 103.5 code / 75.1 Slovak tok/s, 128K context; needs a Q8 PLE patch. No new scored quality benchmark. |
+| Fewer bits with faster generation | [`strata-q6`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | Q6_K/Q8_0 experts, 7.21 bpw; 117.1 prose / 142.5 code / 81.3 Slovak tok/s. Less pinned expert RAM, but slower first prefill at 4–120K than Strata Q8; needs an additional Q6 patch. No new scored quality benchmark. |
 | A dense model | `qwen3.8-27b-sglang-bf16` or `qwen3.6-27b-sglang-bf16` | full BF16 precision, but both solved fewer code tasks than every measured Flash-Next quantization except the abliterated one, scored 21–27 points below AWQ g32 in the Slovak check, and decode slower (57–87 tok/s) |
 
 **On quality in one line:** the seven original-weight Flash-Next profiles and
@@ -51,6 +56,10 @@ clearly behind.
 | | `vllm-awq-w4a16-g32-uncensored` | vLLM preview image + PLE patch | INT4 W4A16 g32, uncensored | 339,153 BF16 | 262,144 | not measured | 110 | 87.4 GiB | ~50 GB (est.) |
 | | `exllamav3-exl3-5.05bpw` | ExLlamaV3 1.5.0 / TabbyAPI | EXL3 5.05 bpw | 262,144 FP16 | 262,144 | 0.68 / 4.83 / 19.4 s | **119 prose, 216 code** | 92.0–93.4 GiB | ~43 GB |
 | | `vllm-fp8-offload` | vLLM preview image | FP8, 50 GiB of experts in RAM | 313,483 BF16 | 262,144 | 8K 11.9 s · 69K 86.3 s | 15.6–16.6 | ~88 GiB | ~131 GB |
+| | [`strata-q8`](qwen3.8-flash-next/strata/README.md#run) | Strata 0.1.39, native + Q8 PLE patch, MTP | Q8_0; PLE mmap | INT8, single stream | 131,072 | 4.83 / 12.46 / 21.67 s³ | 101.7 prose, 103.5 code, 75.1 Slovak | 94.16 GiB | 34.83 GiB pinned experts + PLE cache³ |
+| | [`strata-q6`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | Strata 0.1.39, native + Q8/Q6 patches, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 131,072 | 7.27 / 23.31 / 27.41 s³ | 117.1 prose, 142.5 code, 81.3 Slovak | 94.09 GiB | 16.04 GiB pinned experts + PLE cache³ |
+| | [`strata-q8-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8 PLE patch, MTP | Q8_0; PLE mmap | INT8, single stream | 262,144 | 5.37 / 13.77 / 22.56 s³ | 89.4 prose, 104.9 code, 73.1 Slovak | 94.16 GiB | 36.75 GiB pinned experts + PLE cache³ |
+| | [`strata-q6-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8/Q6 patches, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 262,144 | 7.30 / 23.74 / 28.86 s³ | 119.5 prose, 144.4 code, 93.2 Slovak | 94.09 GiB | 17.95 GiB pinned experts + PLE cache³ |
 | Qwen3.8-Flash-Next, not a profile | `ik_llama.cpp Q8_0` | ik_llama.cpp `d5f53d9f`, native | Q8_0 GGUF; routed experts of 17 of 48 layers in RAM | 131,072 Q8_0 | 131,072 | 2.20 / 17.4 / 86.6 s² | 38 | 92.2 GiB | ~105 GiB |
 | Qwen3.6-27B | `sglang-bf16` | SGLang, official image | BF16 | not recorded | 262,144 | not measured | 87 code, 62 prose | 86.5 GiB | ~0 (no offload) |
 | Qwen3.8-27B | `sglang-bf16` | SGLang, official image | BF16 | 295,344 BF16 | 262,144 | not measured | 85 code, 57 prose | 84.4 GiB | ~0 (no offload) |
@@ -60,6 +69,13 @@ clearly behind.
 prompts return in 0.12–0.26 s. `llama-server -ngl 99 -ncmoe 17 -c 131072 -fa on
 -ctk q8_0 -ctv q8_0 -b 2048 -ub 2048 -t 8 -tb 24 -thp --parallel 1`, one request at
 a time, no speculative decoding.
+
+³ Strata measured 2026-10-06: median decode over three short-context 512-token responses,
+MTP enabled, thinking off, adaptive expert cache warming across requests.
+The third prompt is ~120.6K tokens; TTFT includes weight reads and the first
+batched prefill's warmup. All four use 8,192-token automatic prefill chunks. The
+RAM values count pinned experts only, excluding PLE's OS file cache and other
+process allocations. [Full settings and evidence](qwen3.8-flash-next/strata/COMPARISON.md).
 
 - **Decode barely falls with context on Flash-Next**: three of four layers keep a
   fixed-size recurrent state and the rest attend to 2,048 selected tokens —
@@ -73,6 +89,68 @@ a time, no speculative decoding.
 - **Speculative decoding** (NEXTN / MTP) is on in the SGLang and ExLlamaV3 profiles
   and off in the vLLM ones; its gain depends on how predictable the text is, which
   is why code decodes faster than prose where it is on.
+
+## Strata Q8 / Q6 comparison, 2026-10-06
+
+Both engines with MTP, 131,072-token context, greedy sampling and thinking off.
+Decode figures are medians of three 512-token responses on the same three
+short prompts. Strata's expert cache adapts across the rounds.
+
+The reference engine and its launchers are maintained in the separate public
+[ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit) repository.
+
+| Configuration | English prose | Python code | Slovak | Cold TTFT, ~120K |
+|---|---:|---:|---:|---:|
+| ik_llama.cpp Q8 | 50.9 tok/s | 55.9 tok/s | 46.8 tok/s | 94.7 s |
+| Strata Q8 | 101.7 tok/s | 103.5 tok/s | 75.1 tok/s | 21.7 s |
+| ik_llama.cpp Q6 | 60.9 tok/s | 68.5 tok/s | 60.0 tok/s | 87.0 s |
+| Strata Q6 | 117.1 tok/s | 142.5 tok/s | 81.3 tok/s | 27.4 s |
+
+Q6 is the published Q6_K/Q8_0 expert mixture, averaging 7.21 bits per routed
+weight including scales; PLE stays Q8_0. Stock Strata needs the local Q8 PLE
+patch and an additional Q6 expert/dequantization patch. Numerical tests against
+ggml pass. Small projections are converted to BF16; the MTP drafts and policies
+differ between engines, so this compares full serving configurations.
+
+Strata Q6 improves generation and cuts pinned expert RAM from 34.83 to
+16.04 GiB, but its first long prefill is slower than Strata Q8. TTFT includes
+weight reads and prefill warmup. Ten Slovak prompts per configuration are saved,
+but no new quality scores or EvalPlus results were produced. These experiments
+do not establish the quality ranking of the new configurations.
+
+Q8 supports quantized MMQ expert prefill. The Q6 patch does not add Q6_K MMQ:
+its expert prefill dequantizes to FP16 before batched matrix products. This
+implementation difference helps explain the slower Q6 prefill; the time spent
+in computation versus I/O has not been separately profiled.
+
+Full settings, cold/repeated TTFT, memory, numerical checks and raw evidence:
+[comparison](qwen3.8-flash-next/strata/COMPARISON.md).
+[Setup, patches and launchers](qwen3.8-flash-next/strata/README.md) cover four
+registered Strata profiles. The default server remains AWQ g32.
+
+### Strata 256K context
+
+Both variants use a 262,144-token context, INT8 KV, MTP and the same prefill
+settings as their 128K counterparts. The GPU expert cache falls to 82.79 / 83.42
+GiB (Q8 / Q6), with 36.75 / 17.95 GiB pinned experts in RAM.
+
+| Profile | Fresh TTFT, ~255K | Effective prefill | Repeated TTFT, ~255K | TG after ~120K | TG after ~255K |
+|---|---:|---:|---:|---:|---:|
+| `strata-q8-256k` | 46.58 s | 5,471 tok/s | 0.506 s | 127.4 tok/s | 117.8 tok/s |
+| `strata-q6-256k` | 44.00 s | 5,791 tok/s | 0.506 s | 139.9 tok/s | 153.1 tok/s |
+
+Prefill uses 254,834 / 254,832 actual tokens and includes tokenization and HTTP.
+TG uses three 512-token prose responses after a word corpus, first prefix fresh
+and two repetitions cached; actual long prompts are 254,876 / 254,875 tokens.
+Earlier requests warmed expert and OS caches, and the prompt differs from the
+short tests, so these rates do not isolate context overhead. Both completed
+without OOM, with 873 / 939 MiB free GPU memory afterwards.
+
+Q8 has shorter latency at 4–120K in the initial prefill sweep, but Q6 is slightly
+faster at ~255K. The later long-generation harness also prefills its fresh ~120K
+prefix in 21.48 / 20.41 s: fresh prefix and cold weight cache are different
+conditions. Kernel differences alone do not predict latency for every run.
+[Full settings and raw evidence](qwen3.8-flash-next/strata/COMPARISON.md#256k-context-profiles).
 
 ## Code: HumanEval+ and MBPP+
 

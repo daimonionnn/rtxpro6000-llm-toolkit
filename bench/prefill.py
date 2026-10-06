@@ -18,7 +18,7 @@ Standard library only.
 import json, os, random, string, sys, time, urllib.error, urllib.request
 
 BASE = os.environ.get("BASE", "http://127.0.0.1:8090")
-MODEL = "Qwen3.8-Flash-Next"
+MODEL = os.environ.get("MODEL", "Qwen3.8-Flash-Next")
 TOKENS_PER_WORD = 1.154  # measured for this tokenizer on this word mix
 
 WORDS = """the of and to in a is that for it as was with be by on not he this are or his
@@ -77,6 +77,7 @@ def measure(prompt):
         "stream": True,
         "stream_options": {"include_usage": True},
         "chat_template_kwargs": {"enable_thinking": False},
+        "reasoning_effort": "none",
     }
     req = urllib.request.Request(
         BASE + "/v1/chat/completions",
@@ -94,7 +95,11 @@ def measure(prompt):
             if payload == "[DONE]":
                 break
             chunk = json.loads(payload)
-            if ttft is None and chunk.get("choices"):
+            if ttft is None and any(
+                choice.get("delta", {}).get("content")
+                or choice.get("delta", {}).get("reasoning_content")
+                for choice in chunk.get("choices", [])
+            ):
                 ttft = time.time() - start
             if chunk.get("usage"):
                 prompt_tokens = chunk["usage"]["prompt_tokens"]

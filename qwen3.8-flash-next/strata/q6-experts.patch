@@ -1,0 +1,146 @@
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -1157,7 +1157,7 @@
+       # kernel for it before; q5_0/q5_0 (both roles Q5_0) is left out of this list since stacking the same
+       # lower-precision format on both roles pushes the GPU path over this test's 3% threshold (quantization
+       # noise, not a kernel bug -- see the PR).
+-      foreach(_pair q4_K/q5_1 q4_K/q8_0 q5_K/q8_0 q8_0/q8_0 q4_K/q5_0 q5_0/q8_0)
++      foreach(_pair q4_K/q5_1 q4_K/q8_0 q5_K/q8_0 q6_K/q8_0 q8_0/q8_0 q4_K/q5_0 q5_0/q8_0)
+         string(REPLACE "/" "_" _name "${_pair}")
+         add_test(NAME native_expert_parity_${_name} COMMAND native_expert_parity --synthetic ${_pair})
+         set_tests_properties(native_expert_parity_${_name} PROPERTIES TIMEOUT 120)
+@@ -1165,9 +1165,9 @@
+       add_test(NAME native_expert_parity_q5_1_min COMMAND native_expert_parity --q5_1-min)
+       # #290: the BF16 token embedding (--embd-gguf) gathered and dequantized bit for bit
+       add_test(NAME native_expert_parity_bf16_embd COMMAND native_expert_parity --bf16-embd)
+-      # a pair without GPU kernels (Q6_K gate/up) is refused by native_expert_supported, not run
+-      add_test(NAME native_expert_parity_refuses_q6_K COMMAND native_expert_parity --synthetic q6_K/q8_0)
+-      set_tests_properties(native_expert_parity_refuses_q6_K PROPERTIES WILL_FAIL TRUE)
++      # Q6_K down is invalid at FF=640: it is not a whole number of 256-value blocks.
++      add_test(NAME native_expert_parity_refuses_q6_K_down COMMAND native_expert_parity --synthetic q6_K/q6_K)
++      set_tests_properties(native_expert_parity_refuses_q6_K_down PROPERTIES WILL_FAIL TRUE)
+     endif()
+   endif()
+   # #296's real-weight checks (OrcaRouter Q4_K_S files; docs/ORCA_Q4_K_S.md) - test programs, not part of a release
+--- a/src/kernels/cuda/iq_kernels.cu
++++ b/src/kernels/cuda/iq_kernels.cu
+@@ -414,6 +414,29 @@
+         u[2 * i + 1] = q8[4];
+     }
+     return vec_dot_q5_K_q8_1_impl_vmmq(vl, vh, u, sc, m, bq5_K->dm, d8);
++}
++// Q6_K: pinned vec_dot_q6_K_q8_1 (QI6_K=32, VDR=1). Each call handles two
++// groups of four values, retaining signed per-16-value scales and the float sum order.
++__device__ __forceinline__ float vec_dot_q6_K_q8_1(const void* __restrict__ vbq,
++                                                   const block_q8_1* __restrict__ x,
++                                                   const int& kbx, const int& iqs) {
++    const block_q6_K* w = (const block_q6_K*) vbq + kbx;
++    const int bq8_offset = 4 * (iqs / 16) + (iqs % 16) / 8;
++    const int scale_offset = 8 * (iqs / 16) + (iqs % 16) / 4;
++    const int vh_shift = 2 * ((iqs % 16) / 8);
++    const int vl = get_int_b2(w->ql, iqs);
++    const int vh = get_int_b2(w->qh, 8 * (iqs / 16) + iqs % 8) >> vh_shift;
++    float sumf = 0.0f;
++#pragma unroll
++    for (int i = 0; i < 2; ++i) {
++        const int sc = w->scales[scale_offset + 4 * i];
++        const int vil = (vl >> (4 * i)) & 0x0f0f0f0f;
++        const int vih = ((vh >> (4 * i)) << 4) & 0x30303030;
++        const int vi = __vsubss4(vil | vih, 0x20202020);
++        const block_q8_1* bq8 = x + bq8_offset + 2 * i;
++        sumf += __low2float(bq8->ds) * (ggml_cuda_dp4a(vi, get_int_b4(bq8->qs, iqs % 8), 0) * sc);
++    }
++    return __half2float(w->d) * sumf;
+ }
+ // Q5_1: llama.cpp's integer chain, but the min term multiplies the sum of the QUANTIZED activations (dp4a with
+ // 0x01010101, times d8) instead of the q8_1 block's `ds.y`, which our quantizer (like llama.cpp's) fills with the sum
+@@ -513,6 +536,8 @@
+     __device__ static float dot(const void* v, const block_q8_1* y, int kbx, int iqs) { return vec_dot_q4_K_q8_1(v, y, kbx, iqs); } };
+ template<> struct Fmt<13> { static constexpr int qk = 256, ipb = QI5_K / VDR_Q5_K, step = VDR_Q5_K;
+     __device__ static float dot(const void* v, const block_q8_1* y, int kbx, int iqs) { return vec_dot_q5_K_q8_1(v, y, kbx, iqs); } };
++template<> struct Fmt<14> { static constexpr int qk = 256, ipb = QI6_K, step = 1;
++    __device__ static float dot(const void* v, const block_q8_1* y, int kbx, int iqs) { return vec_dot_q6_K_q8_1(v, y, kbx, iqs); } };
+ template<> struct Fmt<7> { static constexpr int qk = 32, ipb = QI5_1 / VDR_Q5_1, step = VDR_Q5_1;
+     __device__ static float dot(const void* v, const block_q8_1* y, int kbx, int iqs) { return vec_dot_q5_1_q8_1(v, y, kbx, iqs); } };
+ template<> struct Fmt<6> { static constexpr int qk = 32, ipb = QI5_0 / VDR_Q5_0, step = VDR_Q5_0;
+@@ -522,9 +547,9 @@
+ 
+ // The formats of each role, one list each so a type cannot be in one switch and missing from another.  Every
+ // entry is a kernel template for each CUDA architecture of the build, hence two lists rather than one.
+-#define STRATA_GU_FMTS(X) X(16) X(17) X(18) X(21) X(22) X(23) X(29) X(42) X(12) X(13) X(6) X(8)
++#define STRATA_GU_FMTS(X) X(16) X(17) X(18) X(21) X(22) X(23) X(29) X(42) X(12) X(13) X(14) X(6) X(8)
+ #define STRATA_D_FMTS(X) X(20) X(23) X(42) X(7) X(6) X(8)
+-#define STRATA_MMVQ_FMTS(X) X(16) X(17) X(18) X(20) X(21) X(22) X(23) X(29) X(42) X(12) X(13) X(7) X(6) X(8)
++#define STRATA_MMVQ_FMTS(X) X(16) X(17) X(18) X(20) X(21) X(22) X(23) X(29) X(42) X(12) X(13) X(14) X(7) X(6) X(8)
+ 
+ __device__ __forceinline__ float warp_sum(float v) {
+ #pragma unroll
+@@ -1589,6 +1614,21 @@
+     }
+ }
+ template<typename dst_t>
++__device__ void dq_q6_k(const void* vx, int64_t ibs, dst_t* yy, int tid) {
++    // ggml's dequantize_row_q6_K: two halves of 128, four groups of 32.
++    const block_q6_K& w = ((const block_q6_K*) vx)[ibs];
++    const float d = __half2float(w.d);
++#pragma unroll
++    for (int k = 0; k < 8; ++k) {
++        const int q = tid + 32 * k;
++        const int half = q / 128, quad = (q % 128) / 32;
++        const int low = (w.ql[half * 64 + tid + (quad % 2) * 32] >> (quad >= 2 ? 4 : 0)) & 15;
++        const int high = (w.qh[half * 32 + tid] >> (2 * quad)) & 3;
++        const int code = (low | (high << 4)) - 32;
++        yy[q] = cvt<dst_t>((d * w.scales[q / 16]) * code);
++    }
++}
++template<typename dst_t>
+ __device__ void dq_q5_0(const void* vx, int64_t ibs, dst_t* yy, int tid) {
+     // symmetric: one delta (no min), the high bit folded in then centered by the format's fixed -16 offset
+     const block_q5_0* x = (const block_q5_0*) vx + ibs * (QK_K / QK5_0);
+@@ -1654,6 +1694,7 @@
+         case 42: dq_q2_0(vx, ibs, y, tid); break;
+         case 12: dq_q4_k(vx, ibs, y, tid); break;
+         case 13: dq_q5_k(vx, ibs, y, tid); break;
++        case 14: dq_q6_k(vx, ibs, y, tid); break;
+         case 7: dq_q5_1(vx, ibs, y, tid); break;
+         case 6: dq_q5_0(vx, ibs, y, tid); break;
+         case 8: dq_q8_0(vx, ibs, y, tid); break;
+@@ -1680,7 +1721,7 @@
+ // the types dq_dispatch dequantizes
+ bool is_iq(int t) {
+     return t == 16 || t == 17 || t == 18 || t == 20 || t == 21 || t == 22 || t == 23 || t == 29 || t == 42 || t == 11 ||
+-           t == 12 || t == 13 || t == 7 || t == 6 || t == 8;
++           t == 12 || t == 13 || t == 14 || t == 7 || t == 6 || t == 8;
+ }
+ // values per block of the types the grouped expert kernels take (0 = none)
+ int gu_qk(int t) {
+@@ -1791,6 +1832,7 @@
+         case 42: return (size_t) (n / 64) * sizeof(block_q2_0);
+         case 12: return (size_t) (n / 256) * sizeof(block_q4_K);
+         case 13: return (size_t) (n / 256) * sizeof(block_q5_K);
++        case 14: return (size_t) (n / 256) * sizeof(block_q6_K);
+         case 7: return (size_t) (n / 32) * sizeof(block_q5_1);
+         case 6: return (size_t) (n / 32) * sizeof(block_q5_0);
+         case 8: return (size_t) (n / 32) * sizeof(block_q8_0);
+--- a/src/kernels/native_expert_parity.cpp
++++ b/src/kernels/native_expert_parity.cpp
+@@ -8,7 +8,7 @@
+ // (ggml-cpu vec_dot with its quantized activations), (c) the GPU path (`native_expert_grouped`, q8_1
+ // activations).  (b) and (c) each differ from (a) by their activation rounding only (a few 1e-3 relative).  (c) runs
+ // twice, with the kernels that decode a weight part once for all entries and with the per-entry ones: bitwise equal.
+-// (d) the GPU dequantizers of the prompt path and the embedding against `to_float` (Q8_0: bit for bit).
++// (d) the GPU dequantizers of the prompt path and the embedding against `to_float` (Q6_K/Q8_0: bit for bit).
+ // The synthetic mode and (d) follow eddoursul/Strata 8029fa9.
+ #include "strata/artifact/gguf_reader.hpp"
+ #include "strata/kernels/cpu/native_expert.hpp"
+@@ -359,8 +359,8 @@
+             std::printf("          GPU dequant vs ggml to_float: rel %.2e, %zu of %lld values differ in any bit; fp16 of "
+                         "it: %zu differ; embedding rows: %zu of %lld differ\n", dq_err, differ, (long long) (3 * FF * H),
+                         h_differ, emb_differ, (long long) FF);
+-            // exact where there is one product (Q8_0), a rounding at most elsewhere (fused multiply-adds)
+-            const bool exact = f.gu_type == 8 && f.d_type == 8;
++            // Q8_0's one product and Q6_K's signed-scale product sequence match ggml exactly.
++            const bool exact = (f.gu_type == 8 || f.gu_type == 14) && f.d_type == 8;
+             if (!(dq_err < 1e-6) || h_differ || (exact && (differ || emb_differ))) ++failures;
+         }
+         cudaFree(dblob); cudaFree(dx); cudaFree(dxq); cudaFree(dscr); cudaFree(dout); cudaFree(dptr);

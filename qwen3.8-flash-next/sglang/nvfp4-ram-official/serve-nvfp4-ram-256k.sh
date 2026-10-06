@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Profile sglang-nvfp4-ram-official: Qwen3.8-Flash-Next on the official SGLang image, PLE table in RAM.
 #
-#   MODEL_DIR=/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+#   MODEL_DIR=/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram-256k.sh
 #
 # Runs SGLang's verified cookbook recipe for 1x RTX PRO 6000 Blackwell, NVFP4
 # (RadixArk export), low-latency cell, on lmsysorg/sglang:dev-qwen38-next-local —
@@ -10,9 +10,9 @@
 #
 # Defaults reproduce the published cell exactly. Override to tune for one agent:
 #
-#   MAXRUN=4 MAMBA_SLOTS=12 ./serve-nvfp4-ram.sh
+#   MAXRUN=4 MAMBA_SLOTS=12 ./serve-nvfp4-ram-256k.sh
 #
-# Differences from ../nvfp4-ram/serve-nvfp4-ram.sh:
+# Differences from ../nvfp4-ram/serve-nvfp4-ram-256k.sh:
 #   - stock image, so no local FP8-KV chunked-prefill patch. The recipe leaves KV
 #     at the checkpoint default (BF16); KV_DTYPE=fp8_e4m3 is untested here and
 #     upstream's proper fix (#36644) was still unmerged on 2026-09-12.

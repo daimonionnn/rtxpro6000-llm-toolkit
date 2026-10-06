@@ -6,7 +6,7 @@
 # Follows the NIXL section of the fork's BUILD.md: the same pinned commit, release
 # build, SM120, POSIX plugin with io_uring. Differences:
 #   - installs into ./nixl instead of /opt/nvidia/nvda_nixl, so no root is needed;
-#     serve-nvfp4-ram.sh adds ./nixl/lib64 to LD_LIBRARY_PATH
+#     serve-nvfp4-ram-512k.sh adds ./nixl/lib64 to LD_LIBRARY_PATH
 #   - uses the fork's venv Python and CUDA 13.3, like ./build.sh
 #   - `uv pip install` instead of `python -m pip install`. pip isolates builds by
 #     injecting a sitecustomize.py through PYTHONPATH; NIXL's meson build shells out

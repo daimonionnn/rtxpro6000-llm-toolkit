@@ -11,7 +11,9 @@ if [ -z "$running" ]; then
 fi
 for p in $running; do
   echo "== $p"
-  if [ "$p" = qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal ]; then
+  if [[ "$p" == qwen3.8-flash-next-strata-* ]]; then
+    python3 "$STRATA_LIFECYCLE" stop
+  elif [ "$p" = qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal ]; then
     "$ROOT/qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/stop.sh"
   else
     "$ROOT/common/stop-docker.sh" "$@"

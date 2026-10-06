@@ -3,8 +3,8 @@
 #
 #   scripts/status.sh
 #
-# The native pennyroyal profile is found through its PID file, Docker profiles
-# through the "rtxpro6000-llm" container and its rtxpro6000-llm.profile label.
+# Strata uses PID/start-time state; pennyroyal uses its PID file. Docker profiles
+# use the "rtxpro6000-llm" container and its rtxpro6000-llm.profile label.
 set -uo pipefail
 source "$(dirname "$0")/_lib.sh"
 PENNYROYAL_LOG="$ROOT/logs/pennyroyal-serve.log"
@@ -15,7 +15,7 @@ report() {  # profile port log-command hicache kv-dtype started
   echo "  about      $(profile_field "$profile" desc || echo '?')"
   echo "  directory  $(profile_field "$profile" dir || echo '?')/"
   echo "  model      models/$(profile_field "$profile" model || echo '?')/"
-  echo "  start      scripts/start-$profile.sh"
+  echo "  start      scripts/$(profile_field "$profile" script || echo '?')"
   echo "  stop       scripts/stop.sh"
   echo "  started    $started"
   echo "  endpoint   http://127.0.0.1:$port/v1"
@@ -45,6 +45,33 @@ for m in json.load(sys.stdin)['data']:
 }
 
 found=0
+
+strata_state=$(python3 "$STRATA_LIFECYCLE" status)
+if [ -n "$strata_state" ]; then
+  strata_profile=$(echo "$strata_state" | python3 -c 'import json,sys; print(json.load(sys.stdin)["profile"])')
+  echo "$strata_state" | STRATA_START_SCRIPT="$(profile_field "$strata_profile" script)" python3 -c '
+import json, os, sys, urllib.request
+s = json.load(sys.stdin)
+print("RUNNING   " + s["profile"])
+print("  directory  qwen3.8-flash-next/strata/")
+print("  model      " + s["model"])
+print("  start      scripts/" + os.environ["STRATA_START_SCRIPT"])
+print("  stop       scripts/stop.sh")
+print("  PID        " + str(s["pid"]))
+print("  endpoint   http://127.0.0.1:{}/v1".format(s["port"]))
+print("  context    {:,} tokens, KV {}, prefill {}".format(s["context"], s["kv"], s["prefill"]))
+print("  log        " + s["log"])
+try:
+    with urllib.request.urlopen("http://127.0.0.1:{}/health".format(s["port"]), timeout=5) as r:
+        h = json.load(r)
+    print("  health     " + str(h))
+except Exception:
+    print("  health     not answering yet")
+'
+  nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader 2>/dev/null | sed 's/^/  VRAM       /'
+  echo
+  found=1
+fi
 
 if [ -f "$NATIVE_PIDFILE" ] && kill -0 "$(cat "$NATIVE_PIDFILE")" 2>/dev/null; then
   pid=$(cat "$NATIVE_PIDFILE")
@@ -82,8 +109,8 @@ fi
 
 echo "Profiles (one at a time; stop any of them with scripts/stop.sh):"
 for line in "${PROFILES[@]}"; do
-  IFS='|' read -r id dir launcher model desc <<<"$line"
-  printf "  scripts/start-%-50s %s\n" "$id.sh" "$desc"
+  IFS='|' read -r id dir launcher model desc context <<<"$line"
+  printf "  scripts/%-62s %s (default context %s tokens)\n" "$(profile_field "$id" script)" "$desc" "$context"
 done
-printf "  scripts/start-%-50s %s\n" "qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-hicache.sh" "the pennyroyal profile with HiCache/NIXL persistence"
+printf "  scripts/start-%-56s %s\n" "qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-hicache-512k.sh" "the pennyroyal profile with HiCache/NIXL persistence (default context 524288 tokens)"
 printf "  scripts/%-56s %s\n" "start-ui.sh / stop-ui.sh" "chat UI on http://127.0.0.1:5173/"

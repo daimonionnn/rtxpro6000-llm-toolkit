@@ -1,7 +1,7 @@
 # SGLang, NVFP4, PLE table in RAM
 
 Profile `sglang-nvfp4-ram`, directory `qwen3.8-flash-next/sglang/nvfp4-ram/`,
-started with `scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram.sh`.
+started with `scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-256k.sh`.
 
 The same local image and RadixArk NVFP4 checkpoint as
 [`sglang-nvfp4-nvme`](sglang-nvfp4-nvme.md), with the PLE table in pinned host RAM

@@ -2,7 +2,7 @@
 
 Profile `vllm-awq-w4a16-g32-uncensored`, directory
 `qwen3.8-flash-next/vllm/awq-w4a16-g32-uncensored/`, started with
-`scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored.sh`.
+`scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k.sh`.
 
 ## Checkpoint
 
@@ -32,7 +32,7 @@ docker pull vllm/vllm-openai:qwen38-flash-next      # 19.8 GB
 hf download leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32 \
   --revision fa56146238f9fcd5ab591b7052b31e28efdca5c3 --exclude "mtp-fp8/*" \
   --local-dir models/Qwen3.8-Flash-Next-Uncensored-AWQ-g32
-scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored.sh
+scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k.sh
 ```
 
 Serves `http://127.0.0.1:8090/v1` as model `Qwen3.8-Flash-Next`. Needs ~60 GiB of

@@ -3,7 +3,7 @@
 # group 32, on vLLM with a one-function patch, PLE table in RAM, one RTX PRO 6000
 # Blackwell (96 GB).
 #
-#   MODEL_DIR=/models/Qwen3.8-Flash-Next-Uncensored-AWQ-g32 ./serve-awq-w4a16-g32-uncensored.sh
+#   MODEL_DIR=/models/Qwen3.8-Flash-Next-Uncensored-AWQ-g32 ./serve-awq-w4a16-g32-uncensored-256k.sh
 #   ./stop.sh
 #
 # Checkpoint leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32, quantized from the

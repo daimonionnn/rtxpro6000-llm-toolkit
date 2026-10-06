@@ -2,8 +2,8 @@
 
 Profile `sglang-nvfp4-ram-pennyroyal`, directory
 `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/`, started with
-`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh`, or
-`…-pennyroyal-hicache.sh` for prefix persistence across restarts.
+`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k.sh`, or
+`…-pennyroyal-hicache-512k.sh` for prefix persistence across restarts.
 
 [jpezzulli/sglang-rtxpro6000](https://github.com/jpezzulli/sglang-rtxpro6000)
 ("Pennyroyal"), tag `pennyroyal-v2.5.0` (commit `2c675da096`): a personal SGLang

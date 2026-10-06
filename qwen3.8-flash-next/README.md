@@ -9,8 +9,9 @@ context. Architecture, checkpoints and published quality:
 
 ## Checkpoints
 
-Each is kept once under `models/` at the toolkit root and shared by the profiles
-that use it.
+Checkpoints under `models/` at the toolkit root are shared by the profiles that
+use them. Strata Q8 reuses the existing GGUF in the user's LM Studio model
+directory; `--model` can point its launcher at another location.
 
 | Checkpoint | Routed experts | Rest | PLE table | Size | Profiles |
 |---|---|---|---|---|---|
@@ -21,13 +22,24 @@ that use it.
 | [leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32](https://huggingface.co/leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32) @ `fa561462` — uncensored | INT4 AWQ g32, zero points, 4.65 bits | BF16 | FP8 | 128.6 GiB | `vllm-awq-w4a16-g32-uncensored` |
 | [turboderp/Qwen3.8-Flash-Next-exl3](https://huggingface.co/turboderp/Qwen3.8-Flash-Next-exl3) `5.05bpw_h6_ng6` @ `7cef615f` | EXL3 5.05 bpw | EXL3 5.05 bpw, head 6 | 6 bpw | 114.6 GiB | `exllamav3-exl3-5.05bpw` |
 | [Qwen/Qwen3.8-Flash-Next-FP8](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) @ `236dfdf2` | FP8 W8A8, 128×128 blocks | BF16 | FP8 | 172.8 GiB | `vllm-fp8-offload` |
+| [lmstudio-community/Qwen3.8-Flash-Next-GGUF](https://huggingface.co/lmstudio-community/Qwen3.8-Flash-Next-GGUF), Q8_0 | Q8_0, 8.50 bits including scales | mixed GGUF; small projections converted to BF16 | Q8_0, mmap | 175.30 GiB | `strata-q8`, `strata-q8-256k` |
+| [lmstudio-community/Qwen3.8-Flash-Next-GGUF](https://huggingface.co/lmstudio-community/Qwen3.8-Flash-Next-GGUF) @ `158fc825df3e`, Q6_K | Q6_K gate/up + Q8_0 down, 7.21 bits including scales | mixed GGUF; small projections converted to BF16 | Q8_0, mmap | 156.13 GiB | `strata-q6`, `strata-q6-256k` |
 
 ## Profiles
 
-One at a time, each on `http://127.0.0.1:8090/v1` as model `Qwen3.8-Flash-Next`.
-A profile `<engine>-<variant>` lives in `<engine>/<variant>/`, starts with
-`scripts/start-qwen3.8-flash-next-<engine>-<variant>.sh` at the toolkit root, and
-is documented in `docs/profiles/<engine>-<variant>.md`.
+One at a time, each on `http://127.0.0.1:8090/v1` by default. All 14 profiles
+start with `scripts/start-qwen3.8-flash-next-<engine>-<variant>-<context>k.sh` at the toolkit
+root and are managed by `scripts/status.sh` and `scripts/stop.sh`.
+SGLang, vLLM and TabbyAPI advertise model `Qwen3.8-Flash-Next`. Strata advertises
+its full profile ID: `qwen3.8-flash-next-strata-q8` or `...-q6`, with `-256k`
+for the larger-context variants. Strata launchers share the `strata/` directory
+and [documentation](strata/README.md); other profiles are documented in
+`docs/profiles/<engine>-<variant>.md`.
+
+Script suffixes label defaults: `128k` = 131,072 tokens, `256k` = 262,144,
+`512k` = 524,288 (Pennyroyal and its HiCache launcher). Context overrides remain
+available. Profile IDs and advertised API model names are unchanged by the
+filename convention.
 
 | Profile | Runtime | Weights | PLE table | Context | Decode, tok/s | Host RAM |
 |---|---|---|---|---|---|---|
@@ -41,9 +53,19 @@ is documented in `docs/profiles/<engine>-<variant>.md`.
 | [`vllm-awq-w4a16-g32-uncensored`](docs/profiles/vllm-awq-w4a16-g32-uncensored.md) | vLLM preview image + PLE patch | INT4 AWQ g32, uncensored | RAM, FP8 | 262,144 | 110 | ~50 GB (est.) |
 | [`exllamav3-exl3-5.05bpw`](docs/profiles/exllamav3-exl3-5.05bpw.md) | ExLlamaV3 / TabbyAPI | EXL3 5.05 bpw | RAM | 262,144 | **119 prose, 216 code** | ~43 GB |
 | [`vllm-fp8-offload`](docs/profiles/vllm-fp8-offload.md) | vLLM preview image | FP8, 50 GiB of experts in RAM | RAM | 262,144 | 15.6–16.6 | ~131 GB |
+| [`strata-q8`](strata/README.md#run) | Strata 0.1.39, native + Q8 PLE patch; MTP | Q8_0 | mmap / OS file cache | 131,072 | 101.7 prose, 103.5 code, 75.1 Slovak | 34.83 GiB pinned experts + PLE cache |
+| [`strata-q6`](strata/README.md#strata-q6_kq8_0) | Strata 0.1.39, native + Q8/Q6 patches; MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 131,072 | 117.1 prose, 142.5 code, 81.3 Slovak | 16.04 GiB pinned experts + PLE cache |
+| [`strata-q8-256k`](strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8 PLE patch; MTP | Q8_0 | mmap / OS file cache | 262,144 | 89.4 prose, 104.9 code, 73.1 Slovak | 36.75 GiB pinned experts + PLE cache |
+| [`strata-q6-256k`](strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8/Q6 patches; MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | 119.5 prose, 144.4 code, 93.2 Slovak | 17.95 GiB pinned experts + PLE cache |
 
 KV pool, prefill, VRAM, code benchmarks and the Slovak check for every profile, with
 recommendations: [RESULTS.md](../RESULTS.md).
+
+Strata rates above are 2026-10-06 medians of three 512-token responses to short
+prompts; its adaptive
+expert cache warms during the test. Its RAM figures count only pinned experts,
+not all process memory or the PLE table's OS file cache. Its configurations have
+not had a new EvalPlus run or independently scored Slovak comparison.
 
 **Which one, in short:**
 
@@ -53,14 +75,59 @@ recommendations: [RESULTS.md](../RESULTS.md).
   three blind Slovak checks, level with FP8 in the two runs with FP8; the differences between profiles are small,
   and both dense 27B models at BF16 placed well below it.
 - **Fastest single-stream decode with 16-bit activations:** `exllamav3-exl3-5.05bpw`.
-- **8-bit weights:** use ik_llama.cpp with a Q8_0 GGUF, not `vllm-fp8-offload` —
-  38 tok/s, the best Slovak score measured (73 against 70 for `vllm-awq-w4a16-g32`)
-  and no better on code (454 of 542).
+- **8-bit weights:** `strata-q8` improves generation speed over ik Q8 in the
+  2026-10-06 comparison; `strata-q6` uses a 7.21-bpw expert mixture and is faster
+  for generation. Q8 has shorter latency in the initial 4–120K prefill sweep; Q6 is
+  slightly faster at ~255K. The older Q8 quality
+  reference scored 73 in Slovak and 454 of 542 code tasks in the separate public
+  [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit) setup;
+  Strata's output quality has not been independently scored.
 - **Without refusals:** `vllm-awq-w4a16-g32-uncensored` — the most code tests passed
   of any profile (needs a small vLLM patch). `sglang-nvfp4-ram-official-abliterated`
   lost measurable code ability to its abliteration.
 - On code, the seven profiles with the original weights are within noise of each
   other.
+
+## Strata Q8 / Q6 experiment
+
+Registered launchers and local compatibility patches are in
+[strata/README.md](strata/README.md). The [2026-10-06 comparison](strata/COMPARISON.md)
+measures both engines with MTP and a 128K context:
+
+| Configuration | Prose | Code | Slovak | Cold TTFT, ~120K |
+|---|---:|---:|---:|---:|
+| ik_llama.cpp Q8 | 50.9 tok/s | 55.9 tok/s | 46.8 tok/s | 94.7 s |
+| Strata Q8 | 101.7 tok/s | 103.5 tok/s | 75.1 tok/s | 21.7 s |
+| ik_llama.cpp Q6 | 60.9 tok/s | 68.5 tok/s | 60.0 tok/s | 87.0 s |
+| Strata Q6 | 117.1 tok/s | 142.5 tok/s | 81.3 tok/s | 27.4 s |
+
+Q6 uses Q6_K gate/up, Q8_0 down and a Q8_0 PLE table: 7.21 bits per routed
+weight including scales. Strata's adaptive expert cache warms across requests.
+The ten Slovak samples per configuration are not a quality score. All four Strata launchers are registered; the compatibility patches remain
+experimental.
+
+All Strata profiles use 8,192-token automatic prefill chunks and INT8 KV.
+Q8 has quantized MMQ expert prefill; Q6 currently dequantizes expert matrices
+to FP16 before its batched products. The ik_llama.cpp reference engine and
+launchers are maintained in
+[ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit).
+
+### 256K variants
+
+Use `scripts/start-qwen3.8-flash-next-strata-q8-256k.sh` or
+`...-q6-256k.sh` after preparing the engine and pack. Both allocate a native
+262,144-token context with INT8 KV and MTP, using 8,192-token prefill chunks.
+
+| Profile | Fresh TTFT, ~255K | Effective prefill | TG after ~120K | TG after ~255K |
+|---|---:|---:|---:|---:|
+| `strata-q8-256k` | 46.58 s | 5,471 tok/s | 127.4 tok/s | 117.8 tok/s |
+| `strata-q6-256k` | 44.00 s | 5,791 tok/s | 139.9 tok/s | 153.1 tok/s |
+
+Long TG is the median of three 512-token prose responses; the first prefix is
+fresh and two repeats are cached. The word corpus, prior cache warming and
+prompt differ from the short decode tests. Actual long prompts contain about
+254,875 tokens, leaving room for output. Both completed without OOM.
+[Full timings and memory](strata/COMPARISON.md#256k-context-profiles).
 
 ## TODO
 
@@ -112,8 +179,9 @@ qwen3.8-flash-next/
 │   ├── awq-w4a16-g32/            launcher + stop
 │   ├── awq-w4a16-g32-uncensored/ launcher + stop, PLE patch, index filter
 │   └── fp8-offload/              launcher + stop
-└── exllamav3/
-    └── exl3-5.05bpw/             launcher + stop, TabbyAPI config template, sampler preset
+├── exllamav3/
+│   └── exl3-5.05bpw/             launcher + stop, TabbyAPI config template, sampler preset
+└── strata/                      Q8/Q6 Python launchers, compatibility patches, comparison
 ```
 
 ## Documentation
@@ -126,6 +194,8 @@ qwen3.8-flash-next/
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Traps, error messages, and what to do about them |
 | [docs/upstream-fixes.md](docs/upstream-fixes.md) | What the local SGLang image changes relative to the upstream recipe, and why |
 | [docs/ple-ram-experiment.md](docs/ple-ram-experiment.md) | How the SGLang RAM profiles were made to fit, with every result and failure |
+| [strata/README.md](strata/README.md) | Standalone Q8/Q6 profiles, pinned build, compatibility patches, model preparation and launch commands |
+| [strata/COMPARISON.md](strata/COMPARISON.md) | Q8/Q6 versus ik_llama.cpp: decode, prefill, context, memory and validation |
 | [../RESULTS.md](../RESULTS.md) | All profiles of all models side by side, benchmarks, recommendations |
 
 ## Sources

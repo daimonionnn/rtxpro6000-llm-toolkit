@@ -1,7 +1,7 @@
 # vLLM with the official FP8 checkpoint, experts partly in RAM
 
 Profile `vllm-fp8-offload`, directory `qwen3.8-flash-next/vllm/fp8-offload/`, started
-with `scripts/start-qwen3.8-flash-next-vllm-fp8-offload.sh`.
+with `scripts/start-qwen3.8-flash-next-vllm-fp8-offload-256k.sh`.
 
 It runs Qwen's own
 [Qwen/Qwen3.8-Flash-Next-FP8](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8)

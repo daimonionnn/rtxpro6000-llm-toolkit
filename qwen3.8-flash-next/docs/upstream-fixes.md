@@ -65,11 +65,11 @@ extensions — it only forbids invoking Cargo.
 The upstream repo is cloned as `qwen3.8-flash-next/sglang/build-local-image/` and is only used to
 build the Docker image (`build.sh`, `Dockerfile`, `patches/`,
 `seccomp-iouring.json`). The launchers that were added or renamed here moved out
-of it, one directory per profile: `qwen3.8-flash-next/sglang/nvfp4-nvme/serve-nvfp4-nvme.sh` and
-`qwen3.8-flash-next/sglang/nvfp4-ram/serve-nvfp4-ram.sh` both use that image. `quant_info.py` and the
+of it, one directory per profile: `qwen3.8-flash-next/sglang/nvfp4-nvme/serve-nvfp4-nvme-256k.sh` and
+`qwen3.8-flash-next/sglang/nvfp4-ram/serve-nvfp4-ram-256k.sh` both use that image. `quant_info.py` and the
 Docker stop script are shared from `common/`.
 
-## `serve.sh` renamed to `serve-nvfp4-nvme.sh`
+## `serve.sh` renamed to `serve-nvfp4-nvme-256k.sh`
 
 The file name states the two things this launcher is fixed to, and both are
 enforced rather than just labels:
@@ -84,7 +84,7 @@ they are left as the author wrote them.
 
 ## The RAM launcher is a separate file
 
-For a while `serve-nvfp4-nvme.sh` had a `PLE_MODE=nvme|ram` switch. It was
+For a while `serve-nvfp4-nvme-256k.sh` had a `PLE_MODE=nvme|ram` switch. It was
 removed when a plain switch to RAM turned out not to fit: the pinned-host path
 costs 1.83 GB more VRAM and the KV cache collapsed to 2,560 tokens.
 
@@ -92,16 +92,16 @@ The RAM path was later made to fit by shrinking the mamba state cache
 (`extra_buffer_lazy`, `SGLANG_OPT_MAMBA_SKIP_DECODE_LOCK`, bf16 SSM state, fewer
 slots), and then gave more KV cache than NVMe. Those settings differ from the NVMe
 launcher in about a dozen places, so it lives in its own file,
-`serve-nvfp4-ram.sh`, rather than behind a switch. That keeps the `nvme` in the
+`serve-nvfp4-ram-256k.sh`, rather than behind a switch. That keeps the `nvme` in the
 other file's name true. See [ple-ram-experiment.md](ple-ram-experiment.md).
 
-## An `EXTRA_ARGS` passthrough in `serve-nvfp4-nvme.sh`
+## An `EXTRA_ARGS` passthrough in `serve-nvfp4-nvme-256k.sh`
 
 Appends arbitrary flags to the launch command, so options can be tried without
 editing the script:
 
 ```bash
-EXTRA_ARGS="--mamba-ssm-dtype bfloat16" ./serve-nvfp4-nvme.sh
+EXTRA_ARGS="--mamba-ssm-dtype bfloat16" ./serve-nvfp4-nvme-256k.sh
 ```
 
 ## What needed no intervention

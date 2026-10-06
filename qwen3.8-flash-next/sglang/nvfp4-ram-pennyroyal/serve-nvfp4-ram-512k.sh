@@ -2,7 +2,7 @@
 # Profile sglang-nvfp4-ram-pennyroyal: Qwen3.8-Flash-Next on the jpezzulli/sglang-rtxpro6000 fork
 # ("Pennyroyal", tag pennyroyal-v2.5.0), PLE table in RAM. Native, not Docker.
 #
-#   MODEL_DIR=/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+#   MODEL_DIR=/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram-512k.sh
 #   ./stop.sh
 #
 # Build the environment first with ./build.sh. The checkout lives in
@@ -12,7 +12,7 @@
 # This is the fork's configs/pennyroyal/serve-flash-next.sh (native NEXTN, no
 # FR-Spec). HiCache/NIXL is off by default and enabled with HICACHE=1:
 #
-#   HICACHE=1 MODEL_DIR=... ./serve-nvfp4-ram.sh
+#   HICACHE=1 MODEL_DIR=... ./serve-nvfp4-ram-512k.sh
 #
 # HiCache keeps evicted prefix state in a 32 GB host-RAM tier and persists it
 # through NIXL to files, so a prefix survives a server restart. It does not change

@@ -2,7 +2,7 @@
 # Profile sglang-bf16: Qwen3.6-27B, original BF16 weights, on SGLang, one RTX PRO 6000
 # Blackwell (96 GB).
 #
-#   MODEL_DIR=/models/Qwen3.6-27B ./serve-bf16.sh
+#   MODEL_DIR=/models/Qwen3.6-27B ./serve-bf16-256k.sh
 #   ./stop.sh
 #
 # Checkpoint Qwen/Qwen3.6-27B: a dense 27B hybrid (qwen3_5 architecture — Gated

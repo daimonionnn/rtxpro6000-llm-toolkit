@@ -1,6 +1,8 @@
 # Setup
 
-Start to finish on a fresh machine. Roughly 40 minutes, most of it the download.
+The initial walkthrough covers the SGLang NVFP4 profiles on a fresh machine;
+later sections cover vLLM, ExLlamaV3 and the native Strata profiles. Strata's
+native build has its own [preparation instructions](../strata/README.md#preparation).
 
 ## Prerequisites
 
@@ -113,10 +115,10 @@ Result: image `sglang-flashnext-sm120:local`, about 37 GB.
 
 ```bash
 cd qwen3.8-flash-next/sglang/nvfp4-nvme
-MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-nvme.sh
+MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-nvme-256k.sh
 ```
 
-`serve-nvfp4-nvme.sh` accepts these overrides:
+`serve-nvfp4-nvme-256k.sh` accepts these overrides:
 
 | Variable | Default | Meaning |
 |---|---|---|
@@ -131,7 +133,7 @@ MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-nvme.sh
 | `KV_DTYPE` | `fp8_e4m3` | KV cache precision; `auto` means BF16 and roughly half the tokens |
 | `EXTRA_ARGS` | *(empty)* | Extra launch flags, e.g. `--mamba-ssm-dtype bfloat16` |
 
-Before launching, `serve-nvfp4-nvme.sh` runs `quant_info.py`, which reads the checkpoint and
+Before launching, `serve-nvfp4-nvme-256k.sh` runs `quant_info.py`, which reads the checkpoint and
 prints what precision each part runs at:
 
 ```
@@ -177,7 +179,7 @@ curl -s http://127.0.0.1:8090/v1/models
 ./stop.sh --rm     # also remove the container
 ```
 
-`serve-nvfp4-nvme.sh` uses `--restart unless-stopped`: if the server is running when the
+`serve-nvfp4-nvme-256k.sh` uses `--restart unless-stopped`: if the server is running when the
 machine shuts down, Docker starts it again at boot and it takes ~93 GB of VRAM
 without anyone asking. A container stopped by hand stays stopped across reboots.
 `NAME` and `TIMEOUT` (graceful shutdown, default 60 s) can be overridden.
@@ -195,7 +197,7 @@ Nothing extra to install:
 
 ```bash
 cd qwen3.8-flash-next/sglang/nvfp4-ram
-MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram-256k.sh
 ```
 
 It accepts the same variables as the NVMe launcher, with different defaults:
@@ -208,19 +210,19 @@ unset, plus `MAMBA_SSM_DTYPE=bfloat16`.
 docker pull lmsysorg/sglang:dev-qwen38-next-local      # 33 GB
 cd qwen3.8-flash-next/sglang/nvfp4-ram-official
 MAXRUN=4 MAMBA_SLOTS=12 KV_DTYPE=auto \
-MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram-256k.sh
 ```
 
 Without overrides it reproduces the published cookbook cell (16 requests,
 ~77K KV tokens). **Keep `KV_DTYPE=auto`**: with `fp8_e4m3` the image crashes on
 the first long prompt. Stop it with `./stop.sh`.
 
-`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official.sh` sets those three
+`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-256k.sh` sets those three
 variables. The same launcher also serves dealignai's abliterated NVFP4 checkpoint,
 whose layout is identical:
 
 ```bash
-scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated.sh
+scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated-256k.sh
 ```
 
 Download command and results: [sglang-nvfp4-ram-official-abliterated.md](profiles/sglang-nvfp4-ram-official-abliterated.md).
@@ -233,7 +235,7 @@ Needs on the host: CUDA 13.3 at `/usr/local/cuda-13.3`, `gcc-15`/`g++-15`, Rust,
 ```bash
 qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build.sh        # clones the fork to qwen3.8-flash-next/sglang/pennyroyal-fork and builds its venv
 cd qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal
-MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram-512k.sh
 ./stop.sh
 ```
 
@@ -252,7 +254,7 @@ packages and a build:
 sudo apt install meson libaio-dev
 qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build-nixl.sh      # into qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/nixl, no root needed
 cd qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal
-HICACHE=1 MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram.sh
+HICACHE=1 MODEL_DIR=/abs/path/to/models/Qwen3.8-Flash-Next-NVFP4 ./serve-nvfp4-ram-512k.sh
 ```
 
 Cache files go to `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/nixl-storage/` (`NIXL_STORAGE_BASE`
@@ -269,7 +271,7 @@ stop any Docker profile first. It runs as a background process with its PID in
 
 ```bash
 docker pull vllm/vllm-openai:qwen38-flash-next      # 19.8 GB
-scripts/start-qwen3.8-flash-next-vllm-awq-w4a16.sh
+scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-256k.sh
 ```
 
 Needs the AWQ checkpoint and at least 100 GiB of free host RAM for the BF16 PLE
@@ -278,14 +280,14 @@ launcher options, measurements, and why it must run with
 `--distributed-executor-backend mp` on a single GPU.
 
 ```bash
-scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh
+scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-256k.sh
 ```
 
 Same image and settings as `vllm-awq-w4a16`, group-32 checkpoint. See
 [vllm-awq-w4a16-g32.md](profiles/vllm-awq-w4a16-g32.md).
 
 ```bash
-scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored.sh
+scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k.sh
 ```
 
 Same image, leoncca's uncensored AWQ g32 checkpoint with an FP8 PLE table, so ~60
@@ -295,7 +297,7 @@ tensors that stop vLLM; the first start takes 10–20 minutes. See
 [vllm-awq-w4a16-g32-uncensored.md](profiles/vllm-awq-w4a16-g32-uncensored.md).
 
 ```bash
-scripts/start-qwen3.8-flash-next-vllm-fp8-offload.sh
+scripts/start-qwen3.8-flash-next-vllm-fp8-offload-256k.sh
 ```
 
 Same image, FP8 checkpoint. Keeps 50 GiB of routed experts in pinned RAM next to
@@ -306,25 +308,50 @@ minutes. See [vllm-fp8-offload.md](profiles/vllm-fp8-offload.md).
 
 ```bash
 docker pull ghcr.io/theroyallab/tabbyapi@sha256:a0befeadd9b4609e5a39334aa587b5bd8da33f4eeb6c68c482f2d1751fad79d3
-scripts/start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw.sh
+scripts/start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw-256k.sh
 ```
 
 TabbyAPI with ExLlamaV3 1.5.0 and the EXL3 5.05 bpw checkpoint. Needs ~50 GiB of
 free host RAM for the n-gram table; loads in under a minute, and the first request
 compiles kernels for ~45 s. See [exllamav3-exl3-5.05bpw.md](profiles/exllamav3-exl3-5.05bpw.md).
 
+## 8. The Strata Q8 / Q6 profiles
+
+Prepare the pinned native engine, local compatibility patches, GGUF checkpoint
+and model pack as described in [strata/README.md](../strata/README.md). Run one
+launcher from the toolkit root after stopping the other GPU server:
+
+```bash
+scripts/start-qwen3.8-flash-next-strata-q8-128k.sh
+# Or Q6_K/Q8_0, after preparing its additional patch and pack:
+scripts/start-qwen3.8-flash-next-strata-q6-128k.sh
+```
+
+These foreground launchers default to localhost port 8090, a 131,072-token
+context, INT8 KV, MTP and automatic 8,192-token prefill chunks. The corresponding
+`start-qwen3.8-flash-next-strata-q8-256k.sh` and `...-q6-256k.sh` wrappers use
+262,144 tokens. All four are registered: inspect with `scripts/status.sh` and
+stop with Ctrl+C or `scripts/stop.sh`. Q8 supports MMQ expert prefill;
+Q6 currently uses the FP16 fallback. See the
+[Q8/Q6 comparison](../strata/COMPARISON.md) for measured speed and memory.
+
+The ik_llama.cpp reference engine uses the separate public
+[ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit) repository's
+build and serving scripts.
+
 ## Re-measuring after a config change
 
 ```bash
 python3 bench/prefill.py                                   # 4K / 32K / 128K, cold and prefix-cached
+python3 bench/compare_decode.py <label> --base <server-url>  # sequential prose / code / Slovak decode
 python3 bench/language_samples.py collect <profile>         # Slovak answers for the blind comparison
 ```
 
-See [bench/README.md](../../bench/README.md) for both scripts.
+See [bench/README.md](../../bench/README.md) for the scripts and model-ID overrides.
 
 ## Notes on the launch flags
 
-The defaults in `serve-nvfp4-nvme.sh` are the upstream author's measured choices, not
+The defaults in `serve-nvfp4-nvme-256k.sh` are the upstream author's measured choices, not
 preferences. Two are worth knowing:
 
 - `--cuda-graph-backend-decode breakable` is what lets CUDA graphs run together

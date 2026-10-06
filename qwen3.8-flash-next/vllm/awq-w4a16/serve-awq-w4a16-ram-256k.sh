@@ -2,7 +2,7 @@
 # Profile vllm-awq-w4a16: Qwen3.8-Flash-Next AWQ W4A16 on vLLM, PLE table in RAM,
 # one RTX PRO 6000 Blackwell (96 GB).
 #
-#   MODEL_DIR=/models/Qwen3.8-Flash-Next-AWQ-W4A16 ./serve-awq-w4a16-ram.sh
+#   MODEL_DIR=/models/Qwen3.8-Flash-Next-AWQ-W4A16 ./serve-awq-w4a16-ram-256k.sh
 #   ./stop.sh
 #
 # Checkpoint wtdcode/Qwen3.8-Flash-Next-AWQ-W4A16 (compressed-tensors). Unlike the

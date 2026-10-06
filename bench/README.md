@@ -1,13 +1,16 @@
 # Benchmarks
 
 Standalone scripts for measuring whichever profile is serving. They talk to
-the OpenAI-compatible API on `http://127.0.0.1:8090` (override with the `BASE`
-environment variable), work with SGLang, vLLM and TabbyAPI alike, and use the
+the OpenAI-compatible API on `http://127.0.0.1:8090` (override with `BASE` or
+`--base`, depending on the script), work with SGLang, vLLM, TabbyAPI, Strata and
+external ik_llama.cpp servers, and use the
 Python standard library only.
 
 | Script | Measures |
 |---|---|
 | `prefill.py` | Prefill speed: time-to-first-token at several prompt sizes, cold and prefix-cached |
+| `long_context.py` | Generation after long prompts; first and repeated TTFT, actual token counts and full responses |
+| `compare_decode.py` | Sequential decode speed on prose, code and Slovak prompts; complete responses and SSE timings |
 | `evalplus_codegen.py` + `evalplus_evaluate.sh` | Code ability: HumanEval+ and MBPP+ pass@1, scored in a sandbox |
 | `language_samples.py` | Output quality in a non-English language: fixed prompts per profile, compared blind |
 
@@ -17,6 +20,9 @@ Python standard library only.
 python3 bench/prefill.py                  # 4K, 32K and 128K tokens
 python3 bench/prefill.py 8192 65536       # or your own sizes
 BASE=http://127.0.0.1:9000 python3 bench/prefill.py
+# Strata uses its own advertised model ID:
+BASE=http://127.0.0.1:8093 MODEL=qwen3.8-flash-next-strata-q8 \
+  python3 bench/prefill.py 4096 32768 124000
 ```
 
 For each size it sends a freshly generated prompt with `max_tokens=1` and reports
@@ -43,8 +49,49 @@ the time to the first streamed token, then sends the identical prompt again:
 - The first request after a server start includes warmup (kernel compilation,
   CUDA graph paths). Run it twice and use the second run.
 
-Decode speed is not covered here; the model docs measure it with a streamed
-request of a few hundred tokens.
+Set `MODEL` to the server's advertised model ID when it differs from the default
+`Qwen3.8-Flash-Next`. The fresh nonce prevents prefix reuse; it does not flush the
+OS file cache or force a cold model-weight read.
+
+## `compare_decode.py` — sequential decode comparison
+
+```bash
+python3 bench/compare_decode.py strata-q8 --base http://127.0.0.1:8093
+python3 bench/compare_decode.py strata-q6 --base http://127.0.0.1:8096
+```
+
+Run only the server being measured, and finish one benchmark before starting
+the next. The script discovers the model ID through `/v1/models`, warms up with
+an arithmetic question, then alternates English prose, Python code and Slovak
+prompts for three rounds. It uses 512 generated tokens, temperature 0, seed 1234
+and thinking off. `--repeats` and `--max-tokens` override the defaults.
+
+Full responses, usage, TTFT, approximate client decode rates and any supplied
+engine timings are saved to `logs/strata-comparison/<LABEL>.json`. Existing
+results are not overwritten. Client decode excludes the first text chunk;
+speculative batches can contain several tokens, so the rate is approximate.
+An adaptive expert cache can improve over successive rounds. This measures
+speed, not code correctness or output quality.
+
+## `long_context.py` — generation with a long context
+
+Run after the short decode and prefill tests, without concurrent API traffic:
+
+```bash
+python3 bench/long_context.py strata-q8-256k-long \
+  --base http://127.0.0.1:8097 --sizes 124000 262000
+```
+
+Default: three 512-token prose responses per size, greedy sampling, thinking off.
+The first repetition uses a fresh nonce; the others reuse the identical prefix.
+The word corpus produces about 120K and 255K actual prompt tokens; the server's
+`usage.prompt_tokens` is saved with every response. A 262K target is intended
+for a 262,144-token profile and leaves space for generation.
+TG uses the same SSE timing as `compare_decode.py`, excluding TTFT. Speculative
+chunks can contain several tokens, so the client rate is approximate. TTFT,
+complete responses and per-run timings are saved under `logs/strata-comparison/`.
+Warm prefix TTFT does not measure processing all prompt tokens again; do not use
+its prompt-tokens/TTFT ratio as uncached prefill throughput.
 
 ## `evalplus_codegen.py` + `evalplus_evaluate.sh` — HumanEval+ and MBPP+
 

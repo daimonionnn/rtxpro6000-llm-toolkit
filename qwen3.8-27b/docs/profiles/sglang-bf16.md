@@ -1,7 +1,7 @@
 # SGLang, BF16
 
 Profile `sglang-bf16`, directory `qwen3.8-27b/sglang/bf16/`, started with
-`scripts/start-qwen3.8-27b-sglang-bf16.sh`.
+`scripts/start-qwen3.8-27b-sglang-bf16-256k.sh`.
 
 Qwen/Qwen3.8-27B @ `1d4bf0f2` with its original BF16 weights on the official SGLang
 image `lmsysorg/sglang:dev-qwen38-next-local`. Same architecture (`qwen3_5`) and
@@ -13,7 +13,7 @@ Measured 2026-09-15.
 ```bash
 hf download Qwen/Qwen3.8-27B --revision 1d4bf0f2ff6012fd82039f2fa52739d0dd7c60c0 \
   --local-dir models/Qwen3.8-27B
-scripts/start-qwen3.8-27b-sglang-bf16.sh
+scripts/start-qwen3.8-27b-sglang-bf16-256k.sh
 ```
 
 Serves `http://127.0.0.1:8090/v1` as model `Qwen3.8-27B`. The configuration table in

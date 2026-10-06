@@ -2,7 +2,7 @@
 # Profile vllm-awq-w4a16-g32: Qwen3.8-Flash-Next AWQ INT4 group 32 on vLLM, PLE table in RAM,
 # one RTX PRO 6000 Blackwell (96 GB).
 #
-#   MODEL_DIR=/models/Qwen3.8-Flash-Next-AWQ-INT4-g32 ./serve-awq-w4a16-g32-ram.sh
+#   MODEL_DIR=/models/Qwen3.8-Flash-Next-AWQ-INT4-g32 ./serve-awq-w4a16-g32-ram-256k.sh
 #   ./stop.sh
 #
 # Checkpoint cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4 (compressed-tensors, llm-compressor

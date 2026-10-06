@@ -13,7 +13,7 @@ on context and prefill.
 
 | | `sglang-nvfp4-nvme` | `sglang-nvfp4-ram` | `sglang-nvfp4-ram-official` | `sglang-nvfp4-ram-pennyroyal` |
 |---|---|---|---|---|
-| What | our image, `serve-nvfp4-nvme.sh` | our image, memory flags | official image, cookbook recipe | jpezzulli fork, native |
+| What | our image, `serve-nvfp4-nvme-256k.sh` | our image, memory flags | official image, cookbook recipe | jpezzulli fork, native |
 | PLE table | NVMe (io_uring) | pinned RAM | pinned RAM | pinned RAM |
 | **KV cache** | 231,936 | 498,624 (FP8) | 256,832 (BF16) | **831,872 (FP8)** |
 | **Context window** | 262,144 | 262,144 | 262,144 | **524,288** (YaRN ×2) |
@@ -95,7 +95,7 @@ PLE path together.
 
 `lmsysorg/sglang:dev-qwen38-next-local` (commit `4ccff141db`, pulled 2026-09-12,
 33 GB) with SGLang's verified cookbook cell for 1× RTX PRO 6000, NVFP4 RadixArk,
-low latency. Launcher: `qwen3.8-flash-next/sglang/nvfp4-ram-official/serve-nvfp4-ram.sh`,
+low latency. Launcher: `qwen3.8-flash-next/sglang/nvfp4-ram-official/serve-nvfp4-ram-256k.sh`,
 whose defaults reproduce the published cell; `MAXRUN`, `MAMBA_SLOTS` and
 `KV_DTYPE` tune it.
 
@@ -160,7 +160,7 @@ suggestive, not established.
 ("Pennyroyal"), tag `pennyroyal-v2.5.0` (commit `2c675da096`): a personal SGLang
 fork tuned for exactly this card. Built natively per its `BUILD.md` into
 `qwen3.8-flash-next/sglang/pennyroyal-fork/` (Python 3.12.13 venv, CUDA 13.3, GCC 15, torch
-2.13.0+cu130). Launcher: `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/serve-nvfp4-ram.sh` — the fork's
+2.13.0+cu130). Launcher: `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/serve-nvfp4-ram-512k.sh` — the fork's
 `configs/pennyroyal/serve-flash-next.sh` (native NEXTN, no FR-Spec) with HiCache/NIXL
 removed, since NIXL was not installed. HiCache persists prefix state to host RAM
 and disk; it does not change the GPU KV pool.
@@ -239,7 +239,7 @@ request finishes while HiCache is still writing it through.
 
 ### HiCache with NIXL persistence
 
-`HICACHE=1 ./serve-nvfp4-ram.sh` adds the fork's hierarchical cache: a 32 GB
+`HICACHE=1 ./serve-nvfp4-ram-512k.sh` adds the fork's hierarchical cache: a 32 GB
 host-RAM tier with write-through to NIXL POSIX files (io_uring, `O_DIRECT`), in a
 namespace directory derived from the whole configuration by the fork's
 `derive_namespace.py`. NIXL is built by `qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/build-nixl.sh` into
@@ -383,7 +383,7 @@ variable*.
 The measurements below were taken with a `PLE_MODE=ram` switch that the launcher
 had at the time. It has since been removed. To reproduce, drop the four
 `SGLANG_QWEN4_PLE_NVME_*` environment variables from the `docker run` in
-`serve-nvfp4-nvme.sh` — and rename the copy, because it no longer streams from
+`serve-nvfp4-nvme-256k.sh` — and rename the copy, because it no longer streams from
 NVMe.
 
 ### It is faster

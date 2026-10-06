@@ -2,7 +2,7 @@
 
 Profile `sglang-nvfp4-ram-official`, directory
 `qwen3.8-flash-next/sglang/nvfp4-ram-official/`, started with
-`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official.sh`.
+`scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-official-256k.sh`.
 
 The only Flash-Next profile with no local patches or builds: the official image
 `lmsysorg/sglang:dev-qwen38-next-local` (commit `4ccff141db`, pulled 2026-09-12,

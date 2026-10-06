@@ -1,23 +1,26 @@
 # rtxpro6000-llm-toolkit
 
 Launch profiles, scripts and measurements for running large language models on a
-**single NVIDIA RTX PRO 6000 Blackwell 96 GB**, with SGLang, vLLM or ExLlamaV3.
+**single NVIDIA RTX PRO 6000 Blackwell 96 GB**, with SGLang, vLLM, ExLlamaV3 or
+Strata.
 
-Every profile serves an OpenAI-compatible API on `http://127.0.0.1:8090/v1`. Only
-one profile can hold the GPU at a time; the scripts in `scripts/` start, stop and
-report on them.
+By default every profile serves an OpenAI-compatible API on
+`http://127.0.0.1:8090/v1`. Only one profile can hold the GPU at a time. The scripts in `scripts/` manage the
+registered profiles, including Strata Q8/Q6 at 128K and 256K. Strata runs in
+the foreground; Ctrl+C or `scripts/stop.sh` stops it. See [Strata setup](qwen3.8-flash-next/strata/README.md).
 
 ## Models
 
 | Model | Profiles | Engines | Details |
 |---|---|---|---|
-| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K context | 10 | SGLang, vLLM, ExLlamaV3 | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
+| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K native context | 14 | SGLang, vLLM, ExLlamaV3, Strata | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
 | **Qwen3.6-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.6-27b/README.md](qwen3.6-27b/README.md) |
 | **Qwen3.8-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.8-27b/README.md](qwen3.8-27b/README.md) |
 
 Each model directory has a README with its checkpoints and profiles, and one
 document per profile in `docs/profiles/<profile>.md`; the Flash-Next one also has
-setup, troubleshooting, the model's architecture and open TODOs.
+setup, troubleshooting, the model's architecture and open TODOs. The four Strata
+profiles share [their setup and comparison](qwen3.8-flash-next/strata/README.md).
 
 ## Results
 
@@ -31,40 +34,95 @@ In short:
 - **No refusals:** `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` — no measurable
   loss on code, a few points below g32 in Slovak; dealignai's abliterated NVFP4 lost
   code ability.
-- **On code** the Flash-Next quantizations of the original weights are within noise
-  of each other.
+- **On code** the Flash-Next configurations covered by the September benchmarks
+  are within noise of each other. Strata has not had a new EvalPlus run.
 - **Dense Qwen3.6-27B and Qwen3.8-27B at BF16** trail Flash-Next on code and
   clearly in Slovak; 3.8 is no measurable step over 3.6.
-- **8-bit weights on one card:** ik_llama.cpp with a Q8_0 GGUF, not vLLM — the best
-  Slovak score measured, narrowly, at 38 tok/s; no better on code.
+- **Q8 weights at interactive speed:** `strata-q8` measured 101.7 tok/s on prose,
+  103.5 on code and 75.1 in Slovak with MTP. `strata-q6` is faster for generation
+  and uses fewer bits. Q8 has shorter latency at 4–120K in the initial
+  prefill sweep; Q6 is slightly faster at ~255K. See the tables below.
+- **The scored Q8 quality reference:** ik_llama.cpp's older Q8 run narrowly led
+  its blind Slovak comparison. Engine builds and serving scripts live in the
+  separate public [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit)
+  repository; the newer Strata configurations have not been independently graded.
+
+### Strata Q8 / Q6 profiles
+
+Measured 2026-10-06 with MTP, thinking off and one request at a time. Decode
+figures are medians of three 512-token responses to short prompts. All times
+below are for fresh prompt prefixes and include warmup and weight reads.
+
+| Profile | Maximum context | Decode: prose / code / Slovak | TTFT: ~4K / ~32K / ~120K | Pinned expert RAM |
+|---|---:|---|---|---:|
+| [`strata-q8`](qwen3.8-flash-next/strata/README.md#run) | 131,072 | 101.7 / 103.5 / 75.1 tok/s | 4.83 / 12.46 / 21.67 s | 34.83 GiB |
+| [`strata-q6`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | 131,072 | 117.1 / 142.5 / 81.3 tok/s | 7.27 / 23.31 / 27.41 s | 16.04 GiB |
+| [`strata-q8-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | 262,144 | 89.4 / 104.9 / 73.1 tok/s | 5.37 / 13.77 / 22.56 s | 36.75 GiB |
+| [`strata-q6-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | 262,144 | 119.5 / 144.4 / 93.2 tok/s | 7.30 / 23.74 / 28.86 s | 17.95 GiB |
+
+The 256K profiles were also tested near their maximum capacity:
+
+| Profile | Fresh TTFT, ~255K | Effective prefill | TG after ~120K | TG after ~255K |
+|---|---:|---:|---:|---:|
+| `strata-q8-256k` | 46.58 s | 5,471 tok/s | 127.4 tok/s | 117.8 tok/s |
+| `strata-q6-256k` | 44.00 s | 5,791 tok/s | 139.9 tok/s | 153.1 tok/s |
+
+Prefill uses 254,834 / 254,832 actual prompt tokens (Q8 / Q6); its rate is
+prompt tokens divided by TTFT, including HTTP and tokenization. TG uses three
+512-token prose responses after a ~120K or ~255K word corpus: first a fresh
+prefix, then two cached repetitions, excluding TTFT. These prompts and warmed
+cache differ from the short tests, so the rates do not isolate context overhead.
+Both fit without OOM; after the tests Q8/Q6 had 873/939 MiB free GPU memory.
+Repeated ~255K prefixes answer in about 0.51 s. Fresh prefix does not mean a
+cold OS file cache; the prefill sweep also includes initial kernel/weight warmup.
+
+All Strata profiles use INT8 KV and automatic 8,192-token prefill chunks.
+Pinned expert RAM excludes the PLE table's OS file cache and other allocations. Q6 mixes Q6_K
+gate/up with Q8_0 down, averaging 7.21 bits per routed weight including scales;
+its PLE table stays Q8_0. Q8 has the quantized MMQ prefill path; Q6 currently
+dequantizes to FP16 before its prefill matrix products. Strata's adaptive expert
+cache warms across requests, so generation speed depends on prior workload.
+
+The Strata profiles require local compatibility patches. Setup, numerical
+validation and the small Slovak sample check are in [Strata documentation](qwen3.8-flash-next/strata/README.md);
+the full comparison with ik_llama.cpp is in
+[COMPARISON.md](qwen3.8-flash-next/strata/COMPARISON.md).
 
 ## Scripts
 
 | Script | Does |
 |---|---|
 | `scripts/start.sh` | Start the default profile (`qwen3.8-flash-next-vllm-awq-w4a16-g32`); it only calls that profile's script |
-| `scripts/start-<model>-<engine>-<variant>.sh` | Start one profile (listed below) |
-| `scripts/stop.sh` | Stop whichever profile is running (`--rm` also removes a Docker container) |
-| `scripts/status.sh` | What is running, from which directory, with which checkpoint, context and KV cache |
+| `scripts/start-<model>-<engine>-<variant>-<context>k.sh` | Start one profile with its labelled default context (listed below) |
+| `scripts/stop.sh` | Stop the running registered profile (`--rm` also removes a Docker container) |
+| `scripts/status.sh` | Which registered profile is running, from which directory, with which checkpoint, context and KV cache |
 | `scripts/start-ui.sh` / `scripts/stop-ui.sh` | Chat UI in the background on http://127.0.0.1:5173/ |
 
 Current profiles:
 
-| Start script | Profile |
+Context suffixes use 1K = 1,024 tokens: `-128k` = 131,072, `-256k` = 262,144,
+and `-512k` = 524,288 tokens. They describe the launch defaults; explicit
+`CTX`, `CONTEXT_LENGTH` or Strata `--context` overrides still apply.
+
+| Launch script or command | Profile |
 |---|---|
-| `start-qwen3.8-flash-next-sglang-nvfp4-nvme.sh` | SGLang, local Docker image, NVFP4, PLE table streamed from NVMe |
-| `start-qwen3.8-flash-next-sglang-nvfp4-ram.sh` | SGLang, local Docker image, NVFP4, PLE table in RAM |
-| `start-qwen3.8-flash-next-sglang-nvfp4-ram-official.sh` | SGLang, official lmsysorg image, NVFP4, PLE table in RAM |
-| `start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated.sh` | the same launcher with dealignai's abliterated NVFP4 |
-| `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal.sh` | SGLang pennyroyal fork (native), NVFP4, PLE table in RAM, 524K context |
-| `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-hicache.sh` | the same with HiCache/NIXL prefix persistence |
-| `start-qwen3.8-flash-next-vllm-awq-w4a16.sh` | vLLM, official image, AWQ W4A16, PLE table in RAM |
-| `start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh` | vLLM, official image, AWQ W4A16 group 32, PLE table in RAM |
-| `start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored.sh` | vLLM, official image + FP8 PLE patch, leoncca's uncensored AWQ W4A16 group 32 |
-| `start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw.sh` | ExLlamaV3 via TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP |
-| `start-qwen3.8-flash-next-vllm-fp8-offload.sh` | vLLM, official image, official FP8, 50 GiB of experts and the PLE table in RAM |
-| `start-qwen3.6-27b-sglang-bf16.sh` | Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation |
-| `start-qwen3.8-27b-sglang-bf16.sh` | Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation |
+| `start-qwen3.8-flash-next-sglang-nvfp4-nvme-256k.sh` | SGLang, local Docker image, NVFP4, PLE table streamed from NVMe |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-256k.sh` | SGLang, local Docker image, NVFP4, PLE table in RAM |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-official-256k.sh` | SGLang, official lmsysorg image, NVFP4, PLE table in RAM |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated-256k.sh` | the same launcher with dealignai's abliterated NVFP4 |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k.sh` | SGLang pennyroyal fork (native), NVFP4, PLE table in RAM, 524K context |
+| `start-qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-hicache-512k.sh` | the same with HiCache/NIXL prefix persistence |
+| `start-qwen3.8-flash-next-vllm-awq-w4a16-256k.sh` | vLLM, official image, AWQ W4A16, PLE table in RAM |
+| `start-qwen3.8-flash-next-vllm-awq-w4a16-g32-256k.sh` | vLLM, official image, AWQ W4A16 group 32, PLE table in RAM |
+| `start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k.sh` | vLLM, official image + FP8 PLE patch, leoncca's uncensored AWQ W4A16 group 32 |
+| `start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw-256k.sh` | ExLlamaV3 via TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP |
+| `start-qwen3.8-flash-next-vllm-fp8-offload-256k.sh` | vLLM, official image, official FP8, 50 GiB of experts and the PLE table in RAM |
+| [start-qwen3.8-flash-next-strata-q8-128k.sh](scripts/start-qwen3.8-flash-next-strata-q8-128k.sh) | Strata Q8_0, native engine + Q8 PLE patch, MTP, 128K context; foreground |
+| [start-qwen3.8-flash-next-strata-q6-128k.sh](scripts/start-qwen3.8-flash-next-strata-q6-128k.sh) | Strata Q6_K/Q8_0, additional Q6 expert patch, MTP, 128K context; foreground |
+| [start-qwen3.8-flash-next-strata-q8-256k.sh](scripts/start-qwen3.8-flash-next-strata-q8-256k.sh) | Strata Q8_0, MTP, 256K context; foreground |
+| [start-qwen3.8-flash-next-strata-q6-256k.sh](scripts/start-qwen3.8-flash-next-strata-q6-256k.sh) | Strata Q6_K/Q8_0, MTP, 256K context; foreground |
+| `start-qwen3.6-27b-sglang-bf16-256k.sh` | Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation |
+| `start-qwen3.8-27b-sglang-bf16-256k.sh` | Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation |
 
 ```bash
 scripts/start.sh                     # the default profile
@@ -72,10 +130,18 @@ scripts/status.sh
 scripts/stop.sh
 ```
 
-The start scripts call the launcher in the profile's directory, set `MODEL_DIR` to
-its checkpoint under `models/`, and refuse to start while another profile is
-running. Launcher variables can be overridden from the environment, e.g.
-`CHUNKED=8192 scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram.sh`.
+The `start-*.sh` scripts call the profile launcher and refuse to start while
+another registered profile is running. Docker and SGLang launchers set
+`MODEL_DIR` to the checkpoint under `models/`. Launcher variables can be
+overridden from the environment, e.g.
+`CHUNKED=8192 scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-256k.sh`.
+
+Run Strata after preparing the engine and model pack. Its shell wrappers pass
+`--port`, `--model`, `--context`, `--prefill` and other options to the Python
+launcher. Defaults are localhost port 8090 and 131,072 tokens, or 262,144 tokens
+for the `-256k` wrappers. `scripts/status.sh` and `scripts/stop.sh` also manage
+Strata started directly through its Python launchers; runtime state lives in
+`logs/strata-server.json`.
 
 Docker profiles run as the container `rtxpro6000-llm` with `--restart
 unless-stopped`: a server left running comes back after a reboot and takes most of
@@ -96,7 +162,8 @@ turn, and works with any profile. See [ui/README.md](ui/README.md).
 
 ### Benchmarks
 
-`bench/prefill.py` measures prefill (cold and prefix-cached), `bench/evalplus_*`
+`bench/compare_decode.py` measures sequential decode on prose, code and Slovak
+prompts. `bench/prefill.py` measures prefill (cold and prefix-cached), `bench/evalplus_*`
 scores code ability (HumanEval+ / MBPP+) in a sandbox, and
 `bench/language_samples.py` compares non-English output between profiles blind.
 See [bench/README.md](bench/README.md).
@@ -107,7 +174,7 @@ See [bench/README.md](bench/README.md).
 .
 ├── README.md
 ├── RESULTS.md                    all profiles side by side, benchmarks, recommendations
-├── scripts/                      start-<profile>.sh, stop.sh, status.sh, start-ui.sh, stop-ui.sh
+├── scripts/                      start-<profile>-<context>k.sh, start.sh, stop.sh, status.sh, UI scripts
 │   └── _lib.sh                   the profile registry (PROFILES) shared by the scripts
 ├── common/                       stop-docker.sh, shared by every Docker profile
 ├── qwen3.8-flash-next/           one directory per model
@@ -116,10 +183,11 @@ See [bench/README.md](bench/README.md).
 │   ├── quant_info.py
 │   ├── sglang/<variant>/         launcher + stop per profile
 │   ├── vllm/<variant>/
-│   └── exllamav3/<variant>/
+│   ├── exllamav3/<variant>/
+│   └── strata/                  Q8/Q6 Python launchers, compatibility patches, comparison
 ├── qwen3.6-27b/                  README.md, docs/profiles/, sglang/bf16/
 ├── qwen3.8-27b/                  README.md, docs/profiles/, sglang/bf16/
-├── bench/                        README.md, prefill.py, evalplus_*, language_samples.py — any engine
+├── bench/                        decode, prefill, EvalPlus, language samples — any engine
 ├── ui/                           README.md, local chat UI
 ├── models/                       checkpoints (not tracked)
 └── logs/                         build and serve logs (not tracked)
@@ -133,8 +201,10 @@ See [bench/README.md](bench/README.md).
    `rtxpro6000-llm.profile=<model>-<engine>-<variant>` so `status.sh` and `stop.sh`
    recognise it.
 2. Add a line to `PROFILES` in `scripts/_lib.sh`: id, directory, launcher,
-   checkpoint directory under `models/`, description.
-3. Add `scripts/start-<id>.sh`: source `_lib.sh` and call `start_profile <id>`.
+   checkpoint directory under `models/`, description, default context in tokens.
+3. Add `scripts/start-<id>-<context>k.sh`: source `_lib.sh` and call
+   `start_profile <id>`. If the ID already ends with the context suffix,
+   use it once. `profile_field <id> script` resolves the wrapper filename.
 4. Document it in `<model>/docs/profiles/<engine>-<variant>.md`, add a row to the
    model's README, and its measurements to `RESULTS.md`.
 
@@ -155,5 +225,5 @@ Apache License 2.0 — see [LICENSE](LICENSE).
 `qwen3.8-flash-next/sglang/build-local-image/` is a vendored copy of the
 yepapa-nest recipe, also Apache-2.0, with its own `LICENSE` and the changes listed
 in its `UPSTREAM.md`. Software fetched at build time — SGLang and vLLM images, the
-pennyroyal fork, NIXL — and the model checkpoints are not part of this repository
+pennyroyal fork, NIXL, Strata — and the model checkpoints are not part of this repository
 and keep their own licenses.

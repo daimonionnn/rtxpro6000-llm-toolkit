@@ -1,7 +1,7 @@
 # vLLM with the AWQ INT4 group-32 checkpoint
 
 Profile `vllm-awq-w4a16-g32`, directory `qwen3.8-flash-next/vllm/awq-w4a16-g32/`,
-started with `scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32.sh`.
+started with `scripts/start-qwen3.8-flash-next-vllm-awq-w4a16-g32-256k.sh`.
 
 It runs
 [cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4](https://huggingface.co/cyankiwi/Qwen3.8-Flash-Next-AWQ-INT4)
