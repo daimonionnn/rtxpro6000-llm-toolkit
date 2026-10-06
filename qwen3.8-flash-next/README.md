@@ -30,6 +30,10 @@ already installed under LM Studio. [Encoder preparation and usage](strata/README
 
 ## Profiles
 
+The toolkit default (`scripts/start.sh`) is **Strata Q8 vision 128K**, profile
+`qwen3.8-flash-next-strata-q8-vision`, with up to 4,096 image tokens. On the
+workstation, `strata-server.service` starts it automatically at boot.
+
 One at a time, each on `http://127.0.0.1:8090/v1` by default. All 18 profiles
 start with `scripts/start-qwen3.8-flash-next-<engine>-<variant>-<context>k.sh` at the toolkit
 root and are managed by `scripts/status.sh` and `scripts/stop.sh`.

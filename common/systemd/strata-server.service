@@ -1,0 +1,20 @@
+[Unit]
+Description=RTX PRO 6000 toolkit default model (Strata Q8 vision 128K)
+After=network-online.target
+StartLimitIntervalSec=600
+StartLimitBurst=3
+
+[Service]
+Type=simple
+WorkingDirectory=%h/development/rtxpro6000-llm-toolkit
+ExecStart=%h/development/rtxpro6000-llm-toolkit/scripts/start.sh
+Environment=PYTHONUNBUFFERED=1
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+Restart=on-failure
+RestartSec=15
+KillSignal=SIGTERM
+KillMode=mixed
+TimeoutStopSec=120
+
+[Install]
+WantedBy=default.target

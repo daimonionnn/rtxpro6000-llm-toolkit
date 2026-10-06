@@ -212,8 +212,9 @@ A four-way shuffled sheet is at
 - `logs/language-samples/sk/{ik-q6-mtp-20261006,strata-q6-20261006}.json`
 
 Run commands and both reusable patches are in [README.md](README.md).
-The original ik Q8 configuration is retained; these experiments do not change
-the toolkit's default profile.
+The original ik Q8 configuration is retained. The toolkit now defaults to
+Strata Q8 vision 128K, with a 4,096-token image limit; its text performance is
+compared separately in [VISION.md](VISION.md#q8-text-throughput-vision-4096-vs-text-only).
 
 ## 256K context profiles
 

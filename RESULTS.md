@@ -135,7 +135,8 @@ in computation versus I/O has not been separately profiled.
 Full settings, cold/repeated TTFT, memory, numerical checks and raw evidence:
 [comparison](qwen3.8-flash-next/strata/COMPARISON.md).
 [Setup, patches and launchers](qwen3.8-flash-next/strata/README.md) cover eight
-registered Strata text/vision profiles. The default server remains AWQ g32.
+registered Strata text/vision profiles. The default server is now Strata Q8
+vision 128K (`qwen3.8-flash-next-strata-q8-vision`), with 4,096 image tokens.
 
 ### Strata 256K context
 

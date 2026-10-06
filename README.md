@@ -4,6 +4,11 @@ Launch profiles, scripts and measurements for running large language models on a
 **single NVIDIA RTX PRO 6000 Blackwell 96 GB**, with SGLang, vLLM, ExLlamaV3 or
 Strata.
 
+The default profile is **Strata Q8 vision 128K**
+(`qwen3.8-flash-next-strata-q8-vision`), launched by `scripts/start.sh`.
+It uses a 131,072-token context and up to 4,096 image tokens. On this workstation,
+`strata-server.service` also starts it automatically at boot.
+
 By default every profile serves an OpenAI-compatible API on
 `http://127.0.0.1:8090/v1`. Only one profile can hold the GPU at a time. The scripts in `scripts/` manage the
 registered profiles, including Strata Q8/Q6 at 128K and 256K. Strata runs in
@@ -112,7 +117,7 @@ above do not apply to these profiles. [Build, API example and validation](qwen3.
 
 | Script | Does |
 |---|---|
-| `scripts/start.sh` | Start the default profile (`qwen3.8-flash-next-vllm-awq-w4a16-g32`); it only calls that profile's script |
+| `scripts/start.sh` | Start the default profile: Strata Q8 vision 128K (`qwen3.8-flash-next-strata-q8-vision`) |
 | `scripts/start-<model>-<engine>-<variant>-<context>k.sh` | Start one profile with its labelled default context (listed below) |
 | `scripts/stop.sh` | Stop the running registered profile (`--rm` also removes a Docker container) |
 | `scripts/status.sh` | Which registered profile is running, from which directory, with which checkpoint, context and KV cache |
@@ -153,6 +158,41 @@ scripts/start.sh                     # the default profile
 scripts/status.sh
 scripts/stop.sh
 ```
+
+### Start the default model at boot
+
+The workstation uses the user service
+[strata-server.service](common/systemd/strata-server.service), which calls
+`scripts/start.sh`. It starts Q8 vision 128K on localhost port 8090, with a
+4,096-token image limit. User lingering starts the service at boot without
+requiring an interactive login. The former `ik-llama-server.service` is disabled.
+
+To install on a checkout at `~/development/rtxpro6000-llm-toolkit`, after
+preparing Strata and the vision encoder:
+
+```bash
+mkdir -p ~/.config/systemd/user
+ln -s "$PWD/common/systemd/strata-server.service" ~/.config/systemd/user/strata-server.service
+systemctl --user disable --now ik-llama-server.service
+scripts/stop.sh
+loginctl enable-linger "$USER"
+systemctl --user daemon-reload
+systemctl --user enable --now strata-server.service
+```
+
+If the checkout is elsewhere, adjust the unit's `WorkingDirectory` and
+`ExecStart`. Manage the service and inspect startup logs with:
+
+```bash
+systemctl --user status strata-server.service
+journalctl --user -u strata-server.service -f
+systemctl --user restart strata-server.service
+```
+
+Before switching to another profile, stop the service with
+`systemctl --user stop strata-server.service`, then run the desired launcher.
+Use `systemctl --user disable --now strata-server.service` to turn off boot
+startup. The unit restarts on failure; an explicit service stop stays stopped.
 
 The `start-*.sh` scripts call the profile launcher and refuse to start while
 another registered profile is running. Docker and SGLang launchers set
