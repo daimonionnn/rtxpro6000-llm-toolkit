@@ -3,7 +3,7 @@
 Experimental native setup for the RTX PRO 6000 Blackwell 96 GB. It reuses the
 local lmstudio-community Q8_0 checkpoint and compares it with the published
 Q6_K/Q8_0 checkpoint.
-The engine checkout lives at `../Strata`, outside this toolkit. All four profiles
+The engine checkout lives at `../Strata`, outside this toolkit. All eight text/vision profiles
 are in the toolkit registry. Launchers run in the foreground; Ctrl+C or
 `scripts/stop.sh` stops them. Use `scripts/status.sh` from another terminal.
 
@@ -13,6 +13,10 @@ are in the toolkit registry. Launchers run in the foreground; Ctrl+C or
 | `strata-q6` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q6-128k.sh) | 131,072 | 8,192 (auto) | 117.1 / 142.5 / 81.3 tok/s |
 | `strata-q8-256k` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-256k.sh) | 262,144 | 8,192 (auto) | 89.4 / 104.9 / 73.1 tok/s |
 | `strata-q6-256k` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q6-256k.sh) | 262,144 | 8,192 (auto) | 119.5 / 144.4 / 93.2 tok/s |
+| `strata-q8-vision` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh) | 131,072 | 8,192 (auto) | not benchmarked (GPU vision) |
+| `strata-q8-vision-256k` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh) | 262,144 | 8,192 (auto) | not benchmarked (GPU vision) |
+| `strata-q6-vision` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q6-vision-128k.sh) | 131,072 | 8,192 (auto) | not benchmarked (GPU vision) |
+| `strata-q6-vision-256k` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh) | 262,144 | 8,192 (auto) | not benchmarked (GPU vision) |
 
 Decode above is the median of three 512-token responses to short prompts,
 with MTP and thinking off,
@@ -103,6 +107,13 @@ budget, mmap PLE reads, 1,536 MiB VRAM reserve. After loading this leaves about
 remaining experts pinned in RAM. Adaptive cache swaps can warm the GPU cache as
 requests run, so performance depends on prior workload.
 
+All Q8/Q6 launchers, including vision and 256K variants, set
+`"fit_max_tokens": true`. If a client's requested output limit exceeds the space
+left in the context, the API reduces that limit instead of returning HTTP 400.
+It preserves the prompt; a prompt leaving no room for an answer is still rejected.
+Generation can end at the reduced limit, so agents still need context compaction
+for long conversations. Restart the server to apply changes to this setting.
+
 `--dry-run` prints the configuration. `--model`, `--strata-dir`, `--context`,
 `--resident-gib`, `--prefill` and `--vram-reserve-mib` override the defaults.
 The engine log is `logs/strata-q8-engine.log`.
@@ -138,7 +149,7 @@ Runtime state is `logs/strata-server.json`. PID start times protect against
 stale files and PID reuse. `stop.sh` terminates the API process and its native
 engine, waiting for both to exit. Logs are `logs/strata-q8-256k-engine.log` and
 `logs/strata-q6-256k-engine.log`; generated configs are under
-`logs/strata-comparison/`. All four launchers run in the foreground and bind
+`logs/strata-comparison/`. All eight launchers run in the foreground and bind
 only to localhost. Direct Python launches are also tracked by status/stop.
 
 Measured 2026-10-06, after the short decode test and prefill sweep:
@@ -169,6 +180,142 @@ python3 bench/long_context.py strata-q8-256k-long --base http://127.0.0.1:8097
 The approximate 262K target produces about 255K actual prompt tokens, leaving
 space for 512 output tokens. Long-context TG is reported separately from the
 short-context prose/code/Slovak medians in [COMPARISON.md](COMPARISON.md).
+
+## Vision profiles
+
+The pinned engine already supports images through its `--vision` M-RoPE path
+and the server's optional `vision` configuration. These profiles add the GPU
+encoder while keeping the corresponding Q8/Q6 target, INT8 KV, MTP, context,
+prefill and 1,536 MiB reserve defaults. The encoder is the original BF16
+`mmproj-Qwen3.8-Flash-Next-BF16.gguf`, shared by Q8 and Q6; target quantization
+and vision encoder quantization are separate.
+
+The implementation and configuration follow [Strata's pinned vision documentation](https://github.com/Niko1221/Strata/blob/6f32ec070f23ced9f50e704d854d775da52591ab/docs/DETAILS.md#images-vision).
+
+### Build the CUDA image encoder
+
+Run from the toolkit root, after the main engine preparation above. This uses
+exactly the main engine's pinned llama.cpp checkout, not a separate version:
+
+```bash
+cmake -S ../Strata/tools/vision -B ../Strata/build-vision -G Ninja \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DLLAMA_DIR="$PWD/../Strata/build/_deps/strata_llamacpp-src" \
+  -DSTRATA_VISION_CUDA=ON -DCMAKE_CUDA_ARCHITECTURES=120 \
+  -DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.3/bin/nvcc \
+  -DCUDAToolkit_ROOT=/usr/local/cuda-13.3 \
+  -DGGML_CUDA_FA_ALL_QUANTS=OFF
+cmake --build ../Strata/build-vision --target strata-vision -j 12
+```
+
+The executable is `../Strata/build-vision/bin/strata-vision`. The encoder uses
+FP16/BF16 attention; disabling additional quantized FA variants reduces build
+work. CMake resolves SM120 to SM120a for this pinned ggml CUDA backend.
+
+The default mmproj path is the existing LM Studio file:
+
+```text
+~/.lmstudio/models/lmstudio-community/Qwen3.8-Flash-Next-GGUF/mmproj-Qwen3.8-Flash-Next-BF16.gguf
+```
+
+If absent, obtain the matching BF16 mmproj from the
+[lmstudio-community checkpoint](https://huggingface.co/lmstudio-community/Qwen3.8-Flash-Next-GGUF).
+The locally installed file is 907,542,592 bytes. Use `--mmproj /path/to/mmproj.gguf`
+to change its location; `--vision-exe` can point to another build of the helper.
+
+### Start and stop
+
+Choose one of the parallel launchers:
+
+```bash
+scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh
+scripts/start-qwen3.8-flash-next-strata-q6-vision-128k.sh
+scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh
+scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh
+```
+
+Each runs in the foreground on localhost port 8090 by default; `--port` changes
+it. The API model ID is the full profile ID, e.g.
+`qwen3.8-flash-next-strata-q8-vision` at 128K or
+`qwen3.8-flash-next-strata-q8-vision-256k` at 256K.
+
+GPU is the default encoder device. `--vision-device cpu` uses the same helper on
+the CPU, without its GPU allocations. `--vision-tokens` defaults to 4,096 tokens
+per image to preserve more detail in screenshots. This is an image representation
+budget, not an OCR character limit or the text output `max_tokens` setting.
+More image tokens take more encoder memory and processing time; the GPU encoder
+warms up before the language engine sizes its expert cache. Images, text and
+generation share the profile's 131,072 / 262,144 context budget.
+
+Restart a vision profile to apply the new default. For faster photo processing,
+use `--vision-tokens 1024`; the same override works on all four launchers:
+
+```bash
+scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh --vision-tokens 4096
+```
+
+The recorded [vision measurements](VISION.md) used the previous 1,024-token
+limit; their image latency and memory figures do not characterize the new default.
+[Q8 text throughput with vision at 4,096](VISION.md#q8-text-throughput-vision-4096-vs-text-only)
+now compares TG, prefill and expert-cache memory against text-only Q8.
+For very long screenshots, send readable crops as separate images; increasing
+the token budget cannot recover detail absent from the original image.
+
+The server loads the encoder and warms it at the image-token limit before
+starting the language engine, so its automatic expert cache accounts for the
+encoder's VRAM. The expert cache is smaller than in the text-only profiles;
+those decode benchmark figures do not describe vision-enabled configurations.
+
+`/health` reports `images: true`. `scripts/status.sh` shows the encoder device,
+image-token limit and mmproj path; `scripts/stop.sh` tracks and stops the API,
+native engine and vision helper. Log files use `strata-q8-vision-engine.log`,
+`strata-q8-vision-256k-engine.log` and the analogous Q6 names under `logs/`.
+
+### Send an image
+
+OpenAI-compatible chat content can contain a data URL:
+
+```python
+import base64
+import json
+import urllib.request
+
+image = base64.b64encode(open("photo.png", "rb").read()).decode()
+body = {
+    "model": "qwen3.8-flash-next-strata-q8-vision",
+    "messages": [{"role": "user", "content": [
+        {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image}},
+        {"type": "text", "text": "Describe this image."},
+    ]}],
+    "max_tokens": 256,
+    "chat_template_kwargs": {"enable_thinking": False},
+    "reasoning_effort": "none",
+}
+request = urllib.request.Request(
+    "http://127.0.0.1:8090/v1/chat/completions",
+    data=json.dumps(body).encode(), headers={"Content-Type": "application/json"},
+)
+with urllib.request.urlopen(request, timeout=300) as response:
+    print(json.load(response)["choices"][0]["message"]["content"])
+```
+
+The reusable [vision smoke harness](../../bench/vision_smoke.py) saves image
+responses, usage and latency:
+
+```bash
+python3 bench/vision_smoke.py q8-vision-check image.png \
+  --base http://127.0.0.1:8090 --prompt "Describe this image."
+```
+
+### Validation on this machine
+
+All four Q8/Q6 128K/256K vision variants correctly read two different four-digit
+codes and identify three colored shapes in order, including an identical-image
+repeat. Text-only arithmetic on each vision profile also works. The encoder
+uses 1,742 MiB on the GPU here; the automatic expert cache shrinks accordingly.
+Start/status/stop checks confirm both native workers exit. Exact latency, memory,
+fixtures and local evidence are in [VISION.md](VISION.md). This is a smoke check,
+not a scored vision or long-context benchmark.
 
 ## Comparison
 

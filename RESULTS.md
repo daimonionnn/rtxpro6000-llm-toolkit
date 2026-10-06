@@ -60,6 +60,10 @@ clearly behind.
 | | [`strata-q6`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | Strata 0.1.39, native + Q8/Q6 patches, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 131,072 | 7.27 / 23.31 / 27.41 s³ | 117.1 prose, 142.5 code, 81.3 Slovak | 94.09 GiB | 16.04 GiB pinned experts + PLE cache³ |
 | | [`strata-q8-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8 PLE patch, MTP | Q8_0; PLE mmap | INT8, single stream | 262,144 | 5.37 / 13.77 / 22.56 s³ | 89.4 prose, 104.9 code, 73.1 Slovak | 94.16 GiB | 36.75 GiB pinned experts + PLE cache³ |
 | | [`strata-q6-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8/Q6 patches, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 262,144 | 7.30 / 23.74 / 28.86 s³ | 119.5 prose, 144.4 code, 93.2 Slovak | 94.09 GiB | 17.95 GiB pinned experts + PLE cache³ |
+| | [`strata-q8-vision`](qwen3.8-flash-next/strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q8_0; PLE mmap | INT8, single stream | 131,072 | not benchmarked | not benchmarked | 94.11 GiB⁴ | 36.55 GiB pinned experts + PLE cache⁴ |
+| | [`strata-q8-vision-256k`](qwen3.8-flash-next/strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q8_0; PLE mmap | INT8, single stream | 262,144 | not benchmarked | not benchmarked | 94.12 GiB⁴ | 38.46 GiB pinned experts + PLE cache⁴ |
+| | [`strata-q6-vision`](qwen3.8-flash-next/strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 131,072 | not benchmarked | not benchmarked | 94.06 GiB⁴ | 17.75 GiB pinned experts + PLE cache⁴ |
+| | [`strata-q6-vision-256k`](qwen3.8-flash-next/strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 262,144 | not benchmarked | not benchmarked | 94.06 GiB⁴ | 19.66 GiB pinned experts + PLE cache⁴ |
 | Qwen3.8-Flash-Next, not a profile | `ik_llama.cpp Q8_0` | ik_llama.cpp `d5f53d9f`, native | Q8_0 GGUF; routed experts of 17 of 48 layers in RAM | 131,072 Q8_0 | 131,072 | 2.20 / 17.4 / 86.6 s² | 38 | 92.2 GiB | ~105 GiB |
 | Qwen3.6-27B | `sglang-bf16` | SGLang, official image | BF16 | not recorded | 262,144 | not measured | 87 code, 62 prose | 86.5 GiB | ~0 (no offload) |
 | Qwen3.8-27B | `sglang-bf16` | SGLang, official image | BF16 | 295,344 BF16 | 262,144 | not measured | 85 code, 57 prose | 84.4 GiB | ~0 (no offload) |
@@ -73,9 +77,14 @@ a time, no speculative decoding.
 ³ Strata measured 2026-10-06: median decode over three short-context 512-token responses,
 MTP enabled, thinking off, adaptive expert cache warming across requests.
 The third prompt is ~120.6K tokens; TTFT includes weight reads and the first
-batched prefill's warmup. All four use 8,192-token automatic prefill chunks. The
+batched prefill's warmup. All four text profiles use 8,192-token automatic prefill chunks. The
 RAM values count pinned experts only, excluding PLE's OS file cache and other
 process allocations. [Full settings and evidence](qwen3.8-flash-next/strata/COMPARISON.md).
+
+⁴ Vision variants measured after short image/text smoke requests, not a full
+long-context or throughput benchmark. The GPU encoder process uses 1,742 MiB;
+the expert cache sizes automatically after its warmup. Pinned expert RAM excludes
+PLE's OS file cache. [Image checks and memory](qwen3.8-flash-next/strata/VISION.md).
 
 - **Decode barely falls with context on Flash-Next**: three of four layers keep a
   fixed-size recurrent state and the rest attend to 2,048 selected tokens —
@@ -125,8 +134,8 @@ in computation versus I/O has not been separately profiled.
 
 Full settings, cold/repeated TTFT, memory, numerical checks and raw evidence:
 [comparison](qwen3.8-flash-next/strata/COMPARISON.md).
-[Setup, patches and launchers](qwen3.8-flash-next/strata/README.md) cover four
-registered Strata profiles. The default server remains AWQ g32.
+[Setup, patches and launchers](qwen3.8-flash-next/strata/README.md) cover eight
+registered Strata text/vision profiles. The default server remains AWQ g32.
 
 ### Strata 256K context
 
@@ -151,6 +160,26 @@ faster at ~255K. The later long-generation harness also prefills its fresh ~120K
 prefix in 21.48 / 20.41 s: fresh prefix and cold weight cache are different
 conditions. Kernel differences alone do not predict latency for every run.
 [Full settings and raw evidence](qwen3.8-flash-next/strata/COMPARISON.md#256k-context-profiles).
+
+### Strata vision variants
+
+Four additional Q8/Q6 profiles pair the same language target with the original
+BF16 mmproj on the GPU at 128K / 256K. Image input uses the pinned native
+`--vision` path and the CUDA `strata-vision` helper. Default image limit: 4,096
+context tokens per image. The encoder is loaded and warmed before automatic
+expert-cache sizing. Its VRAM reduces the cache, so the text-only speed tables
+do not describe these variants.
+
+Launchers, build and API example: [vision setup](qwen3.8-flash-next/strata/README.md#vision-profiles).
+At the original 1,024-token limit, all four pass the two-fixture OCR/shape smoke
+check and text arithmetic. At the new 4,096-token default, Q8 128K text requests
+measure TG medians of 94.4 / 108.6 / 75.8 tok/s (prose / code / Slovak), versus
+91.1 / 103.8 / 72.2 for text-only. Warmed fresh-prefix prefill at about 4K / 32K /
+120K tokens takes 1.386 / 5.921 / 21.683 s versus 1.357 / 5.897 / 21.246 s.
+These small differences do not establish a speed benefit from vision; image
+encoding and image quality at 4,096 are not measured. Stop
+releases both native workers. [Validation](qwen3.8-flash-next/strata/VISION.md). No new scored vision, EvalPlus,
+long-context or decode-throughput benchmark is claimed.
 
 ## Code: HumanEval+ and MBPP+
 

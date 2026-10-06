@@ -22,17 +22,21 @@ directory; `--model` can point its launcher at another location.
 | [leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32](https://huggingface.co/leoncca/Qwen3.8-Flash-Next-Uncensored-AWQ-g32) @ `fa561462` — uncensored | INT4 AWQ g32, zero points, 4.65 bits | BF16 | FP8 | 128.6 GiB | `vllm-awq-w4a16-g32-uncensored` |
 | [turboderp/Qwen3.8-Flash-Next-exl3](https://huggingface.co/turboderp/Qwen3.8-Flash-Next-exl3) `5.05bpw_h6_ng6` @ `7cef615f` | EXL3 5.05 bpw | EXL3 5.05 bpw, head 6 | 6 bpw | 114.6 GiB | `exllamav3-exl3-5.05bpw` |
 | [Qwen/Qwen3.8-Flash-Next-FP8](https://huggingface.co/Qwen/Qwen3.8-Flash-Next-FP8) @ `236dfdf2` | FP8 W8A8, 128×128 blocks | BF16 | FP8 | 172.8 GiB | `vllm-fp8-offload` |
-| [lmstudio-community/Qwen3.8-Flash-Next-GGUF](https://huggingface.co/lmstudio-community/Qwen3.8-Flash-Next-GGUF), Q8_0 | Q8_0, 8.50 bits including scales | mixed GGUF; small projections converted to BF16 | Q8_0, mmap | 175.30 GiB | `strata-q8`, `strata-q8-256k` |
-| [lmstudio-community/Qwen3.8-Flash-Next-GGUF](https://huggingface.co/lmstudio-community/Qwen3.8-Flash-Next-GGUF) @ `158fc825df3e`, Q6_K | Q6_K gate/up + Q8_0 down, 7.21 bits including scales | mixed GGUF; small projections converted to BF16 | Q8_0, mmap | 156.13 GiB | `strata-q6`, `strata-q6-256k` |
+| [lmstudio-community/Qwen3.8-Flash-Next-GGUF](https://huggingface.co/lmstudio-community/Qwen3.8-Flash-Next-GGUF), Q8_0 | Q8_0, 8.50 bits including scales | mixed GGUF; small projections converted to BF16 | Q8_0, mmap | 175.30 GiB | `strata-q8`, `strata-q8-256k`, `strata-q8-vision*` |
+| [lmstudio-community/Qwen3.8-Flash-Next-GGUF](https://huggingface.co/lmstudio-community/Qwen3.8-Flash-Next-GGUF) @ `158fc825df3e`, Q6_K | Q6_K gate/up + Q8_0 down, 7.21 bits including scales | mixed GGUF; small projections converted to BF16 | Q8_0, mmap | 156.13 GiB | `strata-q6`, `strata-q6-256k`, `strata-q6-vision*` |
+
+Vision variants additionally share the original 907,542,592-byte BF16 mmproj
+already installed under LM Studio. [Encoder preparation and usage](strata/README.md#vision-profiles).
 
 ## Profiles
 
-One at a time, each on `http://127.0.0.1:8090/v1` by default. All 14 profiles
+One at a time, each on `http://127.0.0.1:8090/v1` by default. All 18 profiles
 start with `scripts/start-qwen3.8-flash-next-<engine>-<variant>-<context>k.sh` at the toolkit
 root and are managed by `scripts/status.sh` and `scripts/stop.sh`.
 SGLang, vLLM and TabbyAPI advertise model `Qwen3.8-Flash-Next`. Strata advertises
 its full profile ID: `qwen3.8-flash-next-strata-q8` or `...-q6`, with `-256k`
-for the larger-context variants. Strata launchers share the `strata/` directory
+for the larger-context variants. Vision variants insert `-vision` after the
+quantization name, e.g. `qwen3.8-flash-next-strata-q8-vision-256k`. Strata launchers share the `strata/` directory
 and [documentation](strata/README.md); other profiles are documented in
 `docs/profiles/<engine>-<variant>.md`.
 
@@ -57,6 +61,10 @@ filename convention.
 | [`strata-q6`](strata/README.md#strata-q6_kq8_0) | Strata 0.1.39, native + Q8/Q6 patches; MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 131,072 | 117.1 prose, 142.5 code, 81.3 Slovak | 16.04 GiB pinned experts + PLE cache |
 | [`strata-q8-256k`](strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8 PLE patch; MTP | Q8_0 | mmap / OS file cache | 262,144 | 89.4 prose, 104.9 code, 73.1 Slovak | 36.75 GiB pinned experts + PLE cache |
 | [`strata-q6-256k`](strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8/Q6 patches; MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | 119.5 prose, 144.4 code, 93.2 Slovak | 17.95 GiB pinned experts + PLE cache |
+| [`strata-q8-vision`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 131,072 | not benchmarked | 36.55 GiB pinned experts + PLE cache |
+| [`strata-q8-vision-256k`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 262,144 | not benchmarked | 38.46 GiB pinned experts + PLE cache |
+| [`strata-q6-vision`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 131,072 | not benchmarked | 17.75 GiB pinned experts + PLE cache |
+| [`strata-q6-vision-256k`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | not benchmarked | 19.66 GiB pinned experts + PLE cache |
 
 KV pool, prefill, VRAM, code benchmarks and the Slovak check for every profile, with
 recommendations: [RESULTS.md](../RESULTS.md).
@@ -103,7 +111,7 @@ measures both engines with MTP and a 128K context:
 
 Q6 uses Q6_K gate/up, Q8_0 down and a Q8_0 PLE table: 7.21 bits per routed
 weight including scales. Strata's adaptive expert cache warms across requests.
-The ten Slovak samples per configuration are not a quality score. All four Strata launchers are registered; the compatibility patches remain
+The ten Slovak samples per configuration are not a quality score. All eight Strata launchers are registered; the compatibility patches remain
 experimental.
 
 All Strata profiles use 8,192-token automatic prefill chunks and INT8 KV.
@@ -194,7 +202,8 @@ qwen3.8-flash-next/
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Traps, error messages, and what to do about them |
 | [docs/upstream-fixes.md](docs/upstream-fixes.md) | What the local SGLang image changes relative to the upstream recipe, and why |
 | [docs/ple-ram-experiment.md](docs/ple-ram-experiment.md) | How the SGLang RAM profiles were made to fit, with every result and failure |
-| [strata/README.md](strata/README.md) | Standalone Q8/Q6 profiles, pinned build, compatibility patches, model preparation and launch commands |
+| [strata/README.md](strata/README.md) | Q8/Q6 text and vision profiles, pinned build, compatibility patches, model preparation and launch commands |
+| [strata/VISION.md](strata/VISION.md) | Image smoke checks, encoder and expert memory, lifecycle validation |
 | [strata/COMPARISON.md](strata/COMPARISON.md) | Q8/Q6 versus ik_llama.cpp: decode, prefill, context, memory and validation |
 | [../RESULTS.md](../RESULTS.md) | All profiles of all models side by side, benchmarks, recommendations |
 

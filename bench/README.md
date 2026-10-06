@@ -12,7 +12,26 @@ Python standard library only.
 | `long_context.py` | Generation after long prompts; first and repeated TTFT, actual token counts and full responses |
 | `compare_decode.py` | Sequential decode speed on prose, code and Slovak prompts; complete responses and SSE timings |
 | `evalplus_codegen.py` + `evalplus_evaluate.sh` | Code ability: HumanEval+ and MBPP+ pass@1, scored in a sandbox |
+| `vision_smoke.py` | Send an image through the OpenAI API; save response, usage and total latency |
 | `language_samples.py` | Output quality in a non-English language: fixed prompts per profile, compared blind |
+
+## `vision_smoke.py` — image input
+
+```bash
+python3 bench/vision_smoke.py q8-vision-test bench/fixtures/vision-a.png --base http://127.0.0.1:8097
+# For an arbitrary image, override the fixture-specific default question:
+python3 bench/vision_smoke.py photo-test photo.jpg --prompt "Describe this image."
+```
+
+The script requires `/health` to advertise images, discovers the API model ID,
+and sends an OpenAI `image_url` part as a base64 data URL. The default question
+asks for a four-digit code and three colored shapes without revealing the
+expected answer. It disables thinking and saves full responses, usage and total
+latency to `logs/strata-vision/<LABEL>.json`; existing files are not overwritten.
+Fixtures [vision-a.png](fixtures/vision-a.png) and [vision-b.png](fixtures/vision-b.png)
+contain different codes (8426 / 2957) and different shape order. The expected
+answers are never put in the request. This is a smoke check, not a scored vision
+benchmark or isolated encoder timing.
 
 ## `prefill.py` — prefill speed
 

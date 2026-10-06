@@ -60,6 +60,10 @@ print("  stop       scripts/stop.sh")
 print("  PID        " + str(s["pid"]))
 print("  endpoint   http://127.0.0.1:{}/v1".format(s["port"]))
 print("  context    {:,} tokens, KV {}, prefill {}".format(s["context"], s["kv"], s["prefill"]))
+v = s.get("vision")
+print("  vision     " + ("{} encoder, max {:,} tokens/image".format("GPU" if v["gpu"] else "CPU", v["max_tokens"]) if v else "off"))
+if v:
+    print("  mmproj     " + v["mmproj"])
 print("  log        " + s["log"])
 try:
     with urllib.request.urlopen("http://127.0.0.1:{}/health".format(s["port"]), timeout=5) as r:

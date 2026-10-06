@@ -16,7 +16,7 @@ from lifecycle import active, process, STATE
 ROOT = Path(__file__).resolve().parents[2]
 
 
-def main(quant="q8", description=None, context=131072):
+def main(quant="q8", description=None, context=131072, vision=False):
     ap = argparse.ArgumentParser(description=description or __doc__)
     ap.add_argument("--strata-dir", type=Path, default=ROOT.parent / "Strata")
     if quant == "q8":
@@ -33,6 +33,11 @@ def main(quant="q8", description=None, context=131072):
     ap.add_argument("--resident-gib", type=float, default=135)
     ap.add_argument("--prefill", default="auto")
     ap.add_argument("--vram-reserve-mib", type=int, default=1536)
+    if vision:
+        ap.add_argument("--mmproj", type=Path, default=Path.home() / ".lmstudio/models/lmstudio-community/Qwen3.8-Flash-Next-GGUF/mmproj-Qwen3.8-Flash-Next-BF16.gguf")
+        ap.add_argument("--vision-exe", type=Path, help="default: STRATA_DIR/build-vision/bin/strata-vision")
+        ap.add_argument("--vision-device", choices=("gpu", "cpu"), default="gpu")
+        ap.add_argument("--vision-tokens", type=int, default=4096, help="maximum context tokens per image (default: 4096)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     if args.context not in (131072, 262144):
@@ -40,6 +45,18 @@ def main(quant="q8", description=None, context=131072):
     strata = args.strata_dir.resolve()
     model = args.model.resolve()
     pack = strata / "packs" / pack_name
+    vision_config = None
+    if vision:
+        if args.vision_tokens <= 0:
+            ap.error("--vision-tokens must be positive")
+        vision_exe = (args.vision_exe or strata / "build-vision/bin/strata-vision").resolve()
+        mmproj = args.mmproj.resolve()
+        for path in (vision_exe, mmproj):
+            if not path.is_file():
+                ap.error(f"missing {path}; follow README.md's vision preparation")
+        vision_config = dict(exe=str(vision_exe), mmproj=str(mmproj), model=str(model),
+                             gpu=args.vision_device == "gpu", max_tokens=args.vision_tokens,
+                             threads=os.cpu_count() or 1)
     for path in (strata / "build/strata", strata / ".venv/bin/python", model,
                  pack / "native_experts.txt", pack / "tokenizer", strata / "mtp/rt/draft_vocab.bin"):
         if not path.exists():
@@ -52,7 +69,7 @@ def main(quant="q8", description=None, context=131072):
             if not path.exists():
                 ap.error(f"missing shard {path}")
     logs = ROOT / "logs/strata-comparison"
-    suffix = "-256k" if args.context == 262144 else ""
+    suffix = ("-vision" if vision else "") + ("-256k" if args.context == 262144 else "")
     profile = f"qwen3.8-flash-next-strata-{quant}{suffix}"
     config = dict(
         exe=str(strata / "build/strata"), cwd=str(strata),
@@ -65,7 +82,11 @@ def main(quant="q8", description=None, context=131072):
               "--max-context", str(args.context), "--kv", "int8", "--ple-io", "mmap"],
         tokenizer=str(pack / "tokenizer"),
         model_name=profile,
+        fit_max_tokens=True,
         log=str(ROOT / f"logs/strata-{quant}{suffix}-engine.log"), host="127.0.0.1", port=args.port)
+    if vision_config:
+        config["args"].append("--vision")
+        config["vision"] = vision_config
     if args.dry_run:
         print(json.dumps(config, indent=2))
         return
@@ -78,6 +99,9 @@ def main(quant="q8", description=None, context=131072):
         if running:
             ap.error(f"already running: {running['profile']}; stop it with scripts/stop.sh")
         with socket.socket() as sock:
+            # Match HTTPServer's reuse policy: closed client connections can
+            # leave TIME_WAIT sockets after a profile has already stopped.
+            sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
                 sock.bind(("127.0.0.1", args.port))
             except OSError:
@@ -85,7 +109,7 @@ def main(quant="q8", description=None, context=131072):
         target.write_text(json.dumps(config, indent=2) + "\n")
         STATE.write_text(json.dumps(dict(pid=os.getpid(), start_ticks=process(os.getpid())[1],
                          profile=profile, port=args.port, context=args.context, kv="int8",
-                         prefill=args.prefill, model=str(model), log=config['log'],
+                         prefill=args.prefill, model=str(model), log=config['log'], vision=vision_config,
                          engine=str(strata / "build/strata"), config=str(target)), indent=2) + "\n")
     os.chdir(strata)
     os.execv(python, [python, "-m", "serve.server", "--engine", "strata",

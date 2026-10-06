@@ -49,6 +49,9 @@ def _stop(timeout):
         return
     pid = state["pid"]
     targets = [(pid, state["start_ticks"])]
+    executables = {os.fsencode(state["engine"])}
+    if state.get("vision"):
+        executables.add(os.fsencode(state["vision"]["exe"]))
     for p in Path("/proc").iterdir():
         if not p.name.isdigit():
             continue
@@ -57,7 +60,7 @@ def _stop(timeout):
             argv = (p / "cmdline").read_bytes().split(b"\0")
         except OSError:
             continue
-        if info and info[2] == pid and argv[0] == os.fsencode(state["engine"]):
+        if info and info[2] == pid and argv[0] in executables:
             targets.append((int(p.name), info[1]))
     print(f"Stopping {state['profile']} (PID {pid})")
     try:

@@ -330,10 +330,15 @@ scripts/start-qwen3.8-flash-next-strata-q6-128k.sh
 These foreground launchers default to localhost port 8090, a 131,072-token
 context, INT8 KV, MTP and automatic 8,192-token prefill chunks. The corresponding
 `start-qwen3.8-flash-next-strata-q8-256k.sh` and `...-q6-256k.sh` wrappers use
-262,144 tokens. All four are registered: inspect with `scripts/status.sh` and
+262,144 tokens. All eight text/vision variants are registered: inspect with `scripts/status.sh` and
 stop with Ctrl+C or `scripts/stop.sh`. Q8 supports MMQ expert prefill;
 Q6 currently uses the FP16 fallback. See the
 [Q8/Q6 comparison](../strata/COMPARISON.md) for measured speed and memory.
+
+For images, build the additional CUDA encoder and use the parallel
+`start-qwen3.8-flash-next-strata-q8-vision-128k.sh` / `...-q6-vision-128k.sh`
+or `...-q8-vision-256k.sh` / `...-q6-vision-256k.sh` wrappers.
+[Vision preparation and API example](../strata/README.md#vision-profiles).
 
 The ik_llama.cpp reference engine uses the separate public
 [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit) repository's

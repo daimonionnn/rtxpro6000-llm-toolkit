@@ -13,13 +13,13 @@ the foreground; Ctrl+C or `scripts/stop.sh` stops it. See [Strata setup](qwen3.8
 
 | Model | Profiles | Engines | Details |
 |---|---|---|---|
-| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K native context | 14 | SGLang, vLLM, ExLlamaV3, Strata | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
+| **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K native context | 18 | SGLang, vLLM, ExLlamaV3, Strata | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
 | **Qwen3.6-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.6-27b/README.md](qwen3.6-27b/README.md) |
 | **Qwen3.8-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.8-27b/README.md](qwen3.8-27b/README.md) |
 
 Each model directory has a README with its checkpoints and profiles, and one
 document per profile in `docs/profiles/<profile>.md`; the Flash-Next one also has
-setup, troubleshooting, the model's architecture and open TODOs. The four Strata
+setup, troubleshooting, the model's architecture and open TODOs. The eight Strata
 profiles share [their setup and comparison](qwen3.8-flash-next/strata/README.md).
 
 ## Results
@@ -88,6 +88,26 @@ validation and the small Slovak sample check are in [Strata documentation](qwen3
 the full comparison with ik_llama.cpp is in
 [COMPARISON.md](qwen3.8-flash-next/strata/COMPARISON.md).
 
+### Strata vision profiles
+
+Q8 and Q6 also have parallel vision profiles at 128K and 256K. They use the
+existing BF16 `mmproj-Qwen3.8-Flash-Next-BF16.gguf` through a GPU image encoder;
+images are accepted as OpenAI `image_url` parts. By default each image uses up
+to 4,096 context tokens to preserve more detail in screenshots. Override with
+`--vision-tokens 1024` for faster image processing. INT8 KV, MTP and the context
+capacities stay the same.
+
+| Profile | Context | Launcher |
+|---|---:|---|
+| `strata-q8-vision` | 131,072 | [Q8 vision 128K](scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh) |
+| `strata-q6-vision` | 131,072 | [Q6 vision 128K](scripts/start-qwen3.8-flash-next-strata-q6-vision-128k.sh) |
+| `strata-q8-vision-256k` | 262,144 | [Q8 vision 256K](scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh) |
+| `strata-q6-vision-256k` | 262,144 | [Q6 vision 256K](scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh) |
+
+The encoder loads and warms up before the language engine sizes its expert
+cache. It uses VRAM, so fewer experts fit and the text-only benchmark figures
+above do not apply to these profiles. [Build, API example and validation](qwen3.8-flash-next/strata/README.md#vision-profiles).
+
 ## Scripts
 
 | Script | Does |
@@ -121,6 +141,10 @@ and `-512k` = 524,288 tokens. They describe the launch defaults; explicit
 | [start-qwen3.8-flash-next-strata-q6-128k.sh](scripts/start-qwen3.8-flash-next-strata-q6-128k.sh) | Strata Q6_K/Q8_0, additional Q6 expert patch, MTP, 128K context; foreground |
 | [start-qwen3.8-flash-next-strata-q8-256k.sh](scripts/start-qwen3.8-flash-next-strata-q8-256k.sh) | Strata Q8_0, MTP, 256K context; foreground |
 | [start-qwen3.8-flash-next-strata-q6-256k.sh](scripts/start-qwen3.8-flash-next-strata-q6-256k.sh) | Strata Q6_K/Q8_0, MTP, 256K context; foreground |
+| [start-qwen3.8-flash-next-strata-q8-vision-128k.sh](scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh) | Strata Q8, BF16 GPU vision, MTP, 128K context; foreground |
+| [start-qwen3.8-flash-next-strata-q8-vision-256k.sh](scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh) | Strata Q8, BF16 GPU vision, MTP, 256K context; foreground |
+| [start-qwen3.8-flash-next-strata-q6-vision-128k.sh](scripts/start-qwen3.8-flash-next-strata-q6-vision-128k.sh) | Strata Q6, BF16 GPU vision, MTP, 128K context; foreground |
+| [start-qwen3.8-flash-next-strata-q6-vision-256k.sh](scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh) | Strata Q6, BF16 GPU vision, MTP, 256K context; foreground |
 | `start-qwen3.6-27b-sglang-bf16-256k.sh` | Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation |
 | `start-qwen3.8-27b-sglang-bf16-256k.sh` | Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation |
 
