@@ -163,8 +163,10 @@ scripts/stop.sh
 
 The workstation uses the user service
 [strata-server.service](common/systemd/strata-server.service), which calls
-`scripts/start.sh`. It starts Q8 vision 128K on localhost port 8090, with a
-4,096-token image limit. User lingering starts the service at boot without
+`scripts/start.sh --host 0.0.0.0`. It starts Q8 vision 128K on port 8090,
+accessible locally and from the LAN, with a 4,096-token image limit.
+On this workstation the LAN API URL is `http://192.168.1.101:8090/v1`.
+User lingering starts the service at boot without
 requiring an interactive login. The former `ik-llama-server.service` is disabled.
 
 To install on a checkout at `~/development/rtxpro6000-llm-toolkit`, after
@@ -202,7 +204,8 @@ overridden from the environment, e.g.
 
 Run Strata after preparing the engine and model pack. Its shell wrappers pass
 `--port`, `--model`, `--context`, `--prefill` and other options to the Python
-launcher. Defaults are localhost port 8090 and 131,072 tokens, or 262,144 tokens
+launcher. Direct launches default to localhost port 8090; `--host 0.0.0.0`
+enables LAN access. The boot service uses this option. Context is 131,072 tokens, or 262,144 tokens
 for the `-256k` wrappers. `scripts/status.sh` and `scripts/stop.sh` also manage
 Strata started directly through its Python launchers; runtime state lives in
 `logs/strata-server.json`.

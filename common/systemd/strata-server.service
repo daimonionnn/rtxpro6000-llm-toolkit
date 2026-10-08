@@ -7,7 +7,7 @@ StartLimitBurst=3
 [Service]
 Type=simple
 WorkingDirectory=%h/development/rtxpro6000-llm-toolkit
-ExecStart=%h/development/rtxpro6000-llm-toolkit/scripts/start.sh
+ExecStart=%h/development/rtxpro6000-llm-toolkit/scripts/start.sh --host 0.0.0.0
 Environment=PYTHONUNBUFFERED=1
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
 Restart=on-failure

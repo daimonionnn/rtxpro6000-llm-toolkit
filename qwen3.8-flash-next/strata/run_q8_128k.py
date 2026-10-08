@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Run the experimental Strata Q8 profile after the preparation in README.md.
 
-Runs in the foreground, bound to localhost. Stop the other GPU server first.
+Runs in the foreground, bound to localhost by default. Stop the other GPU server first.
 """
 import argparse
 import json
@@ -29,6 +29,7 @@ def main(quant="q8", description=None, context=131072, vision=False):
         raise ValueError(f"unknown profile {quant}")
     ap.add_argument("--model", type=Path, default=default_model)
     ap.add_argument("--port", type=int, default=8090)
+    ap.add_argument("--host", default="127.0.0.1", help="IPv4 bind address (use 0.0.0.0 for LAN access)")
     ap.add_argument("--context", type=int, default=context)
     ap.add_argument("--resident-gib", type=float, default=135)
     ap.add_argument("--prefill", default="auto")
@@ -83,7 +84,7 @@ def main(quant="q8", description=None, context=131072, vision=False):
         tokenizer=str(pack / "tokenizer"),
         model_name=profile,
         fit_max_tokens=True,
-        log=str(ROOT / f"logs/strata-{quant}{suffix}-engine.log"), host="127.0.0.1", port=args.port)
+        log=str(ROOT / f"logs/strata-{quant}{suffix}-engine.log"), host=args.host, port=args.port)
     if vision_config:
         config["args"].append("--vision")
         config["vision"] = vision_config
@@ -103,17 +104,17 @@ def main(quant="q8", description=None, context=131072, vision=False):
             # leave TIME_WAIT sockets after a profile has already stopped.
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             try:
-                sock.bind(("127.0.0.1", args.port))
+                sock.bind((args.host, args.port))
             except OSError:
                 ap.error(f"port {args.port} is occupied; stop the existing server first")
         target.write_text(json.dumps(config, indent=2) + "\n")
         STATE.write_text(json.dumps(dict(pid=os.getpid(), start_ticks=process(os.getpid())[1],
-                         profile=profile, port=args.port, context=args.context, kv="int8",
+                         profile=profile, host=args.host, port=args.port, context=args.context, kv="int8",
                          prefill=args.prefill, model=str(model), log=config['log'], vision=vision_config,
                          engine=str(strata / "build/strata"), config=str(target)), indent=2) + "\n")
     os.chdir(strata)
     os.execv(python, [python, "-m", "serve.server", "--engine", "strata",
-                     "--config", str(target), "--port", str(args.port)])
+                     "--config", str(target), "--host", args.host, "--port", str(args.port)])
 
 
 if __name__ == "__main__":

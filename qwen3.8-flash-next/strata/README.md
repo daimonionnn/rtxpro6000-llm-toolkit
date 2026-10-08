@@ -235,7 +235,9 @@ scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh
 ```
 
 Each runs in the foreground on localhost port 8090 by default; `--port` changes
-it. The API model ID is the full profile ID, e.g.
+it. Use `--host 0.0.0.0` for LAN access; the workstation's boot service already
+uses this option, with LAN API URL `http://192.168.1.101:8090/v1`.
+The API model ID is the full profile ID, e.g.
 `qwen3.8-flash-next-strata-q8-vision` at 128K or
 `qwen3.8-flash-next-strata-q8-vision-256k` at 256K.
 
