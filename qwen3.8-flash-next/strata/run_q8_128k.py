@@ -25,6 +25,9 @@ def main(quant="q8", description=None, context=131072, vision=False):
     elif quant == "q6":
         default_model = ROOT / "models/Qwen3.8-Flash-Next-Q6_K-GGUF/Qwen3.8-Flash-Next-Q6_K-00001-of-00005.gguf"
         pack_name = "q6_k"
+    elif quant == "q8-abliterated":
+        default_model = ROOT / "models/Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF/Qwen3.8-Flash-Next-Abliterated-Q8_0.gguf"
+        pack_name = "q8_0-abliterated"
     else:
         raise ValueError(f"unknown profile {quant}")
     ap.add_argument("--model", type=Path, default=default_model)
@@ -112,6 +115,15 @@ def main(quant="q8", description=None, context=131072, vision=False):
                          profile=profile, host=args.host, port=args.port, context=args.context, kv="int8",
                          prefill=args.prefill, model=str(model), log=config['log'], vision=vision_config,
                          engine=str(strata / "build/strata"), config=str(target)), indent=2) + "\n")
+    # A crashed engine holds ~200 GiB of host memory, much of it mapped by the
+    # NVIDIA driver. Dumping it can block the process in the kernel (state D)
+    # for hours with the VRAM still held, where even SIGKILL cannot end it.
+    # Dump no memory mappings; fork and exec inherit the filter.
+    Path("/proc/self/coredump_filter").write_text("0")
+    # Strata 0.1.42+ skips low-ranked missed experts by default on CUDA; its own
+    # measurements show the largest drift on non-English text. Compute every
+    # expert unless the caller set the variable (see NON-ENGLISH.md).
+    os.environ.setdefault("STRATA_ROUTE_TAIL_SKIP", "0")
     os.chdir(strata)
     os.execv(python, [python, "-m", "serve.server", "--engine", "strata",
                      "--config", str(target), "--host", args.host, "--port", str(args.port)])

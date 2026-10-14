@@ -17,6 +17,8 @@ PROFILES=(
   "qwen3.8-flash-next-strata-q8-vision-256k|qwen3.8-flash-next/strata|run_q8_vision_256k.py|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, Q8, BF16 GPU vision, MTP, 256K context|262144"
   "qwen3.8-flash-next-strata-q6-vision|qwen3.8-flash-next/strata|run_q6_vision_128k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6, BF16 GPU vision, MTP, 128K context|131072"
   "qwen3.8-flash-next-strata-q6-vision-256k|qwen3.8-flash-next/strata|run_q6_vision_256k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6, BF16 GPU vision, MTP, 256K context|262144"
+  "qwen3.8-flash-next-strata-q8-abliterated|qwen3.8-flash-next/strata|run_q8_abliterated_128k.py|Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, abliterated Q8_0 (windowsxp811203), MTP, 128K context|131072"
+  "qwen3.8-flash-next-strata-q8-abliterated-vision|qwen3.8-flash-next/strata|run_q8_abliterated_vision_128k.py|Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, abliterated Q8_0 (windowsxp811203), BF16 GPU vision, MTP, 128K context|131072"
   "qwen3.8-flash-next-sglang-nvfp4-nvme|qwen3.8-flash-next/sglang/nvfp4-nvme|serve-nvfp4-nvme-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, local Docker image, NVFP4, PLE table streamed from NVMe|262144"
   "qwen3.8-flash-next-sglang-nvfp4-ram|qwen3.8-flash-next/sglang/nvfp4-ram|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, local Docker image, NVFP4, PLE table in RAM|262144"
   "qwen3.8-flash-next-sglang-nvfp4-ram-official|qwen3.8-flash-next/sglang/nvfp4-ram-official|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, official lmsysorg image, NVFP4, PLE table in RAM|262144"

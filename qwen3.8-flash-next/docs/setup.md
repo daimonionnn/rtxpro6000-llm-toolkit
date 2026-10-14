@@ -317,20 +317,20 @@ compiles kernels for ~45 s. See [exllamav3-exl3-5.05bpw.md](profiles/exllamav3-e
 
 ## 8. The Strata Q8 / Q6 profiles
 
-Prepare the pinned native engine, local compatibility patches, GGUF checkpoint
+Prepare the pinned native engine (Strata 0.1.44.1, no patches), GGUF checkpoint
 and model pack as described in [strata/README.md](../strata/README.md). Run one
 launcher from the toolkit root after stopping the other GPU server:
 
 ```bash
 scripts/start-qwen3.8-flash-next-strata-q8-128k.sh
-# Or Q6_K/Q8_0, after preparing its additional patch and pack:
+# Or Q6_K/Q8_0, after preparing its pack:
 scripts/start-qwen3.8-flash-next-strata-q6-128k.sh
 ```
 
 These foreground launchers default to localhost port 8090, a 131,072-token
 context, INT8 KV, MTP and automatic 8,192-token prefill chunks. The corresponding
 `start-qwen3.8-flash-next-strata-q8-256k.sh` and `...-q6-256k.sh` wrappers use
-262,144 tokens. All eight text/vision variants are registered: inspect with `scripts/status.sh` and
+262,144 tokens. All ten text/vision variants are registered: inspect with `scripts/status.sh` and
 stop with Ctrl+C or `scripts/stop.sh`. Q8 supports MMQ expert prefill;
 Q6 currently uses the FP16 fallback. See the
 [Q8/Q6 comparison](../strata/COMPARISON.md) for measured speed and memory.

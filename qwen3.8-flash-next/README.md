@@ -102,7 +102,7 @@ not had a new EvalPlus run or independently scored Slovak comparison.
 
 ## Strata Q8 / Q6 experiment
 
-Registered launchers and local compatibility patches are in
+Registered launchers and setup are in
 [strata/README.md](strata/README.md). The [2026-10-06 comparison](strata/COMPARISON.md)
 measures both engines with MTP and a 128K context:
 
@@ -115,8 +115,8 @@ measures both engines with MTP and a 128K context:
 
 Q6 uses Q6_K gate/up, Q8_0 down and a Q8_0 PLE table: 7.21 bits per routed
 weight including scales. Strata's adaptive expert cache warms across requests.
-The ten Slovak samples per configuration are not a quality score. All eight Strata launchers are registered; the compatibility patches remain
-experimental.
+The ten Slovak samples per configuration are not a quality score. The Strata launchers are registered and now run on unpatched Strata 0.1.44.1;
+these figures come from 0.1.39 with local compatibility patches.
 
 All Strata profiles use 8,192-token automatic prefill chunks and INT8 KV.
 Q8 has quantized MMQ expert prefill; Q6 currently dequantizes expert matrices
@@ -166,6 +166,30 @@ amount of expert weight offloaded.
       that are now within a few prompts of each other
 - [ ] Optionally the best one or two with thinking on (`--thinking on`)
 
+### ik_llama.cpp against Strata, original and abliterated Q8_0
+
+The 2026-10-14 tests ([strata/README.md](strata/README.md#full-test-against-the-original-q8_0-2026-10-14))
+compared both Q8_0 checkpoints on Strata only. In the same blind Slovak sheet,
+ik_llama.cpp Q8_0 (answers from 2026-09-15) scored 74 / 72 against 64 / 66 for Strata
+with identical weights, so the engine may matter more than the abliteration. Both
+runs need port 8090, so Strata and the agents using it are down meanwhile.
+
+- [ ] ik_llama.cpp Q8_0 (original): `bench/qa_accuracy.py run ik-llama-q8_0-128k`
+      with the default seed, then `compare` against `strata-q8-orig-0141`
+      (GSM8K 300, MMLU-Pro 600; about 2–3 h at ~50 tok/s)
+- [ ] ik_llama.cpp with the abliterated Q8_0
+      (`models/Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF`), launched from
+      ik-llama-toolkit: EvalPlus, `qa_accuracy.py`, Slovak samples and
+      `compare_decode.py` / `prefill.py` (about 4–5 h)
+- [ ] Fresh Slovak samples from both ik_llama.cpp runs, graded blind together with
+      `strata-q8-orig-0141` and `strata-q8-abliterated` by at least two graders, to
+      check whether Strata's lower Slovak score holds
+- [ ] Find the cause of Strata's Slovak gap, as planned in
+      [strata/NON-ENGLISH.md](strata/NON-ENGLISH.md#how-to-separate-the-causes):
+      teacher-forced KL against ik_llama.cpp, then one switch at a time
+- [x] Upgrade to Strata 0.1.44.1 with `STRATA_ROUTE_TAIL_SKIP=0` set by the launchers
+      ([route tail skip](strata/NON-ENGLISH.md#route-tail-skip-strata-0142))
+
 ## Layout
 
 ```
@@ -193,7 +217,7 @@ qwen3.8-flash-next/
 │   └── fp8-offload/              launcher + stop
 ├── exllamav3/
 │   └── exl3-5.05bpw/             launcher + stop, TabbyAPI config template, sampler preset
-└── strata/                      Q8/Q6 Python launchers, compatibility patches, comparison
+└── strata/                      Q8/Q6 Python launchers, historical 0.1.39 patches, comparison
 ```
 
 ## Documentation
@@ -206,7 +230,8 @@ qwen3.8-flash-next/
 | [docs/troubleshooting.md](docs/troubleshooting.md) | Traps, error messages, and what to do about them |
 | [docs/upstream-fixes.md](docs/upstream-fixes.md) | What the local SGLang image changes relative to the upstream recipe, and why |
 | [docs/ple-ram-experiment.md](docs/ple-ram-experiment.md) | How the SGLang RAM profiles were made to fit, with every result and failure |
-| [strata/README.md](strata/README.md) | Q8/Q6 text and vision profiles, pinned build, compatibility patches, model preparation and launch commands |
+| [strata/README.md](strata/README.md) | Q8/Q6 text and vision profiles, pinned build, historical 0.1.39 patches, model preparation and launch commands |
+| [strata/NON-ENGLISH.md](strata/NON-ENGLISH.md) | Why Strata's Slovak scored below ik_llama.cpp with the same weights: evidence, candidate causes, upgrade warning |
 | [strata/VISION.md](strata/VISION.md) | Image smoke checks, encoder and expert memory, lifecycle validation |
 | [strata/COMPARISON.md](strata/COMPARISON.md) | Q8/Q6 versus ik_llama.cpp: decode, prefill, context, memory and validation |
 | [../RESULTS.md](../RESULTS.md) | All profiles of all models side by side, benchmarks, recommendations |

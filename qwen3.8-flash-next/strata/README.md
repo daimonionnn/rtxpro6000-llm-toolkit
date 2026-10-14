@@ -3,7 +3,7 @@
 Experimental native setup for the RTX PRO 6000 Blackwell 96 GB. It reuses the
 local lmstudio-community Q8_0 checkpoint and compares it with the published
 Q6_K/Q8_0 checkpoint.
-The engine checkout lives at `../Strata`, outside this toolkit. All eight text/vision profiles
+The engine checkout lives at `../Strata`, outside this toolkit. All ten text/vision profiles
 are in the toolkit registry. Launchers run in the foreground; Ctrl+C or
 `scripts/stop.sh` stops them. Use `scripts/status.sh` from another terminal.
 
@@ -25,19 +25,39 @@ comparison methodology are in [COMPARISON.md](COMPARISON.md).
 
 ## Source and compatibility
 
-- Strata 0.1.39, commit `6f32ec070f23ced9f50e704d854d775da52591ab`.
+- Strata 0.1.44.1, commit `296b59d2f73c8f04a805df29c2fa97655adace78` (tag `v0.1.44.1`), unpatched.
+  It reads Q8_0 PLE tables and contains Q6_K expert kernels upstream.
+- The launchers set `STRATA_ROUTE_TAIL_SKIP=0` unless the caller sets it. Strata
+  0.1.42+ otherwise skips low-ranked experts missing from VRAM on CUDA, which
+  changes answers, most on non-English text ([NON-ENGLISH.md](NON-ENGLISH.md)).
 - Its pinned ggml dependency: llama.cpp `3cf03257f219afbe7334045ff7c6a06ac68c627d`.
 - CUDA 13.3, compiled for SM120.
 - Checkpoint: `lmstudio-community/Qwen3.8-Flash-Next-GGUF`, Q8_0, six local shards.
-- `q8-ple.patch` adds Q8_0 PLE table reads. Stock Strata accepts Q8 experts but
-  rejects the Q8 PLE table. The patch preserves its 170-byte rows and decodes
-  them through Strata's existing Q8_0 reference dequantizer. It increases all
-  PLE row buffers from 160 to 170 bytes.
 
-The PLE test compares real rows, including rows crossing a disk page, and a
-16-row batch against ggml. Both mmap and direct I/O pass with zero float
-difference. The existing synthetic Q8_0/Q8_0 expert test also passes: GPU
-dequantization agrees bit for bit with ggml; GPU and CPU expert outputs have
+Strata 0.1.41 (`fb58e0db`) ran unpatched from 2026-10-09; the 2026-10-14 accuracy
+tests below used it. On 2026-10-14 the engine moved to 0.1.44.1 and all packs were
+rebuilt with its `iq_pack.py`; the MTP runtime files were kept (the MTP tools did
+not change). The 0.1.41 binaries and packs remain as `../Strata/build-0.1.41`,
+`build-vision-0.1.41` and `packs-0.1.41`, and the commit is tagged
+`toolkit-0.1.41-running`. The Q6 profiles have not been started on 0.1.41 or later.
+
+### Historical patches (Strata 0.1.39)
+
+The measurements dated 2026-10-06 in this directory, [COMPARISON.md](COMPARISON.md)
+and [VISION.md](VISION.md) used Strata 0.1.39 (`6f32ec070f23ced9f50e704d854d775da52591ab`)
+with two local patches. They are kept only to reproduce those runs; 0.1.41 needs
+neither.
+
+- [q8-ple.patch](q8-ple.patch) added Q8_0 PLE table reads. Strata 0.1.39 accepted Q8
+  experts but rejected the Q8 PLE table. The patch preserved its 170-byte rows and
+  decoded them through Strata's existing Q8_0 reference dequantizer. It increased
+  all PLE row buffers from 160 to 170 bytes.
+- [q6-experts.patch](q6-experts.patch) added Q6_K experts; see [Q6_K](#strata-q6_kq8_0).
+
+With the 0.1.39 patch, the PLE test compared real rows, including rows crossing
+a disk page, and a 16-row batch against ggml. Both mmap and direct I/O passed with zero float
+difference. The existing synthetic Q8_0/Q8_0 expert test also passed: GPU
+dequantization agreed bit for bit with ggml; GPU and CPU expert outputs had
 relative difference `1.09e-7` on that fixture.
 
 `iq_pack.py --compat-bf16` leaves the experts, embeddings, native projections
@@ -57,8 +77,7 @@ raw tensors against the upstream pinned hashes.
 
 ```bash
 git clone https://github.com/Niko1221/Strata.git ../Strata
-git -C ../Strata checkout 6f32ec070f23ced9f50e704d854d775da52591ab
-git -C ../Strata apply "$PWD/qwen3.8-flash-next/strata/q8-ple.patch"
+git -C ../Strata checkout v0.1.44.1
 python3 -m venv ../Strata/.venv
 ../Strata/.venv/bin/pip install -r ../Strata/requirements.txt
 cmake -S ../Strata -B ../Strata/build \
@@ -66,7 +85,7 @@ cmake -S ../Strata -B ../Strata/build \
   -DCMAKE_CUDA_COMPILER=/usr/local/cuda-13.3/bin/nvcc \
   -DCUDAToolkit_ROOT=/usr/local/cuda-13.3 \
   -DSTRATA_BUILD_TESTS=OFF -DCMAKE_BUILD_TYPE=Release
-cmake --build ../Strata/build --target strata ple_q8_parity native_expert_parity -j 12
+cmake --build ../Strata/build --target strata -j 12
 ```
 
 Use the absolute path to the dependency's Python modules:
@@ -124,7 +143,7 @@ After the same preparation, use either registered launcher:
 
 ```bash
 scripts/start-qwen3.8-flash-next-strata-q8-256k.sh
-# Or, after preparing the Q6 patch and pack:
+# Or, after preparing the Q6 pack:
 scripts/start-qwen3.8-flash-next-strata-q6-256k.sh
 ```
 
@@ -149,8 +168,16 @@ Runtime state is `logs/strata-server.json`. PID start times protect against
 stale files and PID reuse. `stop.sh` terminates the API process and its native
 engine, waiting for both to exit. Logs are `logs/strata-q8-256k-engine.log` and
 `logs/strata-q6-256k-engine.log`; generated configs are under
-`logs/strata-comparison/`. All eight launchers run in the foreground and bind
+`logs/strata-comparison/`. All ten launchers run in the foreground and bind
 only to localhost. Direct Python launches are also tracked by status/stop.
+
+The launchers set `/proc/self/coredump_filter` to 0, which the API process and
+engine inherit. On 2026-10-09 the engine stalled in a ~69K prefill, and Strata's
+watchdog (issue #29) stopped it. The kernel then hung dumping the crashed
+engine's ~213 GB of host memory. The process stayed in state D inside
+`vfs_coredump` holding 94 GB of VRAM. Neither `stop.sh` nor SIGKILL could end it,
+and only a reboot frees the GPU in that state. With the filter at 0, a crash writes only the
+ELF headers and exits at once.
 
 Measured 2026-10-06, after the short decode test and prefill sweep:
 
@@ -319,6 +346,108 @@ Start/status/stop checks confirm both native workers exit. Exact latency, memory
 fixtures and local evidence are in [VISION.md](VISION.md). This is a smoke check,
 not a scored vision or long-context benchmark.
 
+## Abliterated Q8_0
+
+Two profiles serve
+[windowsxp811203/Qwen3.8-Flash-Next-Abliterated-GGUF](https://huggingface.co/windowsxp811203/Qwen3.8-Flash-Next-Abliterated-GGUF),
+a refusal-removed Qwen3.8-Flash-Next, as a single 188 GB Q8_0 file:
+
+| Profile | Launcher | Context |
+|---|---|---:|
+| `strata-q8-abliterated` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-abliterated-128k.sh) | 131,072 |
+| `strata-q8-abliterated-vision` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-abliterated-vision-128k.sh) | 131,072 |
+
+The upstream card reports, on its BF16 parent: AdvBench refusals 99.42% → 0.96%,
+MMLU −1.6 points (paired), GSM8K unchanged. The quantized files were not
+benchmarked upstream, and Slovak quality has not been measured here. The license
+is the Qwen Community License 1.0, not Apache-2.0.
+
+The file has the same 1,224 tensors, types and shapes as the lmstudio-community
+Q8_0, the same tokenizer and chat template, and the corrected sparse-attention
+`compress_ratios` (`[0,0,0,4,…]`; uploads before 2026-09-17 had zeros). It ships
+no MTP head; the profiles reuse `../Strata/mtp/rt`, built from the original
+model. Vision reuses the original BF16 mmproj; `strata-vision` opens the text
+model vocabulary-only, and the vocabularies are identical.
+
+Download the pinned revision and check the hash. Large downloads can arrive
+corrupted without an error: on 2026-10-13 two 1 GiB ranges differed, and only
+a full `sha256sum` revealed it. Re-fetching those byte ranges fixed the file.
+
+```bash
+hf download windowsxp811203/Qwen3.8-Flash-Next-Abliterated-GGUF \
+  Qwen3.8-Flash-Next-Abliterated-Q8_0.gguf \
+  --revision c3365c410baa29bdd3d7cc8cbc2bf9bee0de2f3a \
+  --local-dir models/Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF
+sha256sum models/Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF/Qwen3.8-Flash-Next-Abliterated-Q8_0.gguf
+# e4b92e69943ebe8aafbd82296bdb5fcc0d44d9f344c98b77a30e86c81e3eb3d2
+"$STRATA_PYTHON" ../Strata/tools/iq_pack.py \
+  --gguf "$PWD/models/Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF/Qwen3.8-Flash-Next-Abliterated-Q8_0.gguf" \
+  --out ../Strata/packs/q8_0-abliterated --compat-bf16
+```
+
+The pack has its own `dense.bin`; it differs from the original Q8_0 pack.
+
+Optionally, replace the 363 small tensors that `--compat-bf16` rounds from Q8_0 with
+the original BF16 bytes of the same checkpoint. Only the header and those tensors
+(1.22 GiB) are downloaded from the BF16 GGUF; the tool refuses any tensor whose values
+differ by more than Q8_0-sized error, and keeps the previous `dense.bin` as
+`dense.bin.before-bf16`. Tested on 2026-10-14, it did not measurably change Slovak
+or GSM8K results ([NON-ENGLISH.md](NON-ENGLISH.md)), so the running pack is the
+plain `iq_pack.py` output. Re-running `iq_pack.py` undoes the patch.
+
+```bash
+../Strata/.venv/bin/python qwen3.8-flash-next/strata/bf16_dense_patch.py \
+  --pack ../Strata/packs/q8_0-abliterated \
+  --source https://huggingface.co/windowsxp811203/Qwen3.8-Flash-Next-Abliterated-GGUF/resolve/c3365c410baa29bdd3d7cc8cbc2bf9bee0de2f3a/Qwen3.8-Flash-Next-Abliterated-BF16.gguf
+```
+
+Smoke test, 2026-10-13, `strata-q8-abliterated-vision`, Strata 0.1.41 build,
+default launcher settings. It started in 50 s. Arithmetic, a thinking-mode
+question and short creative prompts were answered correctly. AdvBench's first
+prompt was not refused. Both vision fixtures were read exactly (codes 8426 and
+2957, all colors, shapes and order). `bench/compare_decode.py`, thinking off,
+3 × 512 tokens, medians: 100.8 prose / 117.2 code / 72.8 Slovak tok/s. The
+first repeat ran on a cold expert cache (67.8 / 81.0 / 61.2). These are smoke
+figures, not a comparison under the conditions in [COMPARISON.md](COMPARISON.md).
+
+### Full test against the original Q8_0, 2026-10-14
+
+Both profiles ran as vision 128K on the same Strata 0.1.41 build, one after the
+other, without other API traffic. Accuracy runs are greedy with thinking off;
+the Slovak sheet also included ik_llama.cpp Q8_0 and both AWQ g32 checkpoints
+from [RESULTS.md](../../RESULTS.md#non-english-slovak-blind-check).
+
+| Test | Abliterated Q8_0 | Original Q8_0 | Paired difference |
+|---|---:|---:|---|
+| EvalPlus plus tests, of 542 | 455 | 457 | 5 vs 7 tasks, p = 0.77 |
+| GSM8K, seeded 300 | 290 (96.7%) | 291 (97.0%) | 0 vs 1, p = 1.0 |
+| MMLU-Pro, seeded 600 | 481 (80.2%) | 471 (78.5%) | 19 vs 9, p = 0.09 |
+| Slovak blind, grader 1 / 2, of 100 | 62 / 64 | 64 / 66 | within grader noise |
+| Decode prose / code / Slovak | 101.4 / 125.2 / 81.3 tok/s | 89.3 / 106.5 / 71.5 tok/s | single runs, adaptive cache |
+
+No loss from abliteration was measured. MMLU-Pro answers hit the 4,096-token
+limit 37 and 38 times, mostly in engineering, math and physics: long non-thinking
+reasoning, not loops, equally for both. The Slovak sheet ranked ik_llama.cpp Q8_0
+first (74 / 72), then AWQ g32 (69 / 76) and the uncensored AWQ g32 (70 / 68);
+both Strata variants were last, mainly on the story and inflection prompts. With
+identical Q8_0 weights that points at the engine rather than the abliteration —
+possibly its BF16-rounded small tensors — but one greedy answer per prompt cannot
+establish that. Candidate causes and how to test them: [NON-ENGLISH.md](NON-ENGLISH.md).
+After the upgrade to Strata 0.1.44.1 (tail skip off), a second blind check scored the
+abliterated profile 67 / 70 against 64 / 63 on 0.1.41 and 72 / 73 for ik_llama.cpp.
+Decode on 0.1.44.1: 105.5 / 120.6 / 80.3 tok/s (prose / code / Slovak); both vision
+fixtures read exactly.
+
+Abliterated prefill, `bench/prefill.py`, second sweep, fresh prefixes:
+4,010 / 31,881 / 120,592 tokens in 0.04 s cached; cold 5.56 s at 32K
+(5,736 tok/s) and 20.06 s at 120K (6,011 tok/s). `bench/long_context.py` at
+120,632 tokens: TTFT 20.0 s, then 97.9 tok/s; repeated prefix 0.08 s TTFT and
+133–134 tok/s.
+
+Raw results: `logs/evalplus/strata-q8-{abliterated,orig-0141}/`,
+`logs/qa-accuracy/`, `logs/language-samples/sk/blind-20261014-035124*.md`,
+`logs/strata-comparison/strata-q8-{abliterated-vision,vision-0141}-full.json`.
+
 ## Comparison
 
 ```bash
@@ -357,20 +486,11 @@ cp qwen3.8-flash-next/strata/Q6_SHA256SUMS \
 
 ### Strata Q6_K/Q8_0
 
-Stock Strata at this commit rejects Q6_K routed experts. Apply
-[q6-experts.patch](q6-experts.patch) **after** the Q8 PLE patch from the build
-instructions above. It adds Q6_K gate/up and output-head dispatch, row byte
-accounting, embedding and FP32/FP16 prompt dequantization. It uses the pinned
-llama.cpp signed-scale/DP4A contract. Q6_K down remains unsupported: this
-model's 640-wide down rows cannot contain whole 256-value Q6_K blocks.
+Strata 0.1.41 and later contain Q6_K expert kernels upstream, so the current build needs
+no patch; the Q6 profiles have not yet been started on it. Build the pack and
+start the profile:
 
 ```bash
-git -C ../Strata apply "$PWD/qwen3.8-flash-next/strata/q6-experts.patch"
-cmake --build ../Strata/build --target strata native_expert_parity -j 12
-../Strata/build/native_expert_parity --synthetic q6_K/q8_0 q8_0/q8_0
-../Strata/build/native_expert_parity \
-  models/Qwen3.8-Flash-Next-Q6_K-GGUF/Qwen3.8-Flash-Next-Q6_K-00001-of-00005.gguf \
-  0 1 16 33 47
 export STRATA_GGUF_PY="$(realpath ../Strata/build/_deps/strata_llamacpp-src/gguf-py)"
 ../Strata/.venv/bin/python ../Strata/tools/iq_pack.py \
   --gguf models/Qwen3.8-Flash-Next-Q6_K-GGUF/Qwen3.8-Flash-Next-Q6_K-00001-of-00005.gguf \
@@ -378,7 +498,16 @@ export STRATA_GGUF_PY="$(realpath ../Strata/build/_deps/strata_llamacpp-src/gguf
 scripts/start-qwen3.8-flash-next-strata-q6-128k.sh --port 8096
 ```
 
-The Q6 and Q8 synthetic expert checks and the five real Q6 layers pass.
+The rest of this section describes the 2026-10-06 run on Strata 0.1.39, which
+rejected Q6_K routed experts. [q6-experts.patch](q6-experts.patch), applied after
+the Q8 PLE patch, added Q6_K gate/up and output-head dispatch, row byte
+accounting, embedding and FP32/FP16 prompt dequantization, using the pinned
+llama.cpp signed-scale/DP4A contract. Q6_K down was unsupported: this model's
+640-wide down rows cannot contain whole 256-value Q6_K blocks. It was checked with
+`native_expert_parity --synthetic q6_K/q8_0 q8_0/q8_0` and on real layers
+0, 1, 16, 33 and 47.
+
+The Q6 and Q8 synthetic expert checks and the five real Q6 layers passed.
 GPU dequantization agrees bit for bit with ggml, including FP16 conversion
 and gathered embedding rows. GPU expert relative error against the float
 reference is 1.08–1.24% on the real layers (quantized activations).
@@ -393,10 +522,10 @@ The launcher keeps the same context, MTP, KV, prefill and reserve settings as
 Strata Q8. Q6 holds 20,687 experts in 85.33 GiB GPU cache, with 16.04 GiB of
 remaining experts pinned in RAM.
 
-Q8 supports the quantized MMQ expert prefill path. Q6_K does not yet have MMQ
-support in this build: it dequantizes expert matrices to FP16 before the batched
-matrix products. The Q6 patch supplies decode and dequantization support, not
-Q6 MMQ prefill. This is why smaller weights need not give faster prefill;
+Q8 supported the quantized MMQ expert prefill path. Q6_K had no MMQ support in
+that build: it dequantized expert matrices to FP16 before the batched matrix
+products. The Q6 patch supplied decode and dequantization support, not Q6 MMQ
+prefill; whether later versions change this has not been checked. This is why smaller weights need not give faster prefill;
 filesystem reads and warmup also contribute to the measured time.
 
 In a separate terminal, run the measurements sequentially:

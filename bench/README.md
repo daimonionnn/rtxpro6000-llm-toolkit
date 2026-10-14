@@ -14,6 +14,7 @@ Python standard library only.
 | `evalplus_codegen.py` + `evalplus_evaluate.sh` | Code ability: HumanEval+ and MBPP+ pass@1, scored in a sandbox |
 | `vision_smoke.py` | Send an image through the OpenAI API; save response, usage and total latency |
 | `language_samples.py` | Output quality in a non-English language: fixed prompts per profile, compared blind |
+| `qa_accuracy.py` | Math (GSM8K) and knowledge/reasoning (MMLU-Pro) accuracy on seeded subsets, paired comparison |
 
 ## `vision_smoke.py` — image input
 
@@ -200,3 +201,23 @@ Keep in mind:
 - Collect every profile in a comparison with the same script version, so all of
   them answer the same prompts.
 - Results live under `logs/`, which is not tracked.
+
+## `qa_accuracy.py` — GSM8K and MMLU-Pro
+
+```bash
+python3 bench/qa_accuracy.py run strata-q8-abliterated     # 300 GSM8K + 600 MMLU-Pro
+python3 bench/qa_accuracy.py compare strata-q8-abliterated strata-q8-orig-0141
+```
+
+`run` downloads the test splits once through the Hugging Face datasets-server API
+(cached in `logs/qa-accuracy/.cache`), picks a seeded random subset (`--seed`,
+`--n-gsm8k`, `--n-mmlu-pro`), and asks each question greedily with thinking off and
+a short step-by-step instruction. GSM8K answers end in `#### <number>`, MMLU-Pro in
+`Answer: <letter>` (ten options). Every reply, the extracted answer and the finish
+reason go to `logs/qa-accuracy/<LABEL>/<dataset>.jsonl`; the run resumes where it
+stopped. `--max-tokens` defaults to 4,096; unparsed and truncated answers are
+counted as wrong and reported.
+
+The same seed selects the same questions for every profile, so `compare` pairs them
+and reports an exact McNemar test on the questions where the two disagree. These
+are relative numbers for this machine, not leaderboard scores.

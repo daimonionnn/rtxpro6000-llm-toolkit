@@ -24,7 +24,7 @@ the foreground; Ctrl+C or `scripts/stop.sh` stops it. See [Strata setup](qwen3.8
 
 Each model directory has a README with its checkpoints and profiles, and one
 document per profile in `docs/profiles/<profile>.md`; the Flash-Next one also has
-setup, troubleshooting, the model's architecture and open TODOs. The eight Strata
+setup, troubleshooting, the model's architecture and open TODOs. The ten Strata
 profiles share [their setup and comparison](qwen3.8-flash-next/strata/README.md).
 
 ## Results
@@ -88,7 +88,8 @@ its PLE table stays Q8_0. Q8 has the quantized MMQ prefill path; Q6 currently
 dequantizes to FP16 before its prefill matrix products. Strata's adaptive expert
 cache warms across requests, so generation speed depends on prior workload.
 
-The Strata profiles require local compatibility patches. Setup, numerical
+The Strata profiles run on unpatched Strata 0.1.44.1; the 2026-10-06 figures were
+measured on 0.1.39 with local patches. Setup, numerical
 validation and the small Slovak sample check are in [Strata documentation](qwen3.8-flash-next/strata/README.md);
 the full comparison with ik_llama.cpp is in
 [COMPARISON.md](qwen3.8-flash-next/strata/COMPARISON.md).
@@ -108,6 +109,7 @@ capacities stay the same.
 | `strata-q6-vision` | 131,072 | [Q6 vision 128K](scripts/start-qwen3.8-flash-next-strata-q6-vision-128k.sh) |
 | `strata-q8-vision-256k` | 262,144 | [Q8 vision 256K](scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh) |
 | `strata-q6-vision-256k` | 262,144 | [Q6 vision 256K](scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh) |
+| `strata-q8-abliterated-vision` | 131,072 | [Abliterated Q8 vision 128K](scripts/start-qwen3.8-flash-next-strata-q8-abliterated-vision-128k.sh); see [abliterated Q8_0](qwen3.8-flash-next/strata/README.md#abliterated-q8_0) |
 
 The encoder loads and warms up before the language engine sizes its expert
 cache. It uses VRAM, so fewer experts fit and the text-only benchmark figures
@@ -142,14 +144,16 @@ and `-512k` = 524,288 tokens. They describe the launch defaults; explicit
 | `start-qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k.sh` | vLLM, official image + FP8 PLE patch, leoncca's uncensored AWQ W4A16 group 32 |
 | `start-qwen3.8-flash-next-exllamav3-exl3-5.05bpw-256k.sh` | ExLlamaV3 via TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP |
 | `start-qwen3.8-flash-next-vllm-fp8-offload-256k.sh` | vLLM, official image, official FP8, 50 GiB of experts and the PLE table in RAM |
-| [start-qwen3.8-flash-next-strata-q8-128k.sh](scripts/start-qwen3.8-flash-next-strata-q8-128k.sh) | Strata Q8_0, native engine + Q8 PLE patch, MTP, 128K context; foreground |
-| [start-qwen3.8-flash-next-strata-q6-128k.sh](scripts/start-qwen3.8-flash-next-strata-q6-128k.sh) | Strata Q6_K/Q8_0, additional Q6 expert patch, MTP, 128K context; foreground |
+| [start-qwen3.8-flash-next-strata-q8-128k.sh](scripts/start-qwen3.8-flash-next-strata-q8-128k.sh) | Strata Q8_0, native engine, MTP, 128K context; foreground |
+| [start-qwen3.8-flash-next-strata-q6-128k.sh](scripts/start-qwen3.8-flash-next-strata-q6-128k.sh) | Strata Q6_K/Q8_0, MTP, 128K context; foreground |
 | [start-qwen3.8-flash-next-strata-q8-256k.sh](scripts/start-qwen3.8-flash-next-strata-q8-256k.sh) | Strata Q8_0, MTP, 256K context; foreground |
 | [start-qwen3.8-flash-next-strata-q6-256k.sh](scripts/start-qwen3.8-flash-next-strata-q6-256k.sh) | Strata Q6_K/Q8_0, MTP, 256K context; foreground |
 | [start-qwen3.8-flash-next-strata-q8-vision-128k.sh](scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh) | Strata Q8, BF16 GPU vision, MTP, 128K context; foreground |
 | [start-qwen3.8-flash-next-strata-q8-vision-256k.sh](scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh) | Strata Q8, BF16 GPU vision, MTP, 256K context; foreground |
 | [start-qwen3.8-flash-next-strata-q6-vision-128k.sh](scripts/start-qwen3.8-flash-next-strata-q6-vision-128k.sh) | Strata Q6, BF16 GPU vision, MTP, 128K context; foreground |
 | [start-qwen3.8-flash-next-strata-q6-vision-256k.sh](scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh) | Strata Q6, BF16 GPU vision, MTP, 256K context; foreground |
+| [start-qwen3.8-flash-next-strata-q8-abliterated-128k.sh](scripts/start-qwen3.8-flash-next-strata-q8-abliterated-128k.sh) | Strata, abliterated Q8_0 (windowsxp811203), MTP, 128K context; foreground |
+| [start-qwen3.8-flash-next-strata-q8-abliterated-vision-128k.sh](scripts/start-qwen3.8-flash-next-strata-q8-abliterated-vision-128k.sh) | Strata, abliterated Q8_0, BF16 GPU vision, MTP, 128K context; foreground |
 | `start-qwen3.6-27b-sglang-bf16-256k.sh` | Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation |
 | `start-qwen3.8-27b-sglang-bf16-256k.sh` | Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation |
 
@@ -251,7 +255,7 @@ See [bench/README.md](bench/README.md).
 │   ├── sglang/<variant>/         launcher + stop per profile
 │   ├── vllm/<variant>/
 │   ├── exllamav3/<variant>/
-│   └── strata/                  Q8/Q6 Python launchers, compatibility patches, comparison
+│   └── strata/                  Q8/Q6 Python launchers, historical 0.1.39 patches, comparison
 ├── qwen3.6-27b/                  README.md, docs/profiles/, sglang/bf16/
 ├── qwen3.8-27b/                  README.md, docs/profiles/, sglang/bf16/
 ├── bench/                        decode, prefill, EvalPlus, language samples — any engine

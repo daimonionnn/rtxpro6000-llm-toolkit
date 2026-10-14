@@ -28,10 +28,11 @@ reference for 8-bit weights. A later Q8/Q6 comparison with Strata
 | The best non-English output at interactive speed | `qwen3.8-flash-next-vllm-awq-w4a16-g32` | first in three blind Slovak checks (seven and nine Flash-Next profiles, and against the dense 27B models), level with FP8 in the two runs with FP8, 3 points behind ik_llama.cpp Q8_0; ~110 tok/s, 262K window |
 | The fastest single-stream decode with 16-bit activations | `qwen3.8-flash-next-exllamav3-exl3-5.05bpw` | 119 tok/s on prose, 216 on code; loads in under a minute. Prefill ~1.6× slower than vLLM, lower half in every Slovak check. |
 | No refusals | `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` | leoncca's uncensored AWQ g32 with a small vLLM patch; 461 of 542 code tests, the best measured, no loss against the original. One unexplained crash under the first concurrent load. |
+| No refusals, 8-bit weights | [`strata-q8-abliterated-vision`](qwen3.8-flash-next/strata/README.md#abliterated-q8_0) | windowsxp811203's abliterated Q8_0 on Strata: no measured loss against the original Q8_0 on the same engine (code 455 vs 457 of 542, GSM8K 96.7 vs 97.0%, MMLU-Pro 80.2 vs 78.5%), vision works, 101 / 125 / 81 tok/s. Strata's Slovak scored below ik_llama.cpp with the same weights in one blind check. |
 | — not this one | `qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated` | dealignai's abliterated NVFP4 lost 16 code tasks net against the same profile without abliteration (p = 0.02) |
 | — superseded | `qwen3.8-flash-next-vllm-awq-w4a16` | INT4 group 128: the largest vLLM KV pool (605K), but in the bottom two of every Slovak check; group 32 is slightly faster (110 against 102 tok/s) |
 | 8-bit weights (FP8 / Q8_0), the best Slovak measured | **ik_llama.cpp with a Q8_0 GGUF**, not a profile here | first of four in its blind Slovak check with the fewest weighted errors (73 against 70 for AWQ g32), but no better on code (454 of 542). 38 tok/s, 131K window, ~105 GiB host RAM. `vllm-fp8-offload` also keeps experts in RAM and decodes at ~16 tok/s. |
-| Q8 generation speed with MTP | [`strata-q8`](qwen3.8-flash-next/strata/README.md#run) | 101.7 prose / 103.5 code / 75.1 Slovak tok/s, 128K context; needs a Q8 PLE patch. No new scored quality benchmark. |
+| Q8 generation speed with MTP | [`strata-q8`](qwen3.8-flash-next/strata/README.md#run) | 101.7 prose / 103.5 code / 75.1 Slovak tok/s, 128K context; measured on Strata 0.1.39 with a Q8 PLE patch, which 0.1.41 no longer needs. No new scored quality benchmark. |
 | Fewer bits with faster generation | [`strata-q6`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | Q6_K/Q8_0 experts, 7.21 bpw; 117.1 prose / 142.5 code / 81.3 Slovak tok/s. Less pinned expert RAM, but slower first prefill at 4–120K than Strata Q8; needs an additional Q6 patch. No new scored quality benchmark. |
 | A dense model | `qwen3.8-27b-sglang-bf16` or `qwen3.6-27b-sglang-bf16` | full BF16 precision, but both solved fewer code tasks than every measured Flash-Next quantization except the abliterated one, scored 21–27 points below AWQ g32 in the Slovak check, and decode slower (57–87 tok/s) |
 
@@ -116,8 +117,9 @@ The reference engine and its launchers are maintained in the separate public
 | Strata Q6 | 117.1 tok/s | 142.5 tok/s | 81.3 tok/s | 27.4 s |
 
 Q6 is the published Q6_K/Q8_0 expert mixture, averaging 7.21 bits per routed
-weight including scales; PLE stays Q8_0. Stock Strata needs the local Q8 PLE
-patch and an additional Q6 expert/dequantization patch. Numerical tests against
+weight including scales; PLE stays Q8_0. These runs used Strata 0.1.39 with a
+local Q8 PLE patch and an additional Q6 expert/dequantization patch; 0.1.41 runs
+unpatched. Numerical tests against
 ggml pass. Small projections are converted to BF16; the MTP drafts and policies
 differ between engines, so this compares full serving configurations.
 
@@ -134,7 +136,7 @@ in computation versus I/O has not been separately profiled.
 
 Full settings, cold/repeated TTFT, memory, numerical checks and raw evidence:
 [comparison](qwen3.8-flash-next/strata/COMPARISON.md).
-[Setup, patches and launchers](qwen3.8-flash-next/strata/README.md) cover eight
+[Setup and launchers](qwen3.8-flash-next/strata/README.md) cover ten
 registered Strata text/vision profiles. The default server is now Strata Q8
 vision 128K (`qwen3.8-flash-next-strata-q8-vision`), with 4,096 image tokens.
 
@@ -197,6 +199,8 @@ tests, **plus** EvalPlus's stricter extended tests.
 | | `sglang-nvfp4-ram-pennyroyal` | 0.963 | 0.951 | 0.918 | 0.794 | 456 |
 | | `vllm-awq-w4a16` | 0.976 | 0.951 | 0.934 | 0.788 | 454 |
 | | `vllm-awq-w4a16-g32` | 0.970 | 0.951 | **0.937** | 0.796 | 457 |
+| | `strata-q8-vision`, Strata 0.1.41 (2026-10-14) | 0.970 | 0.951 | 0.931 | 0.796 | 457 |
+| | `strata-q8-abliterated-vision` (2026-10-14) | 0.976 | 0.951 | 0.934 | 0.791 | 455 |
 | | `exllamav3-exl3-5.05bpw` | 0.976 | 0.957 | **0.937** | **0.802** | **460** |
 | | `vllm-fp8-offload` | — | — | — | — | not run: ik_llama.cpp Q8_0 covers 8-bit weights |
 | Qwen3.8-Flash-Next, uncensored | `vllm-awq-w4a16-g32-uncensored` | **0.988** | **0.970** | **0.942** | 0.799 | **461** |
@@ -404,4 +408,5 @@ here against 70 and 71 in the first four-way run, a grader of similar strictness
   Flash-Next profiles.
 - **Dense 27B models**: prefill and long-context retrieval; the KV pool of
   Qwen3.6-27B.
-- Anything with thinking on, knowledge benchmarks, agentic tool use.
+- Anything with thinking on, agentic tool use. Knowledge (MMLU-Pro subset) has
+  been measured only for the two Strata Q8_0 profiles.
