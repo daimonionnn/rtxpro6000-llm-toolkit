@@ -134,8 +134,54 @@ Generation can end at the reduced limit, so agents still need context compaction
 for long conversations. Restart the server to apply changes to this setting.
 
 `--dry-run` prints the configuration. `--model`, `--strata-dir`, `--context`,
-`--resident-gib`, `--prefill` and `--vram-reserve-mib` override the defaults.
+`--resident-gib`, `--prefill`, `--vram-reserve-mib`, `--pool-workers` and
+`--pool-affinity` override the defaults.
 The engine log is `logs/strata-q8-engine.log`.
+
+### CPU expert pool
+
+The engine computes some of the experts missing from VRAM on a CPU pool. Its
+workers spin while a request runs, so each one keeps a core fully busy even when it
+has little to do. The engine's default is one worker on every physical core but the
+host's: on this Core Ultra 7 270K Plus (8 P-cores, 16 E-cores) that is 23 workers,
+including all E-cores. The launchers pass `--pool-affinity p-cores` (on a hybrid
+CPU the pool stays on the P-cores; ignored on CPUs without E-cores) and, since
+2026-10-19, `--pool-workers 2`, which matched seven workers within a few percent at
+about half the CPU power (measurements below). `--pool-workers 0` lets the engine
+choose (seven P-cores with `p-cores`), and `--pool-affinity all --pool-workers 0`
+restores the engine default of every physical core.
+
+Measured 2026-10-15, `strata-q8-abliterated-vision`, Strata 0.1.44.1, fresh start
+per setting, `bench/compare_decode.py` medians (prose / code / Slovak) and
+`bench/prefill.py` cold prefixes. CPU load is the engine's average over the decode
+benchmark:
+
+| Pool | Decode tok/s | Prefill 1K / 4K / 32K tok/s | CPU load in decode |
+|---|---|---|---:|
+| 23 workers, all cores (engine default), run 1 / 2 | 106 / 121 / 84 · 106 / 111 / 78 | 1,219–1,252 / 2,448–2,473 / 5,230–5,262 | 22.3 cores |
+| 8 workers (7 P + 1 E), run 1 / 2 | 152 / 162 / 122 · 150 / 169 / 125 | 1,280–1,325 / 2,392–2,477 / 5,240–5,268 | 8.9 cores |
+| 7 workers, P-cores only | 144 / 176 / 123 | 1,334 / 2,433 / 5,334 | 7.9 cores |
+| `--pool-affinity p-cores` (7) | 146 / 172 / 126 | 1,238 / 2,410 / 5,279 | 8.0 cores |
+| 4 workers (P-cores) | 141 / 158 / 116 | 1,264 / 2,457 / 5,221 | 5.1 cores |
+
+CPU package power, 2026-10-16, `turbostat` (1 s samples) during the same benchmarks,
+one fresh start per setting. The idle server drew 14–15 W:
+
+| Pool | Decode tok/s | Prefill 1K / 4K / 32K tok/s | CPU load in decode | Package power in decode | in prefill |
+|---|---|---|---:|---:|---:|
+| 1 worker (P-core) | 137 / 147 / 114 | 1,273 / 2,427 / 5,335 | 2.4 cores | 38 W | 35 W |
+| 2 workers (P-cores) | 138 / 158 / 120 | 1,310 / 2,423 / 5,305 | 3.3 cores | 45 W | 36 W |
+| `--pool-affinity p-cores` (7) | 147 / 157 / 120 | 1,301 / 2,478 / 5,281 | 7.9 cores | 85 W | 40 W |
+| 23 workers, all cores | 108 / 120 / 85 | 1,230 / 2,480 / 5,296 | 22.3 cores | 134 W | 39 W |
+
+Two P-core workers decode within a few percent of seven (code and Slovak equal, prose
+6% lower; the three seven-worker runs spread 157–176 tok/s on code) at about half the
+package power. One worker loses 5–7%. Prefill is the same in every setting.
+
+Keeping the pool off the E-cores raised decode by about 40% and freed 14–15 cores;
+prefill did not change, since the GPU computes it. A likely cause is that each CPU
+phase waits for its slowest worker, and E-cores run at 4.7 GHz against 5.4–5.5 GHz;
+23 spinning cores may also lower the P-cores' turbo. Neither was profiled.
 
 ## 256K profiles
 

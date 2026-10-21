@@ -37,6 +37,13 @@ def main(quant="q8", description=None, context=131072, vision=False):
     ap.add_argument("--resident-gib", type=float, default=135)
     ap.add_argument("--prefill", default="auto")
     ap.add_argument("--vram-reserve-mib", type=int, default=1536)
+    ap.add_argument("--pool-workers", type=int, default=2,
+                    help="CPU expert pool threads (default 2: decode within a few percent of 7 at about half the "
+                         "CPU power, see README.md); 0 = engine default. The workers spin while a request runs, "
+                         "so each one keeps a core busy")
+    ap.add_argument("--pool-affinity", choices=("all", "auto", "p-cores"), default="p-cores",
+                    help="CPU pool placement on hybrid CPUs (default p-cores: P-cores minus the host's; "
+                         "ignored on CPUs without E-cores)")
     if vision:
         ap.add_argument("--mmproj", type=Path, default=Path.home() / ".lmstudio/models/lmstudio-community/Qwen3.8-Flash-Next-GGUF/mmproj-Qwen3.8-Flash-Next-BF16.gguf")
         ap.add_argument("--vision-exe", type=Path, help="default: STRATA_DIR/build-vision/bin/strata-vision")
@@ -44,6 +51,8 @@ def main(quant="q8", description=None, context=131072, vision=False):
         ap.add_argument("--vision-tokens", type=int, default=4096, help="maximum context tokens per image (default: 4096)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
+    if args.pool_workers < 0:
+        ap.error("--pool-workers must be 0 (engine default) or positive")
     if args.context not in (131072, 262144):
         ap.error("supported profiles have 131072 or 262144 tokens")
     strata = args.strata_dir.resolve()
@@ -88,6 +97,9 @@ def main(quant="q8", description=None, context=131072, vision=False):
         model_name=profile,
         fit_max_tokens=True,
         log=str(ROOT / f"logs/strata-{quant}{suffix}-engine.log"), host=args.host, port=args.port)
+    config["args"] += ["--pool-affinity", args.pool_affinity]
+    if args.pool_workers:
+        config["args"] += ["--pool-workers", str(args.pool_workers)]
     if vision_config:
         config["args"].append("--vision")
         config["vision"] = vision_config

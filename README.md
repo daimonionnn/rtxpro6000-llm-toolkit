@@ -158,7 +158,8 @@ and `-512k` = 524,288 tokens. They describe the launch defaults; explicit
 | `start-qwen3.8-27b-sglang-bf16-256k.sh` | Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation |
 
 ```bash
-scripts/start.sh                     # the default profile
+scripts/start.sh                     # the default profile, on 0.0.0.0 (LAN)
+scripts/start.sh --host 127.0.0.1    # the same, local only
 scripts/status.sh
 scripts/stop.sh
 ```
@@ -167,7 +168,7 @@ scripts/stop.sh
 
 The workstation uses the user service
 [strata-server.service](common/systemd/strata-server.service), which calls
-`scripts/start.sh --host 0.0.0.0`. It starts Q8 vision 128K on port 8090,
+`scripts/start.sh --host 0.0.0.0` (since 2026-10-21 also the script's own default). It starts Q8 vision 128K on port 8090,
 accessible locally and from the LAN, with a 4,096-token image limit.
 On this workstation the LAN API URL is `http://192.168.1.101:8090/v1`.
 User lingering starts the service at boot without
