@@ -2,6 +2,7 @@
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTAINER=rtxpro6000-llm   # every Docker profile runs as this one container
 NATIVE_PIDFILE="$ROOT/qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/server.pid"
+DEEPSEEK_DIR="$ROOT/deepseek-v4.1-flash/native"
 STRATA_LIFECYCLE="$ROOT/qwen3.8-flash-next/strata/lifecycle.py"
 
 # Registry: id | directory | launcher | checkpoint (under models/) | description | default context.
@@ -29,6 +30,9 @@ PROFILES=(
   "qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored|qwen3.8-flash-next/vllm/awq-w4a16-g32-uncensored|serve-awq-w4a16-g32-uncensored-256k.sh|Qwen3.8-Flash-Next-Uncensored-AWQ-g32|Qwen3.8-Flash-Next · vLLM, preview image + FP8 PLE patch, uncensored AWQ W4A16 g32 (leoncca), PLE table in RAM|262144"
   "qwen3.8-flash-next-exllamav3-exl3-5.05bpw|qwen3.8-flash-next/exllamav3/exl3-5.05bpw|serve-exl3-5.05bpw-256k.sh|Qwen3.8-Flash-Next-EXL3-5.05bpw|Qwen3.8-Flash-Next · ExLlamaV3 + TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP|262144"
   "qwen3.8-flash-next-vllm-fp8-offload|qwen3.8-flash-next/vllm/fp8-offload|serve-fp8-offload-256k.sh|Qwen3.8-Flash-Next-FP8|Qwen3.8-Flash-Next · vLLM, official image, official FP8, part of the experts and PLE table in RAM|262144"
+  "deepseek-v4.1-flash-llamacpp-ud-q3kxl|deepseek-v4.1-flash/native|serve-ud-q3kxl-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · llama.cpp PR #30817, Unsloth UD-Q3_K_XL, experts of 29 layers locked in RAM|131072"
+  "deepseek-v4.1-flash-ik-mxfp4|deepseek-v4.1-flash/native|serve-mxfp4-128k.sh|DeepSeek-V4.1-Flash-1017-ik-GGUF|DeepSeek-V4.1-Flash-1017 · ik_llama.cpp, original MXFP4 experts, experts of 30 layers locked in RAM|131072"
+  "deepseek-v4.1-flash-xolotl-xq-v2|deepseek-v4.1-flash/xolotl|serve-xq-v2-128k.sh|V41-XQ-1017|DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2 (PTQ1/Q2/Q3_K experts, refusal direction removed), exact routing, Engram from the original shards|131072"
   "qwen3.6-27b-sglang-bf16|qwen3.6-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.6-27B|Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation|262144"
   "qwen3.8-27b-sglang-bf16|qwen3.8-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.8-27B|Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation|262144"
 )
@@ -62,6 +66,9 @@ running_profiles() {
   python3 "$STRATA_LIFECYCLE" running
   if [ -f "$NATIVE_PIDFILE" ] && kill -0 "$(cat "$NATIVE_PIDFILE")" 2>/dev/null; then
     echo qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal
+  fi
+  if [ -f "$DEEPSEEK_DIR/server.pid" ] && kill -0 "$(cat "$DEEPSEEK_DIR/server.pid")" 2>/dev/null; then
+    cat "$DEEPSEEK_DIR/server.profile" 2>/dev/null || echo deepseek-v4.1-flash-unknown
   fi
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$CONTAINER"; then
     local p

@@ -29,7 +29,7 @@ report() {  # profile port log-command hicache kv-dtype started
     echo "$models" | TABBY_CTX="$tabby_ctx" python3 -c "
 import os, sys, json
 for m in json.load(sys.stdin)['data']:
-    ctx = m.get('max_model_len') or int(os.environ.get('TABBY_CTX') or 0)
+    ctx = m.get('max_model_len') or (m.get('meta') or {}).get('n_ctx') or int(os.environ.get('TABBY_CTX') or 0)
     print('  served as  {}, context window {}'.format(m['id'], f'{ctx:,}' if ctx else '?'))"
   else
     echo "  served as  (not answering yet — still starting?)"
@@ -85,6 +85,30 @@ if [ -f "$NATIVE_PIDFILE" ] && kill -0 "$(cat "$NATIVE_PIDFILE")" 2>/dev/null; t
   kvd=$(grep -oE -- "--kv-cache-dtype [a-z0-9_]+" <<<"$cmd" | awk '{print $2}')
   hc="off"; grep -q -- "--enable-hierarchical-cache" <<<"$cmd" && hc="on (NIXL persistence)"
   report qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal "${port:-8090}" "cat '$PENNYROYAL_LOG'" "$hc" "${kvd:-?}" "$(ps -o lstart= -p "$pid") (PID $pid)"
+  found=1
+fi
+
+if [ -f "$DEEPSEEK_DIR/server.pid" ] && kill -0 "$(cat "$DEEPSEEK_DIR/server.pid")" 2>/dev/null; then
+  pid=$(cat "$DEEPSEEK_DIR/server.pid")
+  ds_profile=$(cat "$DEEPSEEK_DIR/server.profile" 2>/dev/null || echo deepseek-v4.1-flash-unknown)
+  cmd=$(tr '\0' ' ' < "/proc/$pid/cmdline" 2>/dev/null)
+  port=$(grep -oE -- "--port [0-9]+" <<<"$cmd" | awk '{print $2}')
+  report "$ds_profile" "${port:-8090}" "cat '$ROOT/logs/$ds_profile-server.log'" "" "f16" "$(ps -o lstart= -p "$pid") (PID $pid)"
+  grep -oE -- "--host [0-9.]+" <<<"$cmd" | sed 's/--host /  bind       /'
+  if [[ "$ds_profile" == *-xolotl-* ]]; then
+    grep -A1 -- '"--route-bias' "$ROOT/logs/$ds_profile-config.json" 2>/dev/null | grep -oE '[0-9.]+' | paste -sd/ \
+      | sed 's|^0/0$|exact (0/0)|; s|^|  routing    |'
+    grep -aoE "seed -> [0-9]+ experts in VRAM, [0-9]+ arena" "$ROOT/logs/$ds_profile-engine.log" 2>/dev/null | tail -1 \
+      | sed 's/^seed -> /  experts    /; s/ arena$/ in the RAM arena/'
+    echo "  engine log logs/$ds_profile-engine.log"
+  elif [ -f "$DEEPSEEK_DIR/lock.pid" ] && kill -0 "$(cat "$DEEPSEEK_DIR/lock.pid")" 2>/dev/null; then
+    echo "  experts    $(tail -1 "$ROOT/logs/$ds_profile-mlock.log" 2>/dev/null)"
+  else
+    echo "  experts    not locked (page cache only)"
+  fi
+  echo "  log        logs/$ds_profile-server.log"
+  echo "  follow     tail -f $ROOT/logs/$ds_profile-server.log"
+  echo
   found=1
 fi
 

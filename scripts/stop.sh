@@ -13,6 +13,8 @@ for p in $running; do
   echo "== $p"
   if [[ "$p" == qwen3.8-flash-next-strata-* ]]; then
     python3 "$STRATA_LIFECYCLE" stop
+  elif [[ "$p" == deepseek-v4.1-flash-* ]]; then
+    "$ROOT/deepseek-v4.1-flash/native/stop.sh"
   elif [ "$p" = qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal ]; then
     "$ROOT/qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/stop.sh"
   else

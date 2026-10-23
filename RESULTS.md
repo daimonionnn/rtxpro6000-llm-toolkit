@@ -18,6 +18,31 @@ through its API with the same benchmarks as the profiles (2026-09-15), as the
 reference for 8-bit weights. A later Q8/Q6 comparison with Strata
 (2026-10-06) is recorded separately below; it uses MTP and different settings.
 
+## DeepSeek-V4.1-Flash-1017
+
+Measured 2026-10-22/23 ([details](deepseek-v4.1-flash/README.md#results)): single
+stream, thinking off, 128K context, experts of the RAM layers locked in the page
+cache, server pinned to the P-cores. UD-Q3_K_XL figures are in the desktop's
+`performance` power profile (25 % faster than in power-saver mode); the MXFP4
+profile has not been timed in performance mode yet.
+
+| Profile | Experts | Decode | Prefill, cold ~30K | Slovak blind, two graders |
+|---|---|---:|---:|---:|
+| `deepseek-v4.1-flash-llamacpp-ud-q3kxl` | Unsloth UD-Q3_K_XL | 12.9–13.0 tok/s | 443 tok/s | **83 / 84.5** |
+| `deepseek-v4.1-flash-ik-mxfp4` | original MXFP4 | not yet measured | not measured | 75 / 79.5 |
+| `deepseek-v4.1-flash-xolotl-xq-v2` | XQ v2 (PTQ1_0 / Q2_0 / Q3_K), exact routing | 60–68 tok/s (Slovak ~40) | 668 tok/s (784 at ~48K) | 78 (one grader)¹ |
+
+¹ On its own sheet with one grader, where UD-Q3_K_XL scored 87 and MXFP4 79.5.
+
+In agent use each XQ v2 turn costs at least 7–11 s of prefill even for a few hundred new
+tokens on a cached prefix ([details](deepseek-v4.1-flash/README.md#prefill-and-agent-use)).
+
+In the same blind sheet the best Qwen3.8 configurations scored 63–70.5 with about
+twice the weighted errors (ik_llama.cpp Q8_0 67 / 70.5, AWQ g32 67 / 68, Strata
+abliterated Q8_0 63 / 65). DeepSeek is the best Slovak measured here and about 11×
+slower than the Strata Qwen profiles; decode is bounded by reading ~5 GB of experts
+from dual-channel DDR5 per token.
+
 ## Recommendations
 
 | If you want | Use | Why |

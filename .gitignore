@@ -26,3 +26,6 @@ __pycache__/
 /*/*/*/cache/
 /*/*/*/config.generated.yml
 /*/*/*/patches/.build/
+
+# DeepSeek native server state
+/deepseek-v4.1-flash/native/server.profile
