@@ -38,6 +38,8 @@ PROFILES=(
   "deepseek-v4.1-flash-strata-ud-q8kxl-256k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-256k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, 256K context|262144"
   "deepseek-v4.1-flash-strata-ud-q8kxl-512k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-512k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, 512K context|524288"
   "deepseek-v4.1-flash-strata-ud-q8kxl-vision|deepseek-v4.1-flash/strata|serve-ud-q8kxl-vision-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, image input (engine's BF16 vision tower), 128K context|131072"
+  "deepseek-v4.1-flash-strata-ud-q8kxl-vision-256k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-vision-256k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, image input (engine's BF16 vision tower), 256K context|262144"
+  "deepseek-v4.1-flash-strata-ud-q8kxl-vision-512k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-vision-512k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, image input (engine's BF16 vision tower), 512K context|524288"
   "qwen3.6-27b-sglang-bf16|qwen3.6-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.6-27B|Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation|262144"
   "qwen3.8-27b-sglang-bf16|qwen3.8-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.8-27B|Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation|262144"
 )

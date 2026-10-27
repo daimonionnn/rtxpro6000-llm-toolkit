@@ -16,7 +16,7 @@ read the Engram from the SSD.
 | `deepseek-v4.1-flash-xolotl-xq-v2-vision` | the same + image input | | the same | |
 | `deepseek-v4.1-flash-strata-ud-q8kxl` | Strata `strata-dsv41` 0.2.7 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | not yet graded |
 | `deepseek-v4.1-flash-strata-ud-q8kxl-256k`, `-512k` | the same, 256K / 512K context | | ~19–22 tok/s at ~200K context | |
-| `deepseek-v4.1-flash-strata-ud-q8kxl-vision` | the same + image input (engine's own tower) | | the same | |
+| `deepseek-v4.1-flash-strata-ud-q8kxl-vision`, `-vision-256k`, `-vision-512k` | the same + image input (engine's own tower) | | the same | |
 
 ¹ Its first speed runs were in the desktop's power-saver mode and were discarded;
 expect it to be slower than UD-Q3_K_XL in proportion to its larger experts.
@@ -337,6 +337,8 @@ HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-128k.sh   # ready
 HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-256k.sh   # same, 256K context
 HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-512k.sh   # same, 512K context
 HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k.sh   # 128K with image input
+HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-256k.sh   # 256K with image input
+HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-512k.sh   # 512K with image input
 ```
 
 The three profiles differ only in `--max-context`. The engine's compressed KV cache is
@@ -448,7 +450,9 @@ encoder.
 Measured 2026-10-27 with the two image fixtures (`bench/vision_smoke.py`, 975 prompt
 tokens, 76 answer tokens): every answer named the code, colors, shapes and order
 correctly, in 12.8–14.1 s per request. The tower leaves 4,216 experts in VRAM against
-4,237 for `--vision off`, and decode is the same as in the text profile (below).
+4,237 for `--vision off`, and decode is the same as in the text profile (below). The
+256K and 512K vision profiles keep 4,208 and 4,192 experts in VRAM and read fixture B
+correctly in 15.3 and 16.1 s.
 
 ### Strata 0.2.7
 
