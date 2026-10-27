@@ -89,7 +89,7 @@ its PLE table stays Q8_0. Q8 has the quantized MMQ prefill path; Q6 currently
 dequantizes to FP16 before its prefill matrix products. Strata's adaptive expert
 cache warms across requests, so generation speed depends on prior workload.
 
-The Strata profiles run on unpatched Strata 0.1.44.1; the 2026-10-06 figures were
+The Strata profiles run on unpatched Strata 0.2.6; the 2026-10-06 figures were
 measured on 0.1.39 with local patches. Setup, numerical
 validation and the small Slovak sample check are in [Strata documentation](qwen3.8-flash-next/strata/README.md);
 the full comparison with ik_llama.cpp is in

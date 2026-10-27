@@ -317,7 +317,7 @@ compiles kernels for ~45 s. See [exllamav3-exl3-5.05bpw.md](profiles/exllamav3-e
 
 ## 8. The Strata Q8 / Q6 profiles
 
-Prepare the pinned native engine (Strata 0.1.44.1, no patches), GGUF checkpoint
+Prepare the pinned native engine (Strata 0.2.6, no patches), GGUF checkpoint
 and model pack as described in [strata/README.md](../strata/README.md). Run one
 launcher from the toolkit root after stopping the other GPU server:
 

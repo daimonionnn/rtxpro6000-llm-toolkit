@@ -25,11 +25,12 @@ comparison methodology are in [COMPARISON.md](COMPARISON.md).
 
 ## Source and compatibility
 
-- Strata 0.1.44.1, commit `296b59d2f73c8f04a805df29c2fa97655adace78` (tag `v0.1.44.1`), unpatched.
-  It reads Q8_0 PLE tables and contains Q6_K expert kernels upstream.
+- Strata 0.2.6 (Qwen engine 0.1.50), commit `4b9e05a2a806a3fe24f7b2560d98626c37dade35`
+  (tag `v0.2.6`), unpatched, built from source. It reads Q8_0 PLE tables and contains
+  Q6_K expert kernels upstream.
 - The launchers set `STRATA_ROUTE_TAIL_SKIP=0` unless the caller sets it. Strata
-  0.1.42+ otherwise skips low-ranked experts missing from VRAM on CUDA, which
-  changes answers, most on non-English text ([NON-ENGLISH.md](NON-ENGLISH.md)).
+  0.1.42+ (still in 0.2.6) otherwise skips low-ranked experts missing from VRAM on CUDA,
+  which changes answers, most on non-English text ([NON-ENGLISH.md](NON-ENGLISH.md)).
 - Its pinned ggml dependency: llama.cpp `3cf03257f219afbe7334045ff7c6a06ac68c627d`.
 - CUDA 13.3, compiled for SM120.
 - Checkpoint: `lmstudio-community/Qwen3.8-Flash-Next-GGUF`, Q8_0, six local shards.
@@ -37,9 +38,37 @@ comparison methodology are in [COMPARISON.md](COMPARISON.md).
 Strata 0.1.41 (`fb58e0db`) ran unpatched from 2026-10-09; the 2026-10-14 accuracy
 tests below used it. On 2026-10-14 the engine moved to 0.1.44.1 and all packs were
 rebuilt with its `iq_pack.py`; the MTP runtime files were kept (the MTP tools did
-not change). The 0.1.41 binaries and packs remain as `../Strata/build-0.1.41`,
-`build-vision-0.1.41` and `packs-0.1.41`, and the commit is tagged
-`toolkit-0.1.41-running`. The Q6 profiles have not been started on 0.1.41 or later.
+not change). The Q6 profiles have not been started on 0.1.41 or later.
+
+On 2026-10-27 the engine moved to 0.2.6. Its `iq_pack.py` produced byte-identical
+`q8_0` and `q8_0-abliterated` packs; `mtp_pack.py` and `mtp_rt.py` did not change, so
+the MTP runtime files were kept. The older builds and packs were deleted; the
+previously running commits are tagged `toolkit-0.1.41-running` and
+`toolkit-0.1.44.1-running` in `../Strata` and can be rebuilt with the commands below.
+
+### Upgrade to 0.2.6, speed A/B, 2026-10-27
+
+`strata-q8-vision`, default launcher settings, one fresh start per engine on the
+same day and RAM setting (DDR5-6400 CL42; earlier figures on this page used
+6667 MT/s), `bench/compare_decode.py` medians and the second `bench/prefill.py`
+sweep:
+
+| | 0.1.44.1 | 0.2.6 |
+|---|---:|---:|
+| Decode prose / code / Slovak, tok/s | 139 / 159 / 111 | **166 / 187 / 119** |
+| Cold prefill 32K / 120K, tok/s | 6,063 / 6,213 | **6,550 / 6,542** |
+| Repeated 120K prompt, TTFT | **0.08 s** | 0.8 s |
+| Load time | 55 s | 50 s |
+
+Both read the two vision fixtures exactly and got the same 17,062-slot GPU expert
+cache. Repeated prompts are slower because 0.2.6 parks each finished conversation
+in a host-RAM conversation cache (four by default, sized from free memory) and
+restores it on the next request: about 0.1 s at 4K and 0.8–1.1 s at 120K. In
+exchange several conversations stay cached at once, which helps several agents
+sharing the server. Upstream reports Flash-Next answers byte-identical only for
+0.1.45; Slovak and accuracy checks on 0.2.6 are open in the
+[TODO](../README.md#strata-026-qwen-engine-0150-quality-checks).
+Raw results: `logs/strata-comparison/strata-q8-vision-0.{1.44.1,2.6}-fresh*`.
 
 ### Historical patches (Strata 0.1.39)
 
@@ -77,7 +106,7 @@ raw tensors against the upstream pinned hashes.
 
 ```bash
 git clone https://github.com/Niko1221/Strata.git ../Strata
-git -C ../Strata checkout v0.1.44.1
+git -C ../Strata checkout v0.2.6
 python3 -m venv ../Strata/.venv
 ../Strata/.venv/bin/pip install -r ../Strata/requirements.txt
 cmake -S ../Strata -B ../Strata/build \

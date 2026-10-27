@@ -115,7 +115,7 @@ measures both engines with MTP and a 128K context:
 
 Q6 uses Q6_K gate/up, Q8_0 down and a Q8_0 PLE table: 7.21 bits per routed
 weight including scales. Strata's adaptive expert cache warms across requests.
-The ten Slovak samples per configuration are not a quality score. The Strata launchers are registered and now run on unpatched Strata 0.1.44.1;
+The ten Slovak samples per configuration are not a quality score. The Strata launchers are registered and now run on unpatched Strata 0.2.6;
 these figures come from 0.1.39 with local compatibility patches.
 
 All Strata profiles use 8,192-token automatic prefill chunks and INT8 KV.
@@ -189,6 +189,26 @@ runs need port 8090, so Strata and the agents using it are down meanwhile.
       teacher-forced KL against ik_llama.cpp, then one switch at a time
 - [x] Upgrade to Strata 0.1.44.1 with `STRATA_ROUTE_TAIL_SKIP=0` set by the launchers
       ([route tail skip](strata/NON-ENGLISH.md#route-tail-skip-strata-0142))
+- [x] Upgrade to Strata 0.2.6 (2026-10-27): decode +7–19%, cold prefill +5–8%
+      ([speed A/B](strata/README.md#upgrade-to-026-speed-ab-2026-10-27))
+
+### Strata 0.2.6 (Qwen engine 0.1.50) quality checks
+
+Upstream states Flash-Next answers are byte-identical only for 0.1.45; later
+releases were not re-checked for this model. Baseline Slovak samples from
+0.1.44.1 are in `logs/language-samples/sk/strata-q8-vision-0.1.44.1.json`;
+`logs/qa-accuracy/strata-q8-vision-0.1.44.1/` holds a partial GSM8K run that
+resumes where it stopped.
+
+- [x] Slovak samples on 0.2.6 (`logs/language-samples/sk/strata-q8-vision-0.2.6.json`,
+      2026-10-27): all ten greedy answers differ from 0.1.44.1, mostly within the first
+      sentence. The two samples were taken with different expert-cache histories,
+      which alone can change Strata's output, so this is not proof of an engine change.
+      A quick read showed similar quality: identical numeral agreement; noun inflection
+      with two case errors on 0.1.44.1 and three on 0.2.6.
+- [ ] Blind-grade both sample sets with at least two graders (about 20–30 min)
+- [ ] `qa_accuracy.py run` on 0.2.6 (about 2 h), and on 0.1.44.1 after rebuilding
+      it from tag `toolkit-0.1.44.1-running`, then `compare`
 
 ## Layout
 
