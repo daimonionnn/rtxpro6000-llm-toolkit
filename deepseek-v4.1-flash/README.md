@@ -14,8 +14,9 @@ read the Engram from the SSD.
 | `deepseek-v4.1-flash-ik-mxfp4` | ik_llama.cpp `main` | original MXFP4 | not yet measured¹ | 75 / 79.5 |
 | `deepseek-v4.1-flash-xolotl-xq-v2` | Xolotl (`ds41_generate`) | IndrasMirror XQ v2, PTQ1_0 / Q2_0 / Q3_K | **60–68 tok/s** (Slovak ~40) | 78² |
 | `deepseek-v4.1-flash-xolotl-xq-v2-vision` | the same + image input | | the same | |
-| `deepseek-v4.1-flash-strata-ud-q8kxl` | Strata `strata-dsv41` 0.2.6 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | not yet graded |
+| `deepseek-v4.1-flash-strata-ud-q8kxl` | Strata `strata-dsv41` 0.2.7 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | not yet graded |
 | `deepseek-v4.1-flash-strata-ud-q8kxl-256k`, `-512k` | the same, 256K / 512K context | | ~19–22 tok/s at ~200K context | |
+| `deepseek-v4.1-flash-strata-ud-q8kxl-vision` | the same + image input (engine's own tower) | | the same | |
 
 ¹ Its first speed runs were in the desktop's power-saver mode and were discarded;
 expect it to be slower than UD-Q3_K_XL in proportion to its larger experts.
@@ -324,7 +325,7 @@ now sets `"fit_max_tokens": true`, which shortens `max_tokens` to the room left 
 
 ## Strata UD-Q8_K_XL
 
-[Strata](https://github.com/Niko1221/Strata) 0.2.6 ships its own DeepSeek-V4.1 engine,
+[Strata](https://github.com/Niko1221/Strata) 0.2.7 ships its own DeepSeek-V4.1 engine,
 `strata-dsv41` (ported from Project Maya's `maya-ds4`), behind the same API server as
 the Qwen3.8 Strata profiles. It runs Unsloth's UD-Q8_K_XL as released: the experts in
 their original MXFP4, the dense weights in BF16 and the Engram on the SSD, 508.4 GB in
@@ -335,6 +336,7 @@ nine shards. On this card it keeps 4,323 of the 15,360 experts in VRAM (82.1 GB,
 HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-128k.sh   # ready in ~2 minutes
 HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-256k.sh   # same, 256K context
 HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-512k.sh   # same, 512K context
+HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k.sh   # 128K with image input
 ```
 
 The three profiles differ only in `--max-context`. The engine's compressed KV cache is
@@ -346,6 +348,11 @@ experts (of ~4,300) at 512K.
 `CPU_THREADS` and `CPUSET` override its defaults. Like the Xolotl profile it allows the
 chat UI's origin, clamps oversized `max_tokens` and shares `native/stop.sh` and the pid
 file with the other DeepSeek profiles.
+
+The figures below up to [Image input](#image-input-strata-027) were measured on 0.2.6;
+see [Strata 0.2.7](#strata-027) for the upgrade. The launcher passes `--experts 6`: 0.2.7
+drops to five routed experts a word on cards of 16 GiB or less, never here, but the
+flag keeps full quality if that rule changes.
 
 ### Memory
 
@@ -429,7 +436,44 @@ right after the profiles were created read 454K tokens at 2,154 tok/s and 197K a
 known. The conversation cache brings a repeated 454K prompt back in 0.25 s. Decode at
 ~200K context is 25–35 % below short prompts.
 
-Setup (`~/development/Strata` is the same checkout as the Qwen3.8 Strata profiles):
+### Image input (Strata 0.2.7)
+
+`strata-dsv41` has its own vision tower: DeepSeek's BF16 weights (0.97 GB) stay in pinned
+RAM and stream to the GPU a block at a time, so the VRAM cost is small. Since 0.2.7 the
+server decodes a picture, scales it to sides that are multiples of 42 (at most 1,024 image
+tokens) and hands the engine raw RGB. The pack carries the tower; `--vision on` (the
+`-vision` profile) turns it on, the text profiles pass `--vision off`. There is no CPU
+encoder.
+
+Measured 2026-10-27 with the two image fixtures (`bench/vision_smoke.py`, 975 prompt
+tokens, 76 answer tokens): every answer named the code, colors, shapes and order
+correctly, in 12.8–14.1 s per request. The tower leaves 4,216 experts in VRAM against
+4,237 for `--vision off`, and decode is the same as in the text profile (below).
+
+### Strata 0.2.7
+
+0.2.7 (DeepSeek engine 0.1.52) reads prompts with a different chunk rule and no longer
+pre-fills the RAM store after a prompt. Two fresh starts each, the same sequence as above
+(three rounds of 300-token answers, then `bench/prefill.py`), DSpark on:
+
+| | Slovak, rounds 1 / 2 / 3 | English | Python | Prefill 3.8K / 30K |
+|---|---:|---:|---:|---:|
+| 0.2.6 | 27.7 / 29.4 / 29.8 | 25.3 / 31.2 / 29.5 | 26.3 / 32.0 / 28.5 | 333 / 1,043 tok/s |
+| 0.2.7 | 19.8–20.7 / 26.5–26.9 / 29.5–31.3 | 20.8–22.7 / 25.4–25.8 / 28.2–28.8 | 27.0–27.9 / 27.0–30.2 / 28.3–33.8 | 331 / 984–987 tok/s |
+| 0.2.7, `DS4_DEFAULTS=026` | 20.4 / 27.8 / 29.8 | 21.8 / 26.3 / 28.7 | 25.4 / 28.2 / 30.5 | 326 / 1,011 tok/s |
+| 0.2.7, vision on | 20.6 / 26.9 / 29.2 | 20.9 / 25.5 / 26.2 | 26.7 / 31.9 / 31.9 | 330 / 965 tok/s |
+
+Warm, 0.2.7 matches 0.2.6. Its first answers after a start are about 25 % slower, and
+30K prompts about 6 %. `DS4_DEFAULTS=026` (every DeepSeek default back to 0.2.6) did not
+change the first round, so the cause is not one of those defaults; the profiles keep
+0.2.7's defaults.
+
+### Setup
+
+`~/development/Strata` is the same checkout as the Qwen3.8 Strata profiles (tag `v0.2.7`).
+The vision tower comes from shard 1 of DeepSeek's own checkpoint (0.97 GB, only the tower);
+`vision_pack.py` turns it into `vision.bin`, reads the three image-marker rows (30 KB) from
+shard 2 with an HTTP range request, and `pack_gguf.py` takes `../vision` by itself.
 
 ```bash
 cmake -S ~/development/Strata -B ~/development/Strata/build-dsv41 -DCMAKE_BUILD_TYPE=Release \
@@ -439,10 +483,18 @@ cmake --build ~/development/Strata/build-dsv41 -j 16
 # 508 GB, nine shards; sha256-verify them (see the RAM note)
 hf download unsloth/DeepSeek-V4.1-Flash-1017-GGUF --include "UD-Q8_K_XL/*" \
   --local-dir models/DeepSeek-V4.1-Flash-1017-GGUF
-cd ~/development/Strata && .venv/bin/python tools/dsv41/pack_gguf.py \
+# the vision tower: shard 1 + config.json of the original checkpoint, sha256-checked by vision_pack.py
+hf download deepseek-ai/DeepSeek-V4.1-Flash-1017 model-00001-of-00048.safetensors config.json \
+  --revision 1bae0e1088993b9b82de08f59de5be5a34e42170 \
+  --local-dir models/DeepSeek-V4.1-Flash-1017-GGUF/vision
+cd ~/development/Strata && .venv/bin/python tools/dsv41/vision_pack.py \
+  --dir ~/development/rtxpro6000-llm-toolkit/models/DeepSeek-V4.1-Flash-1017-GGUF/vision
+.venv/bin/python tools/dsv41/pack_gguf.py \
   --model ~/development/rtxpro6000-llm-toolkit/models/DeepSeek-V4.1-Flash-1017-GGUF/UD-Q8_K_XL \
   --out packs/dsv41-ud-q8kxl
 ```
+
+Re-packing loses the learned `expert-profile.bin`; copy it from the old pack to start fast.
 
 The pack (8.5 MB) records the shard folder; `serve.sh` refuses a pack made from another one.
 

@@ -90,7 +90,7 @@ clearly behind.
 | | [`strata-q6`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | Strata 0.1.39, native + Q8/Q6 patches, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 131,072 | 7.27 / 23.31 / 27.41 s³ | 117.1 prose, 142.5 code, 81.3 Slovak | 94.09 GiB | 16.04 GiB pinned experts + PLE cache³ |
 | | [`strata-q8-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8 PLE patch, MTP | Q8_0; PLE mmap | INT8, single stream | 262,144 | 5.37 / 13.77 / 22.56 s³ | 89.4 prose, 104.9 code, 73.1 Slovak | 94.16 GiB | 36.75 GiB pinned experts + PLE cache³ |
 | | [`strata-q6-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8/Q6 patches, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 262,144 | 7.30 / 23.74 / 28.86 s³ | 119.5 prose, 144.4 code, 93.2 Slovak | 94.09 GiB | 17.95 GiB pinned experts + PLE cache³ |
-| | [`strata-q8-vision`](qwen3.8-flash-next/strata/README.md#upgrade-to-026-speed-ab-2026-10-27) | Strata 0.2.6, BF16 GPU vision, MTP | Q8_0; PLE mmap | INT8, single stream | 131,072 | 32K 4.87 s · 120K 18.4 s⁵ | 166 prose, 187 code, 119 Slovak⁵ | 94.14 GiB | 36.55 GiB pinned experts + PLE cache⁴ |
+| | [`strata-q8-vision`](qwen3.8-flash-next/strata/README.md#upgrade-to-027-speed-ab-2026-10-27) | Strata 0.2.7, BF16 GPU vision, MTP | Q8_0; PLE mmap | INT8, single stream | 131,072 | 32K 4.79 s · 120K 18.0 s⁵ | 159 prose, 176 code, 122 Slovak⁵ | 94.14 GiB | 36.55 GiB pinned experts + PLE cache⁴ |
 | | [`strata-q8-vision-256k`](qwen3.8-flash-next/strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q8_0; PLE mmap | INT8, single stream | 262,144 | not benchmarked | not benchmarked | 94.12 GiB⁴ | 38.46 GiB pinned experts + PLE cache⁴ |
 | | [`strata-q6-vision`](qwen3.8-flash-next/strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 131,072 | not benchmarked | not benchmarked | 94.06 GiB⁴ | 17.75 GiB pinned experts + PLE cache⁴ |
 | | [`strata-q6-vision-256k`](qwen3.8-flash-next/strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 262,144 | not benchmarked | not benchmarked | 94.06 GiB⁴ | 19.66 GiB pinned experts + PLE cache⁴ |
@@ -116,9 +116,10 @@ long-context or throughput benchmark. The GPU encoder process uses 1,742 MiB;
 the expert cache sizes automatically after its warmup. Pinned expert RAM excludes
 PLE's OS file cache. [Image checks and memory](qwen3.8-flash-next/strata/VISION.md).
 
-⁵ Measured 2026-10-27 on Strata 0.2.6, fresh start, DDR5-6400 CL42 (the other Strata
+⁵ Measured 2026-10-27 on Strata 0.2.7, fresh start, DDR5-6400 CL42 (the other Strata
 rows used 6667 MT/s and 0.1.39); median of three 512-token responses, second cold
-prefill sweep. 0.1.44.1 in the same session: 139 / 159 / 111 tok/s, 5.26 / 19.4 s.
+prefill sweep. Earlier the same day: 0.2.6 166 / 187 / 119 tok/s, 4.87 / 18.4 s;
+0.1.44.1 139 / 159 / 111 tok/s, 5.26 / 19.4 s.
 [Upgrade A/B](qwen3.8-flash-next/strata/README.md#upgrade-to-026-speed-ab-2026-10-27).
 
 - **Decode barely falls with context on Flash-Next**: three of four layers keep a

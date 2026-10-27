@@ -4,6 +4,18 @@ Launch profiles, scripts and measurements for running large language models on a
 **single NVIDIA RTX PRO 6000 Blackwell 96 GB**, with SGLang, vLLM, ExLlamaV3 or
 Strata — and llama.cpp, ik_llama.cpp, Xolotl and Strata's DeepSeek engine for DeepSeek-V4.1-Flash.
 
+> **Host RAM matters as much as the GPU.** This machine has 256 GB of RAM
+> (4 × 64 GB DDR5-6400, 244 GiB usable). The Qwen3.8-Flash-Next profiles use from
+> almost none to ~131 GB of it (Strata 16–38 GiB of pinned experts plus file cache,
+> SGLang ~65 GB, vLLM 115–131 GB; per profile in [RESULTS.md](RESULTS.md)). The
+> DeepSeek-V4.1-Flash profiles at 3–8-bit quality need nearly all of it: the model is
+> 485–508 GB, the 96 GB card holds only a fraction of its experts, and 195–225 GB of
+> experts live in RAM (Strata's UD-Q8_K_XL leaves about 20–35 GB for everything else).
+> An RTX PRO 6000 with a typical 64 GB of RAM cannot run them: they either fail to start
+> or read the experts from the SSD for every token, which is far too slow to use. Only
+> the ~2-bit Xolotl XQ v2 (152 GB) is smaller; it pins a 72 GiB RAM arena and was not
+> tried with less RAM. See [Hardware](#hardware).
+
 The default profile is **Strata Q8 vision 128K**
 (`qwen3.8-flash-next-strata-q8-vision`), launched by `scripts/start.sh`.
 It uses a 131,072-token context and up to 4,096 image tokens. On this workstation,
@@ -21,12 +33,13 @@ the foreground; Ctrl+C or `scripts/stop.sh` stops it. See [Strata setup](qwen3.8
 | **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K native context | 18 | SGLang, vLLM, ExLlamaV3, Strata | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
 | **Qwen3.6-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.6-27b/README.md](qwen3.6-27b/README.md) |
 | **Qwen3.8-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.8-27b/README.md](qwen3.8-27b/README.md) |
-| **DeepSeek-V4.1-Flash-1017** — 552B MoE, 16B active for output, Engram on SSD | 7 | llama.cpp PR, ik_llama.cpp, Xolotl, Strata (native) | [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/README.md) |
+| **DeepSeek-V4.1-Flash-1017** — 552B MoE, 16B active for output, Engram on SSD | 8 | llama.cpp PR, ik_llama.cpp, Xolotl, Strata (native) | [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/README.md) |
 
 Each model directory has a README with its checkpoints and profiles, and one
 document per profile in `docs/profiles/<profile>.md`; the Flash-Next one also has
 setup, troubleshooting, the model's architecture and open TODOs. The ten Strata
-profiles share [their setup and comparison](qwen3.8-flash-next/strata/README.md).
+Qwen3.8 profiles share [their setup and comparison](qwen3.8-flash-next/strata/README.md);
+the DeepSeek ones are in [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl).
 
 ## Results
 
@@ -53,7 +66,26 @@ In short:
   separate public [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit)
   repository; the newer Strata configurations have not been independently graded.
 
-### Strata Q8 / Q6 profiles
+### Strata profiles
+
+[Strata](https://github.com/Niko1221/Strata) serves two model families here from one
+checkout (0.2.7): Qwen3.8-Flash-Next with its Qwen engine and DeepSeek-V4.1-Flash
+with its own DeepSeek engine (`strata-dsv41`).
+
+| Model, profile | Weights | Host RAM | Decode | Prefill, cold |
+|---|---|---:|---|---|
+| Qwen3.8-Flash-Next, [`strata-q8-vision`](qwen3.8-flash-next/strata/README.md#upgrade-to-027-speed-ab-2026-10-27) | Q8_0, 180B MoE | ~37 GiB pinned experts + PLE file cache | 159 / 176 / 122 tok/s (prose / code / Slovak) | 6,659 tok/s at 32K, 6,691 at 120K |
+| DeepSeek-V4.1-Flash, [`strata-ud-q8kxl`](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl) | UD-Q8_K_XL: original MXFP4 experts, BF16 dense, 552B MoE | **~224 GB** RAM store for the 208 GB of CPU experts | ~29 tok/s warm (Slovak, English, code); ~20 on the first answers after a start; 19–22 at ~200K context | 331 tok/s at 3.8K, ~985 at 30K, ~1,340 at 121K, ~1,410 at 454K |
+
+DeepSeek on Strata is about five times slower than Qwen3.8 on Strata, and the only
+profile here that needs almost all of the 256 GB of RAM (the RAM store sizes itself to
+the free memory; nothing else large can run beside it). Its 128K, 256K and 512K
+profiles and the `-vision` profile (image input through the engine's own tower) share
+these figures; the KV cache costs only 0.12–0.49 GB of VRAM. The DeepSeek rows are
+from 2026-10-27, the DSpark drafter on, 300-token answers; long-context figures were
+measured on 0.2.6.
+
+#### Qwen3.8-Flash-Next Q8 / Q6
 
 Measured 2026-10-06 with MTP, thinking off and one request at a time. Decode
 figures are medians of three 512-token responses to short prompts. All times
@@ -89,7 +121,7 @@ its PLE table stays Q8_0. Q8 has the quantized MMQ prefill path; Q6 currently
 dequantizes to FP16 before its prefill matrix products. Strata's adaptive expert
 cache warms across requests, so generation speed depends on prior workload.
 
-The Strata profiles run on unpatched Strata 0.2.6; the 2026-10-06 figures were
+The Strata profiles run on unpatched Strata 0.2.7; the 2026-10-06 figures were
 measured on 0.1.39 with local patches. Setup, numerical
 validation and the small Slovak sample check are in [Strata documentation](qwen3.8-flash-next/strata/README.md);
 the full comparison with ik_llama.cpp is in
@@ -97,7 +129,7 @@ the full comparison with ik_llama.cpp is in
 
 ### Strata vision profiles
 
-Q8 and Q6 also have parallel vision profiles at 128K and 256K. They use the
+Qwen3.8 Q8 and Q6 also have parallel vision profiles at 128K and 256K. They use the
 existing BF16 `mmproj-Qwen3.8-Flash-Next-BF16.gguf` through a GPU image encoder;
 images are accepted as OpenAI `image_url` parts. By default each image uses up
 to 4,096 context tokens to preserve more detail in screenshots. Override with
@@ -115,6 +147,11 @@ capacities stay the same.
 The encoder loads and warms up before the language engine sizes its expert
 cache. It uses VRAM, so fewer experts fit and the text-only benchmark figures
 above do not apply to these profiles. [Build, API example and validation](qwen3.8-flash-next/strata/README.md#vision-profiles).
+
+DeepSeek-V4.1-Flash on Strata reads pictures with the engine's own BF16 vision tower
+(`deepseek-v4.1-flash-strata-ud-q8kxl-vision`, Strata 0.2.7): its weights stay in RAM and
+stream to the GPU per block, costing about 21 VRAM experts; both image fixtures were read
+correctly in 13–14 s per request ([details](deepseek-v4.1-flash/README.md#image-input-strata-027)).
 
 ## Scripts
 
@@ -164,6 +201,7 @@ and `-512k` = 524,288 tokens. They describe the launch defaults; explicit
 | [start-deepseek-v4.1-flash-strata-ud-q8kxl-128k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-128k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, 128K; background, `HOST=0.0.0.0` for LAN |
 | [start-deepseek-v4.1-flash-strata-ud-q8kxl-256k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-256k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, 256K; background, `HOST=0.0.0.0` for LAN |
 | [start-deepseek-v4.1-flash-strata-ud-q8kxl-512k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-512k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, 512K; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, image input, 128K; background, `HOST=0.0.0.0` for LAN |
 
 ```bash
 scripts/start.sh                     # the default profile, on 0.0.0.0 (LAN)
@@ -293,7 +331,13 @@ See [bench/README.md](bench/README.md).
 
 - **NVIDIA RTX PRO 6000 Blackwell Workstation**, 96 GB, SM120 (compute capability
   12.0). The Server and Max-Q editions have the same memory and architecture.
-- 244 GB RAM; checkpoints on NVMe
+- 256 GB RAM: 4 × 64 GB non-ECC DDR5 at 6400 MT/s CL42 (244 GiB usable). The
+  DeepSeek-V4.1-Flash profiles need 195–225 GB of it for experts (llama.cpp UD-Q3_K_XL
+  locks 195 GB, ik_llama.cpp MXFP4 217 GB, Strata UD-Q8_K_XL sizes a 224 GB RAM store;
+  Xolotl XQ v2 pins a 72 GiB arena and reads the 203 GB Engram from the SSD). With 64 GB
+  of RAM none of them is usable. The Qwen3.8-Flash-Next profiles need less (see
+  "Host RAM" in [RESULTS.md](RESULTS.md); several run with 64 GB).
+- Checkpoints on NVMe; DeepSeek reads its Engram table from the SSD for every token
 - An AMD Radeon AI PRO R9700 32 GB in the same machine. It is not used: CUDA and
   ROCm cannot share one tensor-parallel group. Its ROCm install does affect native
   (non-Docker) builds — see the Qwen3.8-Flash-Next troubleshooting notes.

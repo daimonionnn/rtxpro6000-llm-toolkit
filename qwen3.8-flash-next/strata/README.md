@@ -25,11 +25,11 @@ comparison methodology are in [COMPARISON.md](COMPARISON.md).
 
 ## Source and compatibility
 
-- Strata 0.2.6 (Qwen engine 0.1.50), commit `4b9e05a2a806a3fe24f7b2560d98626c37dade35`
-  (tag `v0.2.6`), unpatched, built from source. It reads Q8_0 PLE tables and contains
+- Strata 0.2.7 (Qwen engine 0.1.52), commit `5e8a4cca7d690ac60ca37eb09e7d0e010099ad6d`
+  (tag `v0.2.7`), unpatched, built from source. It reads Q8_0 PLE tables and contains
   Q6_K expert kernels upstream.
 - The launchers set `STRATA_ROUTE_TAIL_SKIP=0` unless the caller sets it. Strata
-  0.1.42+ (still in 0.2.6) otherwise skips low-ranked experts missing from VRAM on CUDA,
+  0.1.42+ (still in 0.2.7) otherwise skips low-ranked experts missing from VRAM on CUDA,
   which changes answers, most on non-English text ([NON-ENGLISH.md](NON-ENGLISH.md)).
 - Its pinned ggml dependency: llama.cpp `3cf03257f219afbe7334045ff7c6a06ac68c627d`.
 - CUDA 13.3, compiled for SM120.
@@ -45,6 +45,27 @@ On 2026-10-27 the engine moved to 0.2.6. Its `iq_pack.py` produced byte-identica
 the MTP runtime files were kept. The older builds and packs were deleted; the
 previously running commits are tagged `toolkit-0.1.41-running` and
 `toolkit-0.1.44.1-running` in `../Strata` and can be rebuilt with the commands below.
+
+On the same day the checkout moved on to 0.2.7, which adds pictures to the DeepSeek
+engine (the DeepSeek profiles run from the same checkout). `iq_pack.py` and the MTP
+tools are unchanged between 0.2.6 and 0.2.7, so the packs and MTP runtime files were
+kept. The 0.2.6 commit is tagged `toolkit-0.2.6-running` in `../Strata`.
+
+### Upgrade to 0.2.7, speed A/B, 2026-10-27
+
+The same run as the 0.2.6 A/B below (`strata-q8-vision`, fresh start, default
+launcher settings, DDR5-6400 CL42), three hours later:
+
+| | 0.2.6 | 0.2.7 |
+|---|---:|---:|
+| Decode prose / code / Slovak, tok/s | 166 / 187 / 119 | 159 / 176 / 122 |
+| Cold prefill 32K / 120K, tok/s | 6,550 / 6,542 | 6,659 / 6,691 |
+| Load time | 50 s | 44 s |
+
+Both read the two vision fixtures exactly. The decode differences are within the
+spread of earlier runs (157–176 tok/s on code with one setting). 0.2.7 has a
+"Qwen: 0.2.6 behaviour" switch in Strata's Terminal for troubleshooting.
+Raw results: `logs/strata-comparison/strata-q8-vision-0.2.7-fresh*`.
 
 ### Upgrade to 0.2.6, speed A/B, 2026-10-27
 
@@ -106,7 +127,7 @@ raw tensors against the upstream pinned hashes.
 
 ```bash
 git clone https://github.com/Niko1221/Strata.git ../Strata
-git -C ../Strata checkout v0.2.6
+git -C ../Strata checkout v0.2.7
 python3 -m venv ../Strata/.venv
 ../Strata/.venv/bin/pip install -r ../Strata/requirements.txt
 cmake -S ../Strata -B ../Strata/build \

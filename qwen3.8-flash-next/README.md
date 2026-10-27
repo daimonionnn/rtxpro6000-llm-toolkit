@@ -115,7 +115,7 @@ measures both engines with MTP and a 128K context:
 
 Q6 uses Q6_K gate/up, Q8_0 down and a Q8_0 PLE table: 7.21 bits per routed
 weight including scales. Strata's adaptive expert cache warms across requests.
-The ten Slovak samples per configuration are not a quality score. The Strata launchers are registered and now run on unpatched Strata 0.2.6;
+The ten Slovak samples per configuration are not a quality score. The Strata launchers are registered and now run on unpatched Strata 0.2.7;
 these figures come from 0.1.39 with local compatibility patches.
 
 All Strata profiles use 8,192-token automatic prefill chunks and INT8 KV.
@@ -191,6 +191,9 @@ runs need port 8090, so Strata and the agents using it are down meanwhile.
       ([route tail skip](strata/NON-ENGLISH.md#route-tail-skip-strata-0142))
 - [x] Upgrade to Strata 0.2.6 (2026-10-27): decode +7–19%, cold prefill +5–8%
       ([speed A/B](strata/README.md#upgrade-to-026-speed-ab-2026-10-27))
+- [x] Upgrade to Strata 0.2.7 (2026-10-27): speed within run-to-run spread, load 50 -> 44 s
+      ([speed A/B](strata/README.md#upgrade-to-027-speed-ab-2026-10-27)); the quality
+      checks below now apply to 0.2.7
 
 ### Strata 0.2.6 (Qwen engine 0.1.50) quality checks
 
