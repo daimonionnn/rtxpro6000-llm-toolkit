@@ -33,6 +33,10 @@ PROFILES=(
   "deepseek-v4.1-flash-llamacpp-ud-q3kxl|deepseek-v4.1-flash/native|serve-ud-q3kxl-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · llama.cpp PR #30817, Unsloth UD-Q3_K_XL, experts of 29 layers locked in RAM|131072"
   "deepseek-v4.1-flash-ik-mxfp4|deepseek-v4.1-flash/native|serve-mxfp4-128k.sh|DeepSeek-V4.1-Flash-1017-ik-GGUF|DeepSeek-V4.1-Flash-1017 · ik_llama.cpp, original MXFP4 experts, experts of 30 layers locked in RAM|131072"
   "deepseek-v4.1-flash-xolotl-xq-v2|deepseek-v4.1-flash/xolotl|serve-xq-v2-128k.sh|V41-XQ-1017|DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2 (PTQ1/Q2/Q3_K experts, refusal direction removed), exact routing, Engram from the original shards|131072"
+  "deepseek-v4.1-flash-xolotl-xq-v2-vision|deepseek-v4.1-flash/xolotl|serve-xq-v2-vision-128k.sh|V41-XQ-1017|DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2 (PTQ1/Q2/Q3_K experts, refusal direction removed), exact routing, image input (sidecar vision tower, CPU encoder), Engram from the original shards|131072"
+  "deepseek-v4.1-flash-strata-ud-q8kxl|deepseek-v4.1-flash/strata|serve-ud-q8kxl-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, hot experts in VRAM, the rest on the CPU, 128K context|131072"
+  "deepseek-v4.1-flash-strata-ud-q8kxl-256k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-256k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, 256K context|262144"
+  "deepseek-v4.1-flash-strata-ud-q8kxl-512k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-512k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, 512K context|524288"
   "qwen3.6-27b-sglang-bf16|qwen3.6-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.6-27B|Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation|262144"
   "qwen3.8-27b-sglang-bf16|qwen3.8-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.8-27B|Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation|262144"
 )

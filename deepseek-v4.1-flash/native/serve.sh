@@ -70,8 +70,15 @@ if ss -ltn | grep -q ":$PORT "; then echo "port $PORT is in use; stop the other 
 LOG="$ROOT/logs/$PROFILE-server.log"
 echo "$PROFILE: $MODEL"
 echo "  experts of layers 0..$((NCMOE - 1)) in RAM, context $CTX, CPUs $CPUSET, bind $HOST:$PORT"
+# Run the server in its own systemd scope: systemd-oomd and memory accounting then treat it
+# separately, so a kill during the heavy load phase cannot take the terminal (or VS Code) with it.
+# With --scope, systemd-run execs the command, so $! is still the server PID.
+SCOPE=()
+if systemd-run --user --scope --quiet --collect true 2>/dev/null; then
+  SCOPE=(systemd-run --user --scope --quiet --collect --unit="$PROFILE-$$")
+fi
 # setsid: own process group, so stop.sh reaches every thread of the server
-env "${ENVS[@]}" setsid nohup taskset -c "$CPUSET" "$EXE" -m "$MODEL" --alias "$PROFILE" \
+env "${ENVS[@]}" setsid nohup "${SCOPE[@]}" taskset -c "$CPUSET" "$EXE" -m "$MODEL" --alias "$PROFILE" \
     --host "$HOST" --port "$PORT" -c "$CTX" -ngl 99 --n-cpu-moe "$NCMOE" -fa on \
     -b 2048 -ub 2048 -t 8 -tb 8 --jinja "${ARGS[@]}" > "$LOG" 2>&1 < /dev/null &
 echo $! > "$PIDFILE"
@@ -89,7 +96,7 @@ curl -sf -m 3 "http://127.0.0.1:$PORT/health" > /dev/null || { echo "not healthy
 echo "ready: http://$HOST:$PORT/v1 (model $PROFILE)"
 
 if [ "$LOCK_EXPERTS" = 1 ]; then
-  setsid nohup python3 -I "$HERE/mlock_experts.py" "$MODEL" "$NCMOE" > "$ROOT/logs/$PROFILE-mlock.log" 2>&1 < /dev/null &
+  setsid nohup "${SCOPE[@]/%$PROFILE-$$/$PROFILE-mlock-$$}" python3 -I "$HERE/mlock_experts.py" "$MODEL" "$NCMOE" > "$ROOT/logs/$PROFILE-mlock.log" 2>&1 < /dev/null &
   echo $! > "$LOCKPID"
   for _ in $(seq 1 120); do
     grep -q -E "holding|failed" "$ROOT/logs/$PROFILE-mlock.log" 2>/dev/null && break

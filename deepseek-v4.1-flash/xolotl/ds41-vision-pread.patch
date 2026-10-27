@@ -1,0 +1,22 @@
+diff --git a/tools/v41/vision/ds41_vision.py b/tools/v41/vision/ds41_vision.py
+index 4cedb598..fba4a346 100644
+--- a/tools/v41/vision/ds41_vision.py
++++ b/tools/v41/vision/ds41_vision.py
+@@ -153,7 +153,7 @@ def dequantize(raw, ty):
+     raise ValueError(f"unsupported GGML type {ty}")
+ 
+ 
+-def _pread(fd, n, off):
++def _pread_some(fd, n, off):
+     if hasattr(os, "pread"):
+         return os.pread(fd, n, off)
+     os.lseek(fd, off, os.SEEK_SET)   # Windows has no os.pread; one reader per process, so seek + read is safe
+@@ -181,7 +181,7 @@ class SidecarWeights:
+         nbytes = ggml_nbytes(shape, ty)
+         raw = bytearray()
+         while len(raw) < nbytes:
+-            b = _pread(self.fd, nbytes - len(raw), self.data_start + off + len(raw))
++            b = _pread_some(self.fd, nbytes - len(raw), self.data_start + off + len(raw))
+             if not b:
+                 raise OSError(f"{name}: short read")
+             raw += b

@@ -2,7 +2,8 @@
 # Start DeepSeek-V4.1-Flash-1017 in an Xolotl XQ quant (https://github.com/Indras-Mirror/Xolotl) on
 # one RTX PRO 6000, in the background, behind Xolotl's OpenAI/Anthropic API server.
 #
-#   ./serve.sh xq-v2      IndrasMirror's V41-XQ-1017 v2 (152 GB; refusal direction removed)
+#   ./serve.sh xq-v2         IndrasMirror's V41-XQ-1017 v2 (152 GB; refusal direction removed)
+#   ./serve.sh xq-v2-vision  the same with image input (DeepSeek's vision tower from the MTP sidecar)
 #   ../native/stop.sh     stops it (shared with the llama.cpp profiles)
 #
 # The XQ file holds the dense weights (Q8_0) and per-expert PTQ1_0 / Q2_0 / Q3_K experts. The engine
@@ -20,12 +21,13 @@
 #               fast routing: about +40 % decode, but clearly worse Slovak)
 #   DSPARK      1 = speculative decode with the MTP sidecar (default), 0 = off
 #   CPUSET      CPUs for the server (default 0-7, the P-cores of a 270K Plus)
+#   VISION_GPU  vision profile: 0 = image encoder on the CPU (default), 1 = on the GPU (takes VRAM from the experts)
 #   XOLOTL_DIR  Xolotl checkout (default ~/development/xolotl)
 #   PYTHON      Python with Xolotl's requirements.txt (default $XOLOTL_DIR/.venv/bin/python)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-VARIANT="${1:?usage: serve.sh xq-v2}"
+VARIANT="${1:?usage: serve.sh xq-v2|xq-v2-vision}"
 STATE_DIR="$ROOT/deepseek-v4.1-flash/native"   # one pid file for every DeepSeek profile (stop.sh, status.sh)
 PIDFILE="$STATE_DIR/server.pid"
 STATE="$STATE_DIR/server.profile"
@@ -42,15 +44,17 @@ ENGRAM_DIR="${ENGRAM_DIR:-$ROOT/models/DeepSeek-V4.1-Flash-1017-orig}"
 mkdir -p "$ROOT/logs"
 
 case "$VARIANT" in
-  xq-v2)
-    PROFILE=deepseek-v4.1-flash-xolotl-xq-v2
+  xq-v2|xq-v2-vision)
+    PROFILE=deepseek-v4.1-flash-xolotl-$VARIANT
     XQ_DIR="$SIDE_DIR/v2"
     ;;
-  *) echo "unknown variant $VARIANT (xq-v2)" >&2; exit 2 ;;
+  *) echo "unknown variant $VARIANT (xq-v2, xq-v2-vision)" >&2; exit 2 ;;
 esac
 MODEL="$XQ_DIR/V41-XQ-1017.gguf"
 RANK="$XQ_DIR/rank-1017-085.bin"
 SIDECAR="$SIDE_DIR/V41-MTP-Vision-1017.Q2_K.gguf"
+VISION=0; [[ "$VARIANT" == *-vision ]] && VISION=1
+VISION_GPU="${VISION_GPU:-0}"
 TOKENIZER="$SIDE_DIR/tokenizer"
 
 [ -x "$XOLOTL_DIR/build-xolotl/ds41_generate" ] || { echo "missing $XOLOTL_DIR/build-xolotl/ds41_generate; build Xolotl as in README.md" >&2; exit 2; }
@@ -58,6 +62,12 @@ for f in "$MODEL" "$RANK" "$TOKENIZER/vocab.json" "$ENGRAM_DIR/model.safetensors
          "$ENGRAM_DIR/model-00047-of-00048.safetensors" "$ENGRAM_DIR/model-00048-of-00048.safetensors"; do
   [ -e "$f" ] || { echo "missing $f; download it as in README.md" >&2; exit 2; }
 done
+if [ "$VISION" = 1 ]; then
+  # the encoder imports DeepSeek's reference vision.py / image_processor.py and needs torch
+  [ -f "$ENGRAM_DIR/inference/vision.py" ] || { echo "missing $ENGRAM_DIR/inference/vision.py (the original checkpoint's inference/)" >&2; exit 2; }
+  "${PYTHON:-$XOLOTL_DIR/.venv/bin/python}" -c "import torch, PIL" 2>/dev/null \
+    || { echo "the Xolotl venv has no torch; install it as in README.md" >&2; exit 2; }
+fi
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then
   echo "a DeepSeek server is already running (PID $(cat "$PIDFILE")); ../native/stop.sh first" >&2; exit 2
 fi
@@ -68,10 +78,11 @@ CONFIG="$ROOT/logs/$PROFILE-config.json"
 ENGINE_LOG="$ROOT/logs/$PROFILE-engine.log"
 PROFILE="$PROFILE" MODEL="$MODEL" RANK="$RANK" ENGRAM_DIR="$ENGRAM_DIR" CTX="$CTX" ARENA_GIB="$ARENA_GIB" \
 RB="$RB" RBF="$RBF" PORT="$PORT" TOKENIZER="$TOKENIZER" ENGINE_LOG="$ENGINE_LOG" XOLOTL_DIR="$XOLOTL_DIR" \
-ENGINE="$HERE/engine.sh" SIDECAR="$([ "$DSPARK" = 1 ] && echo "$SIDECAR")" python3 -I - > "$CONFIG" <<'EOF'
+VISION="$VISION" VISION_GPU="$VISION_GPU" PYTHON="${PYTHON:-$XOLOTL_DIR/.venv/bin/python}" VISION_SIDECAR="$SIDECAR" \
+CPU_COUNT="$(taskset -c "$CPUSET" nproc)" ENGINE="$HERE/engine.sh" SIDECAR="$([ "$DSPARK" = 1 ] && echo "$SIDECAR")" python3 -I - > "$CONFIG" <<'EOF'
 import json, os
 e = os.environ
-print(json.dumps({
+cfg = {
     "exe": e["ENGINE"],
     "args": ["-m", e["MODEL"], "--backend", "cuda", "--experts", "gpu", "--engram", e["ENGRAM_DIR"],
              "--rank", e["RANK"], "--ctx", e["CTX"], "--stop", "1", "--arena-adapt", "--kv-fp4",
@@ -92,13 +103,33 @@ print(json.dumps({
     # agents send max_tokens 65536 whatever the prompt: shorten it to the room left instead of a 400
     "fit_max_tokens": True,
     "reasoning_budget_tokens": 32768,
-}, indent=2))
+}
+if e["VISION"] == "1":
+    cfg["args"].append("--vision")
+    # Xolotl's resident encoder (tools/v41/vision/ds41_vision.py) with the tower from the MTP sidecar (Q8_0)
+    cfg["vision"] = {
+        "exe": e["XOLOTL_DIR"] + "/tools/v41/vision/ds41_vision.py",
+        "python": e["PYTHON"],
+        "mmproj": e["VISION_SIDECAR"],
+        "model": e["MODEL"],
+        "reference_dir": e["ENGRAM_DIR"] + "/inference",
+        "threads": int(e["CPU_COUNT"]),
+        "gpu": e["VISION_GPU"] == "1",
+    }
+print(json.dumps(cfg, indent=2))
 EOF
 
 echo "$PROFILE: $MODEL"
 echo "  Engram $ENGRAM_DIR, context $CTX, arena $ARENA_GIB GiB, route bias $RB/$RBF, DSpark $DSPARK, CPUs $CPUSET, bind $HOST:$PORT"
+# Run the server in its own systemd scope: systemd-oomd and memory accounting then treat it
+# separately, so a kill during the heavy load phase cannot take the terminal (or VS Code) with it.
+# With --scope, systemd-run execs the command, so $! is still the server PID.
+SCOPE=()
+if systemd-run --user --scope --quiet --collect true 2>/dev/null; then
+  SCOPE=(systemd-run --user --scope --quiet --collect --unit="$PROFILE-$$")
+fi
 # setsid: own process group, so stop.sh reaches the server and its engine
-setsid nohup taskset -c "$CPUSET" "${PYTHON:-$XOLOTL_DIR/.venv/bin/python}" "$XOLOTL_DIR/tools/v41/serve/serve_ds41.py" --engine strata \
+setsid nohup "${SCOPE[@]}" taskset -c "$CPUSET" "${PYTHON:-$XOLOTL_DIR/.venv/bin/python}" "$XOLOTL_DIR/tools/v41/serve/serve_ds41.py" --engine strata \
     --config "$CONFIG" --host "$HOST" --port "$PORT" > "$LOG" 2>&1 < /dev/null &
 echo $! > "$PIDFILE"
 echo "$PROFILE" > "$STATE"

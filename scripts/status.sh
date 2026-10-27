@@ -101,6 +101,10 @@ if [ -f "$DEEPSEEK_DIR/server.pid" ] && kill -0 "$(cat "$DEEPSEEK_DIR/server.pid
     grep -aoE "seed -> [0-9]+ experts in VRAM, [0-9]+ arena" "$ROOT/logs/$ds_profile-engine.log" 2>/dev/null | tail -1 \
       | sed 's/^seed -> /  experts    /; s/ arena$/ in the RAM arena/'
     echo "  engine log logs/$ds_profile-engine.log"
+  elif [[ "$ds_profile" == *-strata-* ]]; then
+    grep -oE -- '"--mmap-experts", "[a-z]+"' "$ROOT/logs/$ds_profile-config.json" 2>/dev/null | grep -oE '[a-z]+"$' | tr -d '"' \
+      | sed 's/^/  mmap       experts /'
+    echo "  engine log logs/$ds_profile-engine.log"
   elif [ -f "$DEEPSEEK_DIR/lock.pid" ] && kill -0 "$(cat "$DEEPSEEK_DIR/lock.pid")" 2>/dev/null; then
     echo "  experts    $(tail -1 "$ROOT/logs/$ds_profile-mlock.log" 2>/dev/null)"
   else

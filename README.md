@@ -2,7 +2,7 @@
 
 Launch profiles, scripts and measurements for running large language models on a
 **single NVIDIA RTX PRO 6000 Blackwell 96 GB**, with SGLang, vLLM, ExLlamaV3 or
-Strata — and llama.cpp / ik_llama.cpp for DeepSeek-V4.1-Flash.
+Strata — and llama.cpp, ik_llama.cpp, Xolotl and Strata's DeepSeek engine for DeepSeek-V4.1-Flash.
 
 The default profile is **Strata Q8 vision 128K**
 (`qwen3.8-flash-next-strata-q8-vision`), launched by `scripts/start.sh`.
@@ -21,7 +21,7 @@ the foreground; Ctrl+C or `scripts/stop.sh` stops it. See [Strata setup](qwen3.8
 | **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K native context | 18 | SGLang, vLLM, ExLlamaV3, Strata | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
 | **Qwen3.6-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.6-27b/README.md](qwen3.6-27b/README.md) |
 | **Qwen3.8-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.8-27b/README.md](qwen3.8-27b/README.md) |
-| **DeepSeek-V4.1-Flash-1017** — 552B MoE, 16B active for output, Engram on SSD | 3 | llama.cpp PR, ik_llama.cpp, Xolotl (native) | [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/README.md) |
+| **DeepSeek-V4.1-Flash-1017** — 552B MoE, 16B active for output, Engram on SSD | 7 | llama.cpp PR, ik_llama.cpp, Xolotl, Strata (native) | [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/README.md) |
 
 Each model directory has a README with its checkpoints and profiles, and one
 document per profile in `docs/profiles/<profile>.md`; the Flash-Next one also has
@@ -160,6 +160,10 @@ and `-512k` = 524,288 tokens. They describe the launch defaults; explicit
 | [start-deepseek-v4.1-flash-llamacpp-ud-q3kxl-128k.sh](scripts/start-deepseek-v4.1-flash-llamacpp-ud-q3kxl-128k.sh) | DeepSeek-V4.1-Flash-1017 · llama.cpp PR #30817, Unsloth UD-Q3_K_XL; background, `HOST=0.0.0.0` for LAN |
 | [start-deepseek-v4.1-flash-ik-mxfp4-128k.sh](scripts/start-deepseek-v4.1-flash-ik-mxfp4-128k.sh) | DeepSeek-V4.1-Flash-1017 · ik_llama.cpp, original MXFP4 experts; background, `HOST=0.0.0.0` for LAN |
 | [start-deepseek-v4.1-flash-xolotl-xq-v2-128k.sh](scripts/start-deepseek-v4.1-flash-xolotl-xq-v2-128k.sh) | DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2, exact routing; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-xolotl-xq-v2-vision-128k.sh](scripts/start-deepseek-v4.1-flash-xolotl-xq-v2-vision-128k.sh) | DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2, exact routing, image input; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-strata-ud-q8kxl-128k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-128k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, 128K; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-strata-ud-q8kxl-256k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-256k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, 256K; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-strata-ud-q8kxl-512k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-512k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, 512K; background, `HOST=0.0.0.0` for LAN |
 
 ```bash
 scripts/start.sh                     # the default profile, on 0.0.0.0 (LAN)
@@ -263,7 +267,7 @@ See [bench/README.md](bench/README.md).
 │   └── strata/                  Q8/Q6 Python launchers, historical 0.1.39 patches, comparison
 ├── qwen3.6-27b/                  README.md, docs/profiles/, sglang/bf16/
 ├── qwen3.8-27b/                  README.md, docs/profiles/, sglang/bf16/
-├── deepseek-v4.1-flash/          README.md, native/ (launcher, stop, expert mlock helper), xolotl/ (XQ launcher)
+├── deepseek-v4.1-flash/          README.md, native/ (launcher, stop, expert mlock helper), xolotl/ (XQ launcher, vision variant, encoder patch), strata/ (UD-Q8_K_XL launcher)
 ├── bench/                        decode, prefill, EvalPlus, language samples — any engine
 ├── ui/                           README.md, local chat UI
 ├── models/                       checkpoints (not tracked)

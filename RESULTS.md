@@ -31,8 +31,12 @@ profile has not been timed in performance mode yet.
 | `deepseek-v4.1-flash-llamacpp-ud-q3kxl` | Unsloth UD-Q3_K_XL | 12.9–13.0 tok/s | 443 tok/s | **83 / 84.5** |
 | `deepseek-v4.1-flash-ik-mxfp4` | original MXFP4 | not yet measured | not measured | 75 / 79.5 |
 | `deepseek-v4.1-flash-xolotl-xq-v2` | XQ v2 (PTQ1_0 / Q2_0 / Q3_K), exact routing | 60–68 tok/s (Slovak ~40) | 668 tok/s (784 at ~48K) | 78 (one grader)¹ |
+| `deepseek-v4.1-flash-strata-ud-q8kxl` | UD-Q8_K_XL (original MXFP4), Strata engine | ~29 tok/s with DSpark (Slovak, English, code)² | 1,040 tok/s | not yet graded |
 
 ¹ On its own sheet with one grader, where UD-Q3_K_XL scored 87 and MXFP4 79.5.
+
+² Measured 2026-10-27 at DDR5-6400 CL42 with the engine's learned hot-expert profile; its RAM
+store takes 224 GB ([details](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl)).
 
 In agent use each XQ v2 turn costs at least 7–11 s of prefill even for a few hundred new
 tokens on a cached prefix ([details](deepseek-v4.1-flash/README.md#prefill-and-agent-use)).
