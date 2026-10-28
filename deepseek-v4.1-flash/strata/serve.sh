@@ -6,13 +6,20 @@
 #                                (serve-ud-q8kxl-{128k,256k,512k}.sh set CTX)
 #   ./serve.sh ud-q8kxl-vision   the same with image input: the engine's own vision tower (DeepSeek's
 #                                BF16 tower in the pack, ~0.3 GiB of VRAM), Strata 0.2.7+
+#   ./serve.sh ist-iq2xs         ISTA-DASLab's official 2.25 bpw set (IQ2_XS, 155 GB) with its IQ4_NL Engram (111 GB)
+#   ./serve.sh ist-iq2xs-e8      the same experts with UD-Q8_K_XL's MXFP8 Engram (203 GB, shard 8 of that set)
+#                                (both also with -vision)
 #   ../native/stop.sh     stops it (shared with the other DeepSeek profiles)
 #
 # The engine keeps the dense weights and the most-routed experts in VRAM (~95 GiB) and computes the
-# rest (~208 GB) on the CPU. The Engram n-gram table is read from the model files on the SSD.
+# rest on the CPU (UD-Q8_K_XL: ~208 GB). The Engram n-gram table is read from the model files.
 #
 # Environment (all optional):
-#   MODEL_DIR     folder with the UD-Q8_K_XL shards (default ../../models/DeepSeek-V4.1-Flash-1017-GGUF)
+#   UNSLOTH_DIR   folder with Unsloth's UD-Q8_K_XL, the DSpark drafter and vision/
+#                 (default ../../models/DeepSeek-V4.1-Flash-1017-GGUF)
+#   ISTA_DIR      folder with ISTA-DASLab's files (default ../../models/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF)
+#   MODEL_DIR     the variant's own set (scripts/start-*.sh sets it from the registry): UNSLOTH_DIR for
+#                 ud-q8kxl, ISTA_DIR for ist-*
 #   HOST PORT     bind address and port (default 127.0.0.1 8090)
 #   CTX           context tokens: 131072 (default), 262144 or 524288; the profile id gets -256k / -512k
 #   MMAP_EXPERTS  on = read the CPU experts in place from the files (page cache, can be evicted),
@@ -21,12 +28,16 @@
 #   DSPARK        DSpark drafter: on (default; +3 % Slovak, +9 % English, +47 % code here), auto (the
 #                 engine leaves it off when the experts do not fit the GPU), none
 #   CPUSET        CPUs for the server and engine (default 0-7, the P-cores of a 270K Plus)
-#   CPU_THREADS   CPU-lane expert threads (default 0 = the engine's choice)
+#   CPU_THREADS   CPU-lane expert threads (default 8; 0 = the engine's choice). The engine pins each
+#                 lane thread to one CPU in order 0, 1, 2, ... from the system topology and ignores
+#                 CPUSET for them: its own choice here is 22 threads on CPUs 0-21, 14 of them E-cores.
+#                 8 keeps the lane on the P-cores 0-7: a third less CPU power in decode (127 vs 187 W),
+#                 the same speed on UD-Q8_K_XL, 2-15 % slower on the IQ2_XS set.
 #   STRATA_DIR    Strata checkout (0.2.7+) with build-dsv41/ and packs/ (default ~/development/Strata)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
-VARIANT="${1:?usage: serve.sh ud-q8kxl|ud-q8kxl-vision}"
+VARIANT="${1:?usage: serve.sh ud-q8kxl|ist-iq2xs|ist-iq2xs-e8[-vision]}"
 STATE_DIR="$ROOT/deepseek-v4.1-flash/native"   # one pid file for every DeepSeek profile (stop.sh, status.sh)
 PIDFILE="$STATE_DIR/server.pid"
 STATE="$STATE_DIR/server.profile"
@@ -36,19 +47,37 @@ CTX="${CTX:-131072}"
 MMAP_EXPERTS="${MMAP_EXPERTS:-on}"
 DSPARK="${DSPARK:-on}"
 CPUSET="${CPUSET:-0-7}"
-CPU_THREADS="${CPU_THREADS:-0}"
+CPU_THREADS="${CPU_THREADS:-8}"
 STRATA_DIR="${STRATA_DIR:-$HOME/development/Strata}"
-GGUF_DIR="${MODEL_DIR:-$ROOT/models/DeepSeek-V4.1-Flash-1017-GGUF}"
+GGUF_DIR="${UNSLOTH_DIR:-$ROOT/models/DeepSeek-V4.1-Flash-1017-GGUF}"
+ISTA_DIR="${ISTA_DIR:-$ROOT/models/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF}"
+if [ -n "${MODEL_DIR:-}" ]; then
+  case "$VARIANT" in ist-*) ISTA_DIR="$MODEL_DIR" ;; *) GGUF_DIR="$MODEL_DIR" ;; esac
+fi
+UD="$GGUF_DIR/UD-Q8_K_XL/DeepSeek-V4.1-Flash-1017-UD-Q8_K_XL"
+IST="$ISTA_DIR/DeepSeek-V4.1-Flash-1017-GSQ-RCO-IQ2_XS"
 mkdir -p "$ROOT/logs"
 
-case "$VARIANT" in
-  ud-q8kxl|ud-q8kxl-vision)
-    PROFILE=deepseek-v4.1-flash-strata-$VARIANT
-    PACK="$STRATA_DIR/packs/dsv41-ud-q8kxl"   # one pack with the vision tower; --vision picks
+# every pack carries the vision tower; --vision picks. FILES: what the pack reads at run time.
+case "${VARIANT%-vision}" in
+  ud-q8kxl)
+    PACK="$STRATA_DIR/packs/dsv41-ud-q8kxl"
     SHARDS="$GGUF_DIR/UD-Q8_K_XL"
+    FILES=("$UD"-0000{1..9}-of-00009.gguf)
     ;;
-  *) echo "unknown variant $VARIANT (ud-q8kxl, ud-q8kxl-vision)" >&2; exit 2 ;;
+  ist-iq2xs)
+    PACK="$STRATA_DIR/packs/dsv41-ist225-engram-iq4nl"
+    SHARDS="$ISTA_DIR"
+    FILES=("$IST"-0000{1..4}-of-00004.gguf "$ISTA_DIR/DeepSeek-V4.1-Flash-Engram-IQ4_NL.gguf")
+    ;;
+  ist-iq2xs-e8)
+    PACK="$STRATA_DIR/packs/dsv41-ist225-engram-mxfp8"
+    SHARDS="$ISTA_DIR"
+    FILES=("$IST"-0000{1..4}-of-00004.gguf "$UD-00008-of-00009.gguf")
+    ;;
+  *) echo "unknown variant $VARIANT (ud-q8kxl, ist-iq2xs, ist-iq2xs-e8, each also with -vision)" >&2; exit 2 ;;
 esac
+PROFILE=deepseek-v4.1-flash-strata-$VARIANT
 # the 256K / 512K profiles are the same server with a larger window (serve-*-256k.sh, serve-*-512k.sh)
 case "$CTX" in
   131072) ;;
@@ -68,8 +97,7 @@ if [ "$VISION" = on ]; then
   grep -q "^image_token_id " "$PACK/ds4.txt" || { echo "$PACK has no vision tower; pack it as in README.md" >&2; exit 2; }
   [ -f "$STRATA_DIR/serve/ds_pictures.py" ] || { echo "$STRATA_DIR is older than Strata 0.2.7 (no DeepSeek pictures)" >&2; exit 2; }
 fi
-for i in $(seq 1 9); do
-  f="$SHARDS/DeepSeek-V4.1-Flash-1017-UD-Q8_K_XL-0000$i-of-00009.gguf"
+for f in "${FILES[@]}" "$GGUF_DIR/dspark-DeepSeek-V4.1-Flash-1017-Q8_0.gguf"; do
   [ -f "$f" ] || { echo "missing $f; download it as in README.md" >&2; exit 2; }
 done
 if [ -f "$PIDFILE" ] && kill -0 "$(cat "$PIDFILE")" 2>/dev/null; then

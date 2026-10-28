@@ -10,13 +10,14 @@ read the Engram from the SSD.
 
 | Profile | Engine | Experts | Decode | Slovak blind score |
 |---|---|---|---:|---:|
-| `deepseek-v4.1-flash-llamacpp-ud-q3kxl` | llama.cpp PR #30817 | Unsloth UD-Q3_K_XL | **12.9–13.0 tok/s** | **83 / 84.5** |
-| `deepseek-v4.1-flash-ik-mxfp4` | ik_llama.cpp `main` | original MXFP4 | not yet measured¹ | 75 / 79.5 |
+| `deepseek-v4.1-flash-llamacpp-ud-q3kxl`⁴ | llama.cpp PR #30817 | Unsloth UD-Q3_K_XL | **12.9–13.0 tok/s** | **83 / 84.5** |
+| `deepseek-v4.1-flash-ik-mxfp4`⁴ | ik_llama.cpp `main` | original MXFP4 | not yet measured¹ | 75 / 79.5 |
 | `deepseek-v4.1-flash-xolotl-xq-v2` | Xolotl (`ds41_generate`) | IndrasMirror XQ v2, PTQ1_0 / Q2_0 / Q3_K | **60–68 tok/s** (Slovak ~40) | 78² |
 | `deepseek-v4.1-flash-xolotl-xq-v2-vision` | the same + image input | | the same | |
-| `deepseek-v4.1-flash-strata-ud-q8kxl` | Strata `strata-dsv41` 0.2.7 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | not yet graded |
+| `deepseek-v4.1-flash-strata-ud-q8kxl` | Strata `strata-dsv41` 0.2.7 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | 86.5⁵ |
 | `deepseek-v4.1-flash-strata-ud-q8kxl-256k`, `-512k` | the same, 256K / 512K context | | ~19–22 tok/s at ~200K context | |
 | `deepseek-v4.1-flash-strata-ud-q8kxl-vision`, `-vision-256k`, `-vision-512k` | the same + image input (engine's own tower) | | the same | |
+| `deepseek-v4.1-flash-strata-ist-iq2xs` (+ `-256k`, `-vision`, `-vision-256k`) | Strata `strata-dsv41` 0.2.7 | ISTA-DASLab IQ2_XS, 2.25 bpw (official) | **40–59 tok/s** with DSpark | 84⁵ |
 
 ¹ Its first speed runs were in the desktop's power-saver mode and were discarded;
 expect it to be slower than UD-Q3_K_XL in proportion to its larger experts.
@@ -26,6 +27,14 @@ expect it to be slower than UD-Q3_K_XL in proportion to its larger experts.
 
 ³ Warm, with the engine's learned hot-expert profile; the first requests of the very
 first start ran at ~10 tok/s. See [Strata UD-Q8_K_XL](#strata-ud-q8_k_xl).
+
+⁵ One grader on two sheets with the same rubric (2026-10-27/28): UD-Q3_K_XL 86, MXFP4 81,
+Xolotl exact 77 on the first; see [ISTA-DASLab IQ2_XS](#ista-daslab-iq2_xs-225-bpw).
+
+⁴ Checkpoint not on disk: the ik MXFP4 GGUF was removed earlier, and the UD-Q3_K_XL
+shards were deleted on 2026-10-27 to make room; the Strata UD-Q8_K_XL profile takes the
+place of both. The launchers and the results below are kept; download the checkpoint
+again ([Checkpoints](#checkpoints)) to run either profile.
 
 The llama.cpp profiles are much slower than the Qwen3.8 Strata profiles (~140 tok/s)
 and write the best Slovak measured on this machine; see [results](#results). The Xolotl
@@ -196,8 +205,6 @@ expert bytes from RAM, not fewer.
   the OOM killer); the profile sets `GGML_CUDA_NO_PINNED=1`.
 - mrfakename's `Q3_K_M` quantizes every tensor, including attention, the
   hyper-connection mixers and the Engram, to Q3_K; it is not used here.
-- antirez's DwarfStar (`ds4`) Q2 was built but its 366 GB download failed the
-  checksum twice and was not tested.
 
 ### RAM and corrupted downloads
 
@@ -388,19 +395,38 @@ setting got the same sequence: a fresh start with the learned profile, three rou
 
 | CPU threads | Slovak story | English story | Python | Prefill 3.8K | Prefill 30K |
 |---|---:|---:|---:|---:|---:|
-| 22 (engine default) | 26.3–29.4 tok/s | 24.6–26.6 tok/s | 17.8–21.5 tok/s | 335 tok/s (11.3 s) | 1,050 tok/s (28.9 s) |
-| 8 (`CPU_THREADS=8`) | 26.9–30.5 tok/s | 25.9–26.5 tok/s | 18.8–20.4 tok/s | 337 tok/s (11.3 s) | 1,050 tok/s (28.8 s) |
+| 22 (the engine's choice, CPUs 0–21) | 26.3–29.4 tok/s | 24.6–26.6 tok/s | 17.8–21.5 tok/s | 335 tok/s (11.3 s) | 1,050 tok/s (28.9 s) |
+| 8 (`CPU_THREADS=8`, CPUs 0–7; the default since 2026-10-28) | 26.9–30.5 tok/s | 25.9–26.5 tok/s | 18.8–20.4 tok/s | 337 tok/s (11.3 s) | 1,050 tok/s (28.8 s) |
 
 Fewer P-cores (`CPUSET` and `CPU_THREADS` together), same sequence, with the CPU package
 power from RAPL averaged over the decode rounds and over the prefill runs:
 
 | P-cores / threads | Slovak | English | Python | Prefill 3.8K / 30K | CPU power, decode / prefill |
 |---|---:|---:|---:|---:|---:|
-| 8 / 22 (default) | 28.1 tok/s | 26.3 tok/s | 19.6 tok/s | 337 / 1,039 tok/s | 186 W / 47 W |
+| `CPUSET=0-7`, 22 threads | 28.1 tok/s | 26.3 tok/s | 19.6 tok/s | 337 / 1,039 tok/s | 186 W / 47 W |
 | 4 / 4 (`CPUSET=0-3 CPU_THREADS=4`) | 26.4 (−6 %) | 24.0 (−9 %) | 17.3 (−12 %) | 338 / 1,114 tok/s | 66 W / 40 W |
 | 2 / 2 (`CPUSET=0-1 CPU_THREADS=2`) | 21.6 (−23 %) | 19.3 (−27 %) | 12.9 (−34 %) | 332 / 1,020 tok/s | 45 W / 34 W |
 
-(Averages of three rounds.) 8 and 22 threads on eight P-cores decode alike. Prefill runs
+(Averages of three rounds.) `CPUSET` does not hold the CPU lane: the engine pins each lane
+thread to one CPU, 0, 1, 2, ... in the order of the system topology, whatever the process
+affinity, so its own choice of 22 threads ran on CPUs 0–21, 14 of them E-cores, at 186 W.
+8 and 22 threads decode alike, so the launcher passes `--cpu-threads 8` since 2026-10-28,
+which keeps the lane on the P-cores 0–7 (the E-cores then stay at 0–5 % load).
+
+Measured 2026-10-28, one fresh start per setting, the same sequence, RAPL package power
+over the decode rounds and over the prefill runs (idle 19–20 W in all four):
+
+| Profile, lane threads | Slovak | English | Python | CPU power, decode | Prefill 3.8K / 30K | CPU power, prefill |
+|---|---:|---:|---:|---:|---:|---:|
+| UD-Q8_K_XL, 22 (CPUs 0–21) | 21.5 tok/s | 21.9 tok/s | 27.8 tok/s | 187 W | 328 / 880 tok/s | 52 W |
+| UD-Q8_K_XL, 8 (CPUs 0–7, default) | 22.9 | 22.8 | 27.7 | **127 W** | 327 / 973 tok/s | 47 W |
+| IQ2_XS 2.25 bpw, 22 | 45.3 | 45.2 | 53.2 | 188 W | 522 / 2,196 tok/s | 47 W |
+| IQ2_XS 2.25 bpw, 8 (default) | 41.8 (−8 %) | 44.2 (−2 %) | 45.2 (−15 %) | **122 W** | 702 / 2,698 tok/s | 42 W |
+
+(Means of three rounds; the first round after a start is the slowest.) Eight lane threads
+cut the CPU's decode power by 60–66 W, a third. UD-Q8_K_XL decodes the same; the IQ2_XS
+set, whose CPU lane is a third the size, loses 2–15 %, most on code. The eight lane
+threads spin while a request runs, so the P-cores stay at 100 % either way. Prefill runs
 on the GPU and does not depend on the CPU cores. Four P-cores cost 6–12 % of decode for
 about a third of the CPU power; two cost 23–34 %. Short prompts (29–37 tokens) took
 0.5–0.9 s on eight cores, 0.6–1.0 s on four and 1.0–1.8 s on two. What ran
@@ -411,7 +437,7 @@ Treat single runs as ±20 %.
 
 With `--dspark auto` the engine does not load the DSpark drafter: it expects the verify
 rounds to read too many expert bytes when most experts are on the CPU. Forced on
-(same sequence, 8 P-cores / 22 threads) it pays off anyway, so the profile passes
+(same sequence, `CPUSET=0-7`, 22 lane threads) it pays off anyway, so the profile passes
 `--dspark on` (`DSPARK=auto` restores the engine's choice):
 
 | | Slovak | English | Python | Prefill 3.8K / 30K |
@@ -502,9 +528,81 @@ Re-packing loses the learned `expert-profile.bin`; copy it from the old pack to 
 
 The pack (8.5 MB) records the shard folder; `serve.sh` refuses a pack made from another one.
 
+## ISTA-DASLab IQ2_XS (2.25 bpw)
+
+The official 2.25 bpw set of [ISTA-DASLab](https://huggingface.co/ISTA-DASLab/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF)
+on the same Strata engine: routed experts in IQ2_XXS / IQ2_XS / IQ2_S (149 GB, 2.19 bpw),
+an IQ4_NL Engram table (111 GB) instead of Unsloth's MXFP8 one (203 GB), and the same DSpark
+drafter and vision tower. ISTA-DASLab measures KL 0.107 and perplexity +7.3 % (code +3.2 %,
+agent work +2.2 %) against the original model.
+
+```bash
+HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ist-iq2xs-128k.sh          # ready in ~40 s
+HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ist-iq2xs-256k.sh
+HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ist-iq2xs-vision-128k.sh   # image input
+HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ist-iq2xs-vision-256k.sh
+```
+
+The smaller experts double what fits on the card: 8,833 of 15,744 in VRAM (UD-Q8_K_XL:
+4,237), 67 GB on the CPU lane (208 GB), a 149 GB RAM store with 120 GB read in at start
+and about 140 GB of RAM in use. Measured 2026-10-28, Strata 0.2.7, DSpark on, one fresh
+start, the sequence of [Strata 0.2.7](#strata-027):
+
+| | Slovak, rounds 1 / 2 / 3 | English | Python | Prefill 3.8K / 30K | Slovak blind |
+|---|---:|---:|---:|---:|---:|
+| UD-Q8_K_XL | 20.7 / 26.5 / 29.5 | 20.8 / 25.4 / 28.2 | 27.0 / 27.0 / 28.3 | 331 / 984 tok/s | **86.5** |
+| IQ2_XS, IQ4_NL Engram (the profiles) | 39.7 / 48.8 / 45.8 | 46.6 / 51.0 / 49.6 | 47.3 / 56.2 / 58.6 | 455 / **2,118** tok/s | 84 |
+| IQ2_XS, MXFP8 Engram of UD-Q8_K_XL | 40.5 / 46.7 / 46.0 | 45.9 / 46.1 / 46.2 | 41.6 / 52.2 / 62.3 | 590 / 2,111 tok/s | 83 |
+
+About 1.7× faster decode and 2× faster prefill for 2.5 points of Slovak on one grader's
+sheet: both IQ2_XS runs kept "tri jablka" and wrote muddled explanations in the grammar
+fix (`logs/language-samples/sk/blind-20261028-074425-grades.md`). The MXFP8 Engram, which
+`pack_gguf.py --engram` takes from UD-Q8_K_XL's shard 8, changed six of ten Slovak answers
+without a direction and no speed, so the profiles use the set's own IQ4_NL table. The vision
+profiles read fixture A correctly in 7–9 s and keep 8,781–8,791 experts in VRAM.
+
+Setup (the files are sha256-checked against Strata's pins in `setup.py`):
+
+```bash
+hf download ISTA-DASLab/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF \
+  --revision cb02422c900df489cea5833e8a92171224059b3c \
+  --include "DeepSeek-V4.1-Flash-1017-GSQ-RCO-IQ2_XS-*" --include "DeepSeek-V4.1-Flash-Engram-IQ4_NL.gguf" \
+  --local-dir models/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF
+cd ~/development/Strata
+I=~/development/rtxpro6000-llm-toolkit/models/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF
+U=~/development/rtxpro6000-llm-toolkit/models/DeepSeek-V4.1-Flash-1017-GGUF
+.venv/bin/python tools/dsv41/pack_gguf.py --model $I --shards $I/*IQ2_XS-0000*.gguf \
+  --engram $I/DeepSeek-V4.1-Flash-Engram-IQ4_NL.gguf \
+  --engram-meta $U/UD-Q8_K_XL/DeepSeek-V4.1-Flash-1017-UD-Q8_K_XL-00001-of-00009.gguf \
+  --dspark-gguf $U/dspark-DeepSeek-V4.1-Flash-1017-Q8_0.gguf --vision $U/vision \
+  --out packs/dsv41-ist225-engram-iq4nl
+cp data/dsv41/profile-2.25.bin packs/dsv41-ist225-engram-iq4nl/expert-profile.bin
+```
+
+`--engram-meta` only reads the Engram's hash parameters from UD-Q8_K_XL's 5.8 MB first
+shard, as Strata's setup does. `serve.sh ist-iq2xs-e8` runs the MXFP8 Engram pack
+(`--engram` pointed at UD-Q8_K_XL's shard 8) if it is built.
+
+## Quality checks, UD-Q8_K_XL on Strata
+
+`bench/qa_accuracy.py` and `bench/evalplus_codegen.py` on 2026-10-28, greedy, thinking off,
+the same seeded questions and tasks as the Qwen3.8 runs:
+
+| | DeepSeek UD-Q8_K_XL | Qwen3.8 Strata Q8 | Qwen3.8 Strata Q8 abliterated |
+|---|---:|---:|---:|
+| GSM8K (300) | **295 (98.3 %)** | 291 (97.0 %) | 290 (96.7 %) |
+| MMLU-Pro (600) | **486 (81.0 %)** | 471 (78.5 %) | 481 (80.2 %) |
+| HumanEval / HumanEval+ (164) | 0.963 / 0.896 | 0.970 / 0.951 | 0.976 / 0.951 |
+| MBPP / MBPP+ (378) | not finished (51 of 378 generated) | 0.931 / 0.796 | 0.934 / 0.791 |
+
+Only the MMLU-Pro gain over the original Qwen3.8 Q8 approaches significance (McNemar
+p = 0.058). On HumanEval+ DeepSeek passes nine tasks fewer. Six MMLU-Pro answers could
+not be parsed and two were cut off; they count as wrong.
+
 ## TODO
 
-- [ ] Strata UD-Q8_K_XL: blind Slovak grading against UD-Q3_K_XL.
+- [ ] Finish MBPP+ for Strata UD-Q8_K_XL (`evalplus_codegen.py` resumes at task 52).
+- [ ] A second grader for the 2026-10-27/28 Slovak sheets.
 
 - [ ] Build a standard (no refusal edit) XQ quant from the original checkpoint with
       Xolotl's `tools/v41` (budget ~230 GiB, mostly Q3_K experts, 128 calibration
@@ -521,11 +619,8 @@ The pack (8.5 MB) records the shard folder; `serve.sh` refuses a pack made from 
       drafter needs the target's hidden states every step. Strata and Xolotl only split
       across GPUs of one vendor.
 - [ ] Time the MXFP4 profile in the `performance` power profile (the power-saver runs
-      were discarded), with the same prompts as UD-Q3_K_XL.
-- [ ] Replace the UD-Q3_K_XL Engram shard (00008), whose sha256 does not match after two
-      downloads, and verify it.
-- [ ] Decide on antirez's `ds4` Q2 (341 GB, checksum failed twice, never run): download it
-      a third time and test it, or delete it to make room (for example for Xolotl).
+      were discarded), with the same prompts as UD-Q3_K_XL; its checkpoint must be
+      downloaded again first.
 - [ ] Run memtest86+ overnight and settle the RAM speed (4 × 64 GB non-ECC, now
       6000 MT/s); then re-time the profiles at the final speed and record them. Until then
       sha256-verify every large download.

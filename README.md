@@ -12,9 +12,10 @@ Strata — and llama.cpp, ik_llama.cpp, Xolotl and Strata's DeepSeek engine for 
 > 485–508 GB, the 96 GB card holds only a fraction of its experts, and 195–225 GB of
 > experts live in RAM (Strata's UD-Q8_K_XL leaves about 20–35 GB for everything else).
 > An RTX PRO 6000 with a typical 64 GB of RAM cannot run them: they either fail to start
-> or read the experts from the SSD for every token, which is far too slow to use. Only
-> the ~2-bit Xolotl XQ v2 (152 GB) is smaller; it pins a 72 GiB RAM arena and was not
-> tried with less RAM. See [Hardware](#hardware).
+> or read the experts from the SSD for every token, which is far too slow to use. The
+> ~2-bit sets are smaller: Xolotl XQ v2 (152 GB) pins a 72 GiB RAM arena, and Strata with
+> ISTA-DASLab's 2.25 bpw set keeps about 140 GB of RAM busy. Neither was tried with less
+> RAM. See [Hardware](#hardware).
 
 The default profile is **Strata Q8 vision 128K**
 (`qwen3.8-flash-next-strata-q8-vision`), launched by `scripts/start.sh`.
@@ -33,7 +34,7 @@ the foreground; Ctrl+C or `scripts/stop.sh` stops it. See [Strata setup](qwen3.8
 | **Qwen3.8-Flash-Next** — 180B MoE, ~6B active, 262K native context | 18 | SGLang, vLLM, ExLlamaV3, Strata | [qwen3.8-flash-next/README.md](qwen3.8-flash-next/README.md) |
 | **Qwen3.6-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.6-27b/README.md](qwen3.6-27b/README.md) |
 | **Qwen3.8-27B** — dense 27B, 262K context, BF16 reference | 1 | SGLang | [qwen3.8-27b/README.md](qwen3.8-27b/README.md) |
-| **DeepSeek-V4.1-Flash-1017** — 552B MoE, 16B active for output, Engram on SSD | 10 | llama.cpp PR, ik_llama.cpp, Xolotl, Strata (native) | [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/README.md) |
+| **DeepSeek-V4.1-Flash-1017** — 552B MoE, 16B active for output, Engram on SSD | 14 | llama.cpp PR, ik_llama.cpp, Xolotl, Strata (native) | [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/README.md) |
 
 Each model directory has a README with its checkpoints and profiles, and one
 document per profile in `docs/profiles/<profile>.md`; the Flash-Next one also has
@@ -47,24 +48,46 @@ the DeepSeek ones are in [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/REA
 context and memory, HumanEval+ / MBPP+, a blind Slovak check, and recommendations.
 In short:
 
-- **Most context and fastest prefill:** `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal`
-  (524K window); `-sglang-nvfp4-ram` for plain Docker.
-- **Best non-English output:** `qwen3.8-flash-next-vllm-awq-w4a16-g32`.
+- **The default and the best everyday model: Qwen3.8-Flash-Next on Strata**
+  (`qwen3.8-flash-next-strata-q8-vision`, started by `scripts/start.sh`). Q8_0 weights,
+  so close to full quality, and still fast: 159 tok/s on prose, 176 on code and 122 in
+  Slovak with MTP, about 6,700 tok/s cold prefill at 32–120K, image input, 128K context
+  (256K profile). GSM8K 97.0 %, MMLU-Pro 78.5 %, HumanEval+ 0.951 (measured on Strata
+  0.1.41). It needs about 37 GiB of RAM beside the card and suits agents that make
+  many calls.
+- **Second: DeepSeek-V4.1-Flash on Strata**, two profiles. `deepseek-v4.1-flash-strata-ud-q8kxl`
+  runs the experts as DeepSeek released them (MXFP4) and writes the best Slovak measured
+  here (86.5 against 63–70 for the best Qwen3.8 setups, one grader); GSM8K 98.3 %,
+  MMLU-Pro 81.0 %; ~29 tok/s, ~1,000 tok/s prefill at 30K, ~224 GB of RAM.
+  `deepseek-v4.1-flash-strata-ist-iq2xs` uses ISTA-DASLab's official 2.25 bpw set:
+  40–59 tok/s, 2,118 tok/s prefill at 30K, Slovak 84, ~140 GB of RAM. Both decode three
+  to six times slower than Qwen3.8, so they are not the everyday agent model, but suit
+  coding sessions and complex, demanding tasks where the answer matters more than the
+  wait. Both take images and up to 256K tokens (UD-Q8_K_XL also 512K). Published
+  results favour DeepSeek on agentic coding: DeepSWE 1.1 77.0 for V4.1-Flash-1017
+  ([DeepSeek, self-reported](https://kingy.ai/blog/deepseek-v4-1-flash-1017-specs-benchmarks-pricing/))
+  against 58.7 for Qwen3.8-Flash-Next ([model card](https://huggingface.co/Qwen/Qwen3.8-Flash-Next)),
+  and [BenchLM](https://benchlm.ai/compare/deepseek-v4-1-flash-vs-qwen3-8-flash-next)'s
+  coding score 61.1 against 51.8; Qwen3.8 leads there on agentic tasks overall (64.7 against
+  61.7). Those runs use full-precision weights, thinking and agent harnesses; the local
+  checks here use these quantizations with thinking off, and on short single-function
+  HumanEval+ tasks DeepSeek scored lower (0.896 against 0.951; MBPP+ pending).
+- **Slovak stands in for non-English languages.** It is a hard case: six cases, three
+  genders, numeral agreement that changes the noun's case ("dve ženy", "päť žien"), verb
+  aspect, and only about five million speakers, so little training data, with Czech close
+  enough that weak setups drift into it. Quantization damage shows here first (wrong case
+  endings, invented idioms, Czech words), so the blind Slovak check is a sensitive test
+  for smaller, morphologically rich languages, European ones in particular. It says less
+  about non-Latin scripts (tokenization) or agglutinative languages such as Finnish or
+  Turkish, and it is small: ten prompts, one greedy answer each, an LLM grader.
+- **Fastest prefill and the largest Qwen3.8 context:** `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal`
+  (2.6 s at 32K, 9.7 s at 128K; 524K window, 831K-token KV pool, NVFP4 weights);
+  `-sglang-nvfp4-ram` for plain Docker.
 - **No refusals:** `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` — no measurable
   loss on code, a few points below g32 in Slovak; dealignai's abliterated NVFP4 lost
-  code ability.
-- **On code** the Flash-Next configurations covered by the September benchmarks
-  are within noise of each other. Strata has not had a new EvalPlus run.
+  code ability. `strata-q8-abliterated-vision` is the 8-bit option on Strata.
 - **Dense Qwen3.6-27B and Qwen3.8-27B at BF16** trail Flash-Next on code and
   clearly in Slovak; 3.8 is no measurable step over 3.6.
-- **Q8 weights at interactive speed:** `strata-q8` measured 101.7 tok/s on prose,
-  103.5 on code and 75.1 in Slovak with MTP. `strata-q6` is faster for generation
-  and uses fewer bits. Q8 has shorter latency at 4–120K in the initial
-  prefill sweep; Q6 is slightly faster at ~255K. See the tables below.
-- **The scored Q8 quality reference:** ik_llama.cpp's older Q8 run narrowly led
-  its blind Slovak comparison. Engine builds and serving scripts live in the
-  separate public [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit)
-  repository; the newer Strata configurations have not been independently graded.
 
 ### Strata profiles
 
@@ -76,6 +99,7 @@ with its own DeepSeek engine (`strata-dsv41`).
 |---|---|---:|---|---|
 | Qwen3.8-Flash-Next, [`strata-q8-vision`](qwen3.8-flash-next/strata/README.md#upgrade-to-027-speed-ab-2026-10-27) | Q8_0, 180B MoE | ~37 GiB pinned experts + PLE file cache | 159 / 176 / 122 tok/s (prose / code / Slovak) | 6,659 tok/s at 32K, 6,691 at 120K |
 | DeepSeek-V4.1-Flash, [`strata-ud-q8kxl`](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl) | UD-Q8_K_XL: original MXFP4 experts, BF16 dense, 552B MoE | **~224 GB** RAM store for the 208 GB of CPU experts | ~29 tok/s warm (Slovak, English, code); ~20 on the first answers after a start; 19–22 at ~200K context | 331 tok/s at 3.8K, ~985 at 30K, ~1,340 at 121K, ~1,410 at 454K |
+| DeepSeek-V4.1-Flash, [`strata-ist-iq2xs`](deepseek-v4.1-flash/README.md#ista-daslab-iq2_xs-225-bpw) | ISTA-DASLab IQ2_XS 2.25 bpw experts, IQ4_NL Engram | ~140 GB in use (149 GB RAM store; 67 GB of CPU experts) | 40–59 tok/s; Slovak blind 84 against 86.5 for UD-Q8_K_XL | 455 tok/s at 3.8K, 2,118 at 30K |
 
 DeepSeek on Strata is about five times slower than Qwen3.8 on Strata, and the only
 profile here that needs almost all of the 256 GB of RAM (the RAM store sizes itself to
@@ -194,8 +218,8 @@ and `-512k` = 524,288 tokens. They describe the launch defaults; explicit
 | [start-qwen3.8-flash-next-strata-q8-abliterated-vision-128k.sh](scripts/start-qwen3.8-flash-next-strata-q8-abliterated-vision-128k.sh) | Strata, abliterated Q8_0, BF16 GPU vision, MTP, 128K context; foreground |
 | `start-qwen3.6-27b-sglang-bf16-256k.sh` | Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation |
 | `start-qwen3.8-27b-sglang-bf16-256k.sh` | Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation |
-| [start-deepseek-v4.1-flash-llamacpp-ud-q3kxl-128k.sh](scripts/start-deepseek-v4.1-flash-llamacpp-ud-q3kxl-128k.sh) | DeepSeek-V4.1-Flash-1017 · llama.cpp PR #30817, Unsloth UD-Q3_K_XL; background, `HOST=0.0.0.0` for LAN |
-| [start-deepseek-v4.1-flash-ik-mxfp4-128k.sh](scripts/start-deepseek-v4.1-flash-ik-mxfp4-128k.sh) | DeepSeek-V4.1-Flash-1017 · ik_llama.cpp, original MXFP4 experts; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-llamacpp-ud-q3kxl-128k.sh](scripts/start-deepseek-v4.1-flash-llamacpp-ud-q3kxl-128k.sh) | DeepSeek-V4.1-Flash-1017 · llama.cpp PR #30817, Unsloth UD-Q3_K_XL; background, `HOST=0.0.0.0` for LAN (**checkpoint not on disk**; download it again to run) |
+| [start-deepseek-v4.1-flash-ik-mxfp4-128k.sh](scripts/start-deepseek-v4.1-flash-ik-mxfp4-128k.sh) | DeepSeek-V4.1-Flash-1017 · ik_llama.cpp, original MXFP4 experts; background, `HOST=0.0.0.0` for LAN (**checkpoint not on disk**; download it again to run) |
 | [start-deepseek-v4.1-flash-xolotl-xq-v2-128k.sh](scripts/start-deepseek-v4.1-flash-xolotl-xq-v2-128k.sh) | DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2, exact routing; background, `HOST=0.0.0.0` for LAN |
 | [start-deepseek-v4.1-flash-xolotl-xq-v2-vision-128k.sh](scripts/start-deepseek-v4.1-flash-xolotl-xq-v2-vision-128k.sh) | DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2, exact routing, image input; background, `HOST=0.0.0.0` for LAN |
 | [start-deepseek-v4.1-flash-strata-ud-q8kxl-128k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-128k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, 128K; background, `HOST=0.0.0.0` for LAN |
@@ -204,6 +228,10 @@ and `-512k` = 524,288 tokens. They describe the launch defaults; explicit
 | [start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, image input, 128K; background, `HOST=0.0.0.0` for LAN |
 | [start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-256k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-256k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, image input, 256K; background, `HOST=0.0.0.0` for LAN |
 | [start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-512k.sh](scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-512k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL, DSpark, image input, 512K; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-strata-ist-iq2xs-128k.sh](scripts/start-deepseek-v4.1-flash-strata-ist-iq2xs-128k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw, DSpark, 128K; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-strata-ist-iq2xs-256k.sh](scripts/start-deepseek-v4.1-flash-strata-ist-iq2xs-256k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw, DSpark, 256K; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-strata-ist-iq2xs-vision-128k.sh](scripts/start-deepseek-v4.1-flash-strata-ist-iq2xs-vision-128k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw, DSpark, image input, 128K; background, `HOST=0.0.0.0` for LAN |
+| [start-deepseek-v4.1-flash-strata-ist-iq2xs-vision-256k.sh](scripts/start-deepseek-v4.1-flash-strata-ist-iq2xs-vision-256k.sh) | DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw, DSpark, image input, 256K; background, `HOST=0.0.0.0` for LAN |
 
 ```bash
 scripts/start.sh                     # the default profile, on 0.0.0.0 (LAN)
@@ -336,7 +364,8 @@ See [bench/README.md](bench/README.md).
 - 256 GB RAM: 4 × 64 GB non-ECC DDR5 at 6400 MT/s CL42 (244 GiB usable). The
   DeepSeek-V4.1-Flash profiles need 195–225 GB of it for experts (llama.cpp UD-Q3_K_XL
   locks 195 GB, ik_llama.cpp MXFP4 217 GB, Strata UD-Q8_K_XL sizes a 224 GB RAM store;
-  Xolotl XQ v2 pins a 72 GiB arena and reads the 203 GB Engram from the SSD). With 64 GB
+  Xolotl XQ v2 pins a 72 GiB arena and reads the 203 GB Engram from the SSD; Strata with the
+  ISTA-DASLab 2.25 bpw set uses about 140 GB). With 64 GB
   of RAM none of them is usable. The Qwen3.8-Flash-Next profiles need less (see
   "Host RAM" in [RESULTS.md](RESULTS.md); several run with 64 GB).
 - Checkpoints on NVMe; DeepSeek reads its Engram table from the SSD for every token
