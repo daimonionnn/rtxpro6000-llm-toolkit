@@ -3,7 +3,7 @@
 What the model is, what the checkpoints used by this toolkit's profiles keep at
 which precision, which runtime settings can change output, and what has been
 published about its quality. Measured speed and quality of each profile are in
-[RESULTS.md](../../RESULTS.md); per-profile details in [profiles/](profiles/).
+[docs/results.md](results.md); per-profile details in [profiles/](profiles/).
 
 ## Architecture
 
@@ -65,7 +65,7 @@ not on it.
   linear attention, the router, shared experts, embeddings — and compresses only
   the routed experts, which individually see few tokens.
 - **Activations matter.** W4A4 more than doubles KL divergence over W4A16 with the
-  same weights. On code this did not show (see [RESULTS.md](../../RESULTS.md#code-humaneval-and-mbpp));
+  same weights. On code this did not show (see [Qwen3.8 results](results.md#code-humaneval-and-mbpp));
   in the Slovak checks the weight-only group-32 checkpoint came first, though the
   NVFP4 profiles were close.
 - **8-bit weights do not fit one card.** The FP8 experts alone are 112.5 GiB, so any
@@ -106,7 +106,7 @@ Beyond the checkpoint, three settings differ between profiles:
   model is exact; the draft's precision affects speed only.
 - **None of these showed on code.** HumanEval+ and MBPP+ put all four SGLang
   profiles within 456–458 of 542 plus tests, level with the AWQ and EXL3 profiles
-  ([RESULTS.md](../../RESULTS.md#code-humaneval-and-mbpp)). In the Slovak check the
+  ([Qwen3.8 results](results.md#code-humaneval-and-mbpp)). In the Slovak check the
   four placed within 66–72 of 100, too close to pin on a setting. Long reasoning is
   not measured.
 
@@ -197,4 +197,4 @@ somewhat more on less common languages.**
 | nvidia/…-NVFP4 (ModelOpt mixed) | NVFP4 experts, FP8 PLE, FP8 MTP experts | not downloaded | Smaller draft, so more KV (cookbook: ~170K vs ~78K at 16 requests); still W4A4 experts |
 | Intel/…-W4A16-AutoRound | INT4, group 128 | ~181 GB | Not run: same group size as `vllm-awq-w4a16` |
 | unsloth GGUF (llama.cpp) | K-quants; largest that fits in VRAM ≈ UD-IQ4_XS | 87.2 GiB (Q8_0 175 GiB) | Not run here: ~4-bit to stay on the GPU |
-| lmstudio-community GGUF Q8_0 | Q8_0 | 175.3 GiB | Not a profile here: runs under ik_llama.cpp in [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit) with the experts of 17 layers in RAM; measured through its API as the 8-bit reference — 38 tok/s, best Slovak score, 454 code tests ([RESULTS.md](../../RESULTS.md)) |
+| lmstudio-community GGUF Q8_0 | Q8_0 | 175.3 GiB | Not a profile here: runs under ik_llama.cpp in [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit) with the experts of 17 layers in RAM; measured through its API as the 8-bit reference — 38 tok/s, best Slovak score, 454 code tests ([docs/results.md](results.md)) |

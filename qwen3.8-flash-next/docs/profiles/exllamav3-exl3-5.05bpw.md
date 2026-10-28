@@ -88,7 +88,7 @@ prefixes come back faster.
 - Slovak blind check: seventh of nine, fifth of seven and last of four in the three
   runs, despite the lowest published KL divergence.
 
-Both in [RESULTS.md](../../../RESULTS.md).
+Both in [docs/results.md](../results.md).
 
 ## Configuration
 

@@ -188,7 +188,7 @@ explanation, a short story with dialogue, and a grammar correction. To add a
 language, add a list to `PROMPTS` in the script.
 
 **Judging.** Read the sheet before opening the key. For the Slovak comparison in
-[RESULTS.md](../RESULTS.md#non-english-slovak-blind-check)
+[Qwen3.8 results](../qwen3.8-flash-next/docs/results.md#non-english-slovak-blind-check)
 the sheet was copied alone to a separate directory and graded by an LLM that saw
 nothing else — every error quoted with a fix and a severity, a 1–10 score per
 answer and a ranking per prompt — and the letters were mapped to profiles only

@@ -233,7 +233,7 @@ its FP8 PLE embedding method only for FP8 checkpoints (`Fp8Config`); with AWQ or
 another quantization the table is created in BF16 and the FP8 bytes are copied in
 unscaled. The `vllm-awq-w4a16-g32-uncensored` launcher patches the selection to
 honour `text_config.ple_embedding_dtype`. A quick check that a PLE path is right:
-HumanEval+ in line with the other profiles ([RESULTS.md](../../RESULTS.md)).
+HumanEval+ in line with the other profiles ([docs/results.md](results.md)).
 
 ## vLLM hangs at startup after capturing CUDA graphs
 

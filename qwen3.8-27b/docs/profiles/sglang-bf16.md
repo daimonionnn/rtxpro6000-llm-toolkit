@@ -48,4 +48,4 @@ In the four-way Slovak blind check it placed third, 6 points above Qwen3.6-27B w
 about as many weighted errors (88 against 86) and 14–21 points below the two
 Flash-Next AWQ g32 checkpoints. Typical errors: Czech words („Omluvy“, „predem“),
 gender slips („veľká pstruh“), non-words („nadmierať“, „odraza“) and invented
-grammar rules. Details and the Flash-Next comparison: [RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check).
+grammar rules. Details and the Flash-Next comparison: [Qwen3.8 results](../../../qwen3.8-flash-next/docs/results.md#non-english-slovak-blind-check).

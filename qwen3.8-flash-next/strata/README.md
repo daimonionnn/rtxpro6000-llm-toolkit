@@ -511,7 +511,7 @@ figures, not a comparison under the conditions in [COMPARISON.md](COMPARISON.md)
 Both profiles ran as vision 128K on the same Strata 0.1.41 build, one after the
 other, without other API traffic. Accuracy runs are greedy with thinking off;
 the Slovak sheet also included ik_llama.cpp Q8_0 and both AWQ g32 checkpoints
-from [RESULTS.md](../../RESULTS.md#non-english-slovak-blind-check).
+from [Qwen3.8 results](../docs/results.md#non-english-slovak-blind-check).
 
 | Test | Abliterated Q8_0 | Original Q8_0 | Paired difference |
 |---|---:|---:|---|

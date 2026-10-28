@@ -120,7 +120,7 @@ needles still answered correctly. Those two prompts wrote 5.6 GB in 13,053 files
 - **YaRN on every prompt.** A static rope-scaling factor can change quality at
   short context. On code it did not: HumanEval 0.963 / HumanEval+ 0.951, MBPP 0.918 /
   MBPP+ 0.794, 456 of 542 plus tests — within noise of every other profile
-  ([RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)). Slovak blind check:
+  ([Qwen3.8 results](../results.md#code-humaneval-and-mbpp)). Slovak blind check:
   sixth of nine, third of seven before. Long reasoning is not measured.
 - **Thinking is on by default** in the fork's recipe (`reasoning_effort: medium`,
   its own chat template `froggeric-v22.5.jinja`); `enable_thinking: false` is

@@ -91,7 +91,7 @@ For comparison on the same machine: `vllm-awq-w4a16` decodes at 102 tok/s and
 prefills ~10,000 tok/s. A Q8_0 GGUF of this model under ik_llama.cpp, with the
 routed experts of 17 layers in host RAM, decodes at 38 tok/s and prefills
 1,440–1,830 tok/s (measured through its API with the benchmarks here, see
-[RESULTS.md](../../../RESULTS.md)). That setup also computes the host-resident experts on the GPU:
+[docs/results.md](../results.md)). That setup also computes the host-resident experts on the GPU:
 without `-rtr`, llama.cpp and ik_llama offload those ops and copy the weights
 across PCIe. Both engines therefore pay for expert weights in transit; ik_llama
 gets ~2.3x the decode from a comparable amount of expert weight in RAM. The cause
@@ -109,7 +109,7 @@ to GPU buffers before running the kernel.
   542, within noise of every profile with the original weights — and a run here would take 1–2 hours at
   this speed.
 
-Both in [RESULTS.md](../../../RESULTS.md).
+Both in [docs/results.md](../results.md).
 
 ## When to use it
 

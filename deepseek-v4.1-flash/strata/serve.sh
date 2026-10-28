@@ -33,6 +33,7 @@
 #                 CPUSET for them: its own choice here is 22 threads on CPUs 0-21, 14 of them E-cores.
 #                 8 keeps the lane on the P-cores 0-7: a third less CPU power in decode (127 vs 187 W),
 #                 the same speed on UD-Q8_K_XL, 2-15 % slower on the IQ2_XS set.
+#   EXPERTS       routed experts a word (default 6, the model's own; 5 = Strata's "Faster" mode)
 #   STRATA_DIR    Strata checkout (0.2.7+) with build-dsv41/ and packs/ (default ~/development/Strata)
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
@@ -48,6 +49,7 @@ MMAP_EXPERTS="${MMAP_EXPERTS:-on}"
 DSPARK="${DSPARK:-on}"
 CPUSET="${CPUSET:-0-7}"
 CPU_THREADS="${CPU_THREADS:-8}"
+EXPERTS="${EXPERTS:-6}"
 STRATA_DIR="${STRATA_DIR:-$HOME/development/Strata}"
 GGUF_DIR="${UNSLOTH_DIR:-$ROOT/models/DeepSeek-V4.1-Flash-1017-GGUF}"
 ISTA_DIR="${ISTA_DIR:-$ROOT/models/DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF}"
@@ -109,7 +111,7 @@ LOG="$ROOT/logs/$PROFILE-server.log"
 CONFIG="$ROOT/logs/$PROFILE-config.json"
 ENGINE_LOG="$ROOT/logs/$PROFILE-engine.log"
 PROFILE="$PROFILE" EXE="$EXE" PACK="$PACK" CTX="$CTX" MMAP_EXPERTS="$MMAP_EXPERTS" DSPARK="$DSPARK" \
-CPU_THREADS="$CPU_THREADS" VISION="$VISION" PORT="$PORT" ENGINE_LOG="$ENGINE_LOG" STRATA_DIR="$STRATA_DIR" python3 -I - > "$CONFIG" <<'EOF'
+CPU_THREADS="$CPU_THREADS" EXPERTS="$EXPERTS" VISION="$VISION" PORT="$PORT" ENGINE_LOG="$ENGINE_LOG" STRATA_DIR="$STRATA_DIR" python3 -I - > "$CONFIG" <<'EOF'
 import json, os
 e = os.environ
 print(json.dumps({
@@ -117,7 +119,7 @@ print(json.dumps({
     "args": ["--pack", e["PACK"], "--max-context", e["CTX"], "--eos", "1",
              "--dspark", e["DSPARK"], "--mmap-experts", e["MMAP_EXPERTS"], "--vision", e["VISION"],
              # all six routed experts a word (the engine drops to five on cards of 16 GiB or less)
-             "--experts", "6"]
+             "--experts", e["EXPERTS"]]
             + (["--cpu-threads", e["CPU_THREADS"]] if e["CPU_THREADS"] != "0" else []),
     "cwd": e["STRATA_DIR"],
     "tokenizer": e["PACK"] + "/tokenizer",

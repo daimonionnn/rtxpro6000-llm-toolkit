@@ -60,4 +60,4 @@ from the checkpoint itself (not investigated).
   with FP8 (70 against 71 and 69), and 3 points behind ik_llama.cpp Q8_0 (70
   against 73) in the second of them.
 
-Both in [RESULTS.md](../../../RESULTS.md).
+Both in [docs/results.md](../results.md).

@@ -70,7 +70,8 @@ filename convention.
 | [`strata-q6-vision`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 131,072 | not benchmarked | 17.75 GiB pinned experts + PLE cache |
 | [`strata-q6-vision-256k`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | not benchmarked | 19.66 GiB pinned experts + PLE cache |
 
-KV pool, prefill, VRAM, code benchmarks and the Slovak check for every profile, with
+KV pool, prefill, VRAM, code benchmarks and the Slovak check for every profile:
+[docs/results.md](docs/results.md); the comparison with the other models and the
 recommendations: [RESULTS.md](../RESULTS.md).
 
 Strata rates above are 2026-10-06 medians of three 512-token responses to short
@@ -257,7 +258,8 @@ qwen3.8-flash-next/
 | [strata/NON-ENGLISH.md](strata/NON-ENGLISH.md) | Why Strata's Slovak scored below ik_llama.cpp with the same weights: evidence, candidate causes, upgrade warning |
 | [strata/VISION.md](strata/VISION.md) | Image smoke checks, encoder and expert memory, lifecycle validation |
 | [strata/COMPARISON.md](strata/COMPARISON.md) | Q8/Q6 versus ik_llama.cpp: decode, prefill, context, memory and validation |
-| [../RESULTS.md](../RESULTS.md) | All profiles of all models side by side, benchmarks, recommendations |
+| [docs/results.md](docs/results.md) | Every profile: speed and capacity, HumanEval+ / MBPP+, the Slovak blind checks |
+| [../RESULTS.md](../RESULTS.md) | The models compared, recommendations |
 
 ## Sources
 

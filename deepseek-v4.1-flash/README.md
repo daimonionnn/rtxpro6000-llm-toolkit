@@ -561,6 +561,23 @@ fix (`logs/language-samples/sk/blind-20261028-074425-grades.md`). The MXFP8 Engr
 without a direction and no speed, so the profiles use the set's own IQ4_NL table. The vision
 profiles read fixture A correctly in 7–9 s and keep 8,781–8,791 experts in VRAM.
 
+Five experts a word (`EXPERTS=5`, Strata's "Faster" mode, the default it picks for four
+R9700 cards) against the profiles' six, IQ2_XS with eight lane threads, 2026-10-28:
+
+| | Slovak | English | Python | CPU power, decode | Prefill 3.8K / 30K | Slovak blind |
+|---|---:|---:|---:|---:|---:|---:|
+| 6 experts (default) | 41.8 tok/s | 44.2 | 45.2 | 122 W | 702 / 2,698 tok/s | 84 |
+| 5 experts | 45.2 (+8 %) | 47.6 (+8 %) | 50.1 (+11 %) | 120 W | 544 / 2,286 tok/s | ~80 |
+
+Eight of ten Slovak answers changed: a case error ("o rozvoji meste") and a nonsense
+sentence in the inflection task, an invented word ("rozsvecuje"), a gender mismatch in the
+email, but also the only IQ2_XS run that fixed "jablká" (graded by the same grader, not
+blind, since the six-expert answers were known; `blind-20261028-110234`). Strata reports
+no quality loss for five experts on English and code; for Slovak the profiles keep six.
+For comparison, Strata's own figures for the same set on four Radeon AI PRO R9700 (128 GB
+of VRAM, five experts, its own prompts): code 88.9–95.0 and agent work 73.5–79.7 tok/s,
+32K prompts 1,127–1,604 tok/s on the first read (release notes 0.2.7).
+
 Setup (the files are sha256-checked against Strata's pins in `setup.py`):
 
 ```bash

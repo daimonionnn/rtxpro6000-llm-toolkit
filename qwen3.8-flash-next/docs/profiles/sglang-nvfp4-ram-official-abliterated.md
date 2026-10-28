@@ -77,4 +77,4 @@ ability.
 
 Slovak blind check: third of nine (71 of 100) with the fewest weighted errors, and
 the only profile that avoided the non-word „vereta“. The damage shows on code, not
-in this small language check ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
+in this small language check ([Qwen3.8 results](../results.md#non-english-slovak-blind-check)).

@@ -80,8 +80,8 @@ the spread of three warm runs, so suggestive rather than established.
 ## Code benchmarks
 
 HumanEval 0.976 / HumanEval+ 0.951, MBPP 0.929 / MBPP+ 0.799 — 458 of 542 plus tests,
-within noise of the FP8-KV profiles ([RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)).
+within noise of the FP8-KV profiles ([Qwen3.8 results](../results.md#code-humaneval-and-mbpp)).
 
 Slovak blind check: second of nine (72 of 100) and tied first of seven before, with
 the only fully correct noun-inflection answer in both runs
-([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
+([Qwen3.8 results](../results.md#non-english-slovak-blind-check)).

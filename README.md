@@ -44,9 +44,11 @@ the DeepSeek ones are in [deepseek-v4.1-flash/README.md](deepseek-v4.1-flash/REA
 
 ## Results
 
-**[RESULTS.md](RESULTS.md)** puts every profile of every model side by side: speed,
-context and memory, HumanEval+ / MBPP+, a blind Slovak check, and recommendations.
-In short:
+**[RESULTS.md](RESULTS.md)** compares the models on one page: recommendations, one table
+per model (speed, memory, code, Slovak) and the quality checks that ran across models. The
+details are with each model: [Qwen3.8-Flash-Next](qwen3.8-flash-next/docs/results.md),
+[DeepSeek-V4.1-Flash](deepseek-v4.1-flash/README.md), [Qwen3.6-27B](qwen3.6-27b/README.md),
+[Qwen3.8-27B](qwen3.8-27b/README.md). In short:
 
 - **The default and the best everyday model: Qwen3.8-Flash-Next on Strata**
   (`qwen3.8-flash-next-strata-q8-vision`, started by `scripts/start.sh`). Q8_0 weights,
@@ -89,93 +91,14 @@ In short:
 - **Dense Qwen3.6-27B and Qwen3.8-27B at BF16** trail Flash-Next on code and
   clearly in Slovak; 3.8 is no measurable step over 3.6.
 
-### Strata profiles
+### Strata
 
-[Strata](https://github.com/Niko1221/Strata) serves two model families here from one
-checkout (0.2.7): Qwen3.8-Flash-Next with its Qwen engine and DeepSeek-V4.1-Flash
-with its own DeepSeek engine (`strata-dsv41`).
-
-| Model, profile | Weights | Host RAM | Decode | Prefill, cold |
-|---|---|---:|---|---|
-| Qwen3.8-Flash-Next, [`strata-q8-vision`](qwen3.8-flash-next/strata/README.md#upgrade-to-027-speed-ab-2026-10-27) | Q8_0, 180B MoE | ~37 GiB pinned experts + PLE file cache | 159 / 176 / 122 tok/s (prose / code / Slovak) | 6,659 tok/s at 32K, 6,691 at 120K |
-| DeepSeek-V4.1-Flash, [`strata-ud-q8kxl`](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl) | UD-Q8_K_XL: original MXFP4 experts, BF16 dense, 552B MoE | **~224 GB** RAM store for the 208 GB of CPU experts | ~29 tok/s warm (Slovak, English, code); ~20 on the first answers after a start; 19–22 at ~200K context | 331 tok/s at 3.8K, ~985 at 30K, ~1,340 at 121K, ~1,410 at 454K |
-| DeepSeek-V4.1-Flash, [`strata-ist-iq2xs`](deepseek-v4.1-flash/README.md#ista-daslab-iq2_xs-225-bpw) | ISTA-DASLab IQ2_XS 2.25 bpw experts, IQ4_NL Engram | ~140 GB in use (149 GB RAM store; 67 GB of CPU experts) | 40–59 tok/s; Slovak blind 84 against 86.5 for UD-Q8_K_XL | 455 tok/s at 3.8K, 2,118 at 30K |
-
-DeepSeek on Strata is about five times slower than Qwen3.8 on Strata, and the only
-profile here that needs almost all of the 256 GB of RAM (the RAM store sizes itself to
-the free memory; nothing else large can run beside it). Its 128K, 256K and 512K
-profiles and the `-vision` profile (image input through the engine's own tower) share
-these figures; the KV cache costs only 0.12–0.49 GB of VRAM. The DeepSeek rows are
-from 2026-10-27, the DSpark drafter on, 300-token answers; long-context figures were
-measured on 0.2.6.
-
-#### Qwen3.8-Flash-Next Q8 / Q6
-
-Measured 2026-10-06 with MTP, thinking off and one request at a time. Decode
-figures are medians of three 512-token responses to short prompts. All times
-below are for fresh prompt prefixes and include warmup and weight reads.
-
-| Profile | Maximum context | Decode: prose / code / Slovak | TTFT: ~4K / ~32K / ~120K | Pinned expert RAM |
-|---|---:|---|---|---:|
-| [`strata-q8`](qwen3.8-flash-next/strata/README.md#run) | 131,072 | 101.7 / 103.5 / 75.1 tok/s | 4.83 / 12.46 / 21.67 s | 34.83 GiB |
-| [`strata-q6`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | 131,072 | 117.1 / 142.5 / 81.3 tok/s | 7.27 / 23.31 / 27.41 s | 16.04 GiB |
-| [`strata-q8-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | 262,144 | 89.4 / 104.9 / 73.1 tok/s | 5.37 / 13.77 / 22.56 s | 36.75 GiB |
-| [`strata-q6-256k`](qwen3.8-flash-next/strata/README.md#256k-profiles) | 262,144 | 119.5 / 144.4 / 93.2 tok/s | 7.30 / 23.74 / 28.86 s | 17.95 GiB |
-
-The 256K profiles were also tested near their maximum capacity:
-
-| Profile | Fresh TTFT, ~255K | Effective prefill | TG after ~120K | TG after ~255K |
-|---|---:|---:|---:|---:|
-| `strata-q8-256k` | 46.58 s | 5,471 tok/s | 127.4 tok/s | 117.8 tok/s |
-| `strata-q6-256k` | 44.00 s | 5,791 tok/s | 139.9 tok/s | 153.1 tok/s |
-
-Prefill uses 254,834 / 254,832 actual prompt tokens (Q8 / Q6); its rate is
-prompt tokens divided by TTFT, including HTTP and tokenization. TG uses three
-512-token prose responses after a ~120K or ~255K word corpus: first a fresh
-prefix, then two cached repetitions, excluding TTFT. These prompts and warmed
-cache differ from the short tests, so the rates do not isolate context overhead.
-Both fit without OOM; after the tests Q8/Q6 had 873/939 MiB free GPU memory.
-Repeated ~255K prefixes answer in about 0.51 s. Fresh prefix does not mean a
-cold OS file cache; the prefill sweep also includes initial kernel/weight warmup.
-
-All Strata profiles use INT8 KV and automatic 8,192-token prefill chunks.
-Pinned expert RAM excludes the PLE table's OS file cache and other allocations. Q6 mixes Q6_K
-gate/up with Q8_0 down, averaging 7.21 bits per routed weight including scales;
-its PLE table stays Q8_0. Q8 has the quantized MMQ prefill path; Q6 currently
-dequantizes to FP16 before its prefill matrix products. Strata's adaptive expert
-cache warms across requests, so generation speed depends on prior workload.
-
-The Strata profiles run on unpatched Strata 0.2.7; the 2026-10-06 figures were
-measured on 0.1.39 with local patches. Setup, numerical
-validation and the small Slovak sample check are in [Strata documentation](qwen3.8-flash-next/strata/README.md);
-the full comparison with ik_llama.cpp is in
-[COMPARISON.md](qwen3.8-flash-next/strata/COMPARISON.md).
-
-### Strata vision profiles
-
-Qwen3.8 Q8 and Q6 also have parallel vision profiles at 128K and 256K. They use the
-existing BF16 `mmproj-Qwen3.8-Flash-Next-BF16.gguf` through a GPU image encoder;
-images are accepted as OpenAI `image_url` parts. By default each image uses up
-to 4,096 context tokens to preserve more detail in screenshots. Override with
-`--vision-tokens 1024` for faster image processing. INT8 KV, MTP and the context
-capacities stay the same.
-
-| Profile | Context | Launcher |
-|---|---:|---|
-| `strata-q8-vision` | 131,072 | [Q8 vision 128K](scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh) |
-| `strata-q6-vision` | 131,072 | [Q6 vision 128K](scripts/start-qwen3.8-flash-next-strata-q6-vision-128k.sh) |
-| `strata-q8-vision-256k` | 262,144 | [Q8 vision 256K](scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh) |
-| `strata-q6-vision-256k` | 262,144 | [Q6 vision 256K](scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh) |
-| `strata-q8-abliterated-vision` | 131,072 | [Abliterated Q8 vision 128K](scripts/start-qwen3.8-flash-next-strata-q8-abliterated-vision-128k.sh); see [abliterated Q8_0](qwen3.8-flash-next/strata/README.md#abliterated-q8_0) |
-
-The encoder loads and warms up before the language engine sizes its expert
-cache. It uses VRAM, so fewer experts fit and the text-only benchmark figures
-above do not apply to these profiles. [Build, API example and validation](qwen3.8-flash-next/strata/README.md#vision-profiles).
-
-DeepSeek-V4.1-Flash on Strata reads pictures with the engine's own BF16 vision tower
-(`deepseek-v4.1-flash-strata-ud-q8kxl-vision`, also `-vision-256k` and `-vision-512k`; Strata 0.2.7): its weights stay in RAM and
-stream to the GPU per block, costing about 21 VRAM experts; both image fixtures were read
-correctly in 13–14 s per request ([details](deepseek-v4.1-flash/README.md#image-input-strata-027)).
+[Strata](https://github.com/Niko1221/Strata) serves both main models from one checkout
+(0.2.7): Qwen3.8-Flash-Next with its Qwen engine and DeepSeek-V4.1-Flash with its own
+DeepSeek engine (`strata-dsv41`). Both take images: Qwen3.8 through a GPU encoder with the
+BF16 mmproj (up to 4,096 image tokens), DeepSeek through the engine's own BF16 vision
+tower. Setup, profiles and measurements: [Qwen3.8 on Strata](qwen3.8-flash-next/strata/README.md),
+[DeepSeek on Strata](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl).
 
 ## Scripts
 
@@ -321,7 +244,7 @@ See [bench/README.md](bench/README.md).
 ```
 .
 ├── README.md
-├── RESULTS.md                    all profiles side by side, benchmarks, recommendations
+├── RESULTS.md                    the models compared: recommendations, one table per model
 ├── scripts/                      start-<profile>-<context>k.sh, start.sh, stop.sh, status.sh, UI scripts
 │   └── _lib.sh                   the profile registry (PROFILES) shared by the scripts
 ├── common/                       stop-docker.sh, shared by every Docker profile
@@ -355,7 +278,8 @@ See [bench/README.md](bench/README.md).
    `start_profile <id>`. If the ID already ends with the context suffix,
    use it once. `profile_field <id> script` resolves the wrapper filename.
 4. Document it in `<model>/docs/profiles/<engine>-<variant>.md`, add a row to the
-   model's README, and its measurements to `RESULTS.md`.
+   model's README, its detailed measurements to the model's README or `docs/`, and a
+   row to its table in `RESULTS.md`.
 
 ## Hardware
 

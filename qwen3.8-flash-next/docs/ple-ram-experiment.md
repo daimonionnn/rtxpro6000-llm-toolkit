@@ -3,7 +3,7 @@
 > **History.** This is the record of how the SGLang RAM profiles came about, kept
 > for the reasoning and the failures. Current configuration and measurements of
 > each profile are in [profiles/](profiles/); all profiles side by side in
-> [RESULTS.md](../../RESULTS.md).
+> [docs/results.md](results.md).
 
 **Solved, three ways.** The first attempt (at the bottom of this document) failed:
 pinned-host PLE cost 1.83 GB of VRAM and the KV cache collapsed. On 2026-09-12

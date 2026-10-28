@@ -61,7 +61,7 @@ The KV pool size was not recorded.
 | Slovak blind check, score of 100 | 50 (Qwen3.8-27B 56, Flash-Next AWQ g32 77) |
 
 Code benchmarks: `bench/evalplus_*`, greedy, thinking off. Against the
-Qwen3.8-Flash-Next profiles: [RESULTS.md](../../../RESULTS.md).
+Qwen3.8-Flash-Next profiles: [results](../../../qwen3.8-flash-next/docs/results.md).
 
 In the four-way Slovak blind check (2026-09-15) it placed last, 27 points below
 Flash-Next AWQ g32. It wrote digits with plural verbs („sú 5 žien“) where words and

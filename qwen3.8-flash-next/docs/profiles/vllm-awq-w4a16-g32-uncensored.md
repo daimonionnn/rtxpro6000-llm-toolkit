@@ -86,7 +86,7 @@ Slovak blind check: fourth of nine on score (70 of 100) with the best mean rank 
 the most first places; second of four against the dense 27B models (70, original g32
 77); last of four against ik_llama.cpp Q8_0, FP8 and the original g32 (68, 69–73 for
 the others). No clear cost, though it scored 2–7 points below the original g32 in
-all three runs ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
+all three runs ([Qwen3.8 results](../results.md#non-english-slovak-blind-check)).
 
 ## Caveats
 

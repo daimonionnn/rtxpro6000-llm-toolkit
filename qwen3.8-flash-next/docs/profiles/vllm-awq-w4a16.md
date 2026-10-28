@@ -48,7 +48,7 @@ pool differently.
 ## Measurements
 
 Same prompts and scripts as the SGLang profiles ([sglang-nvfp4-nvme.md](sglang-nvfp4-nvme.md),
-[RESULTS.md](../../../RESULTS.md)). MTP speculative decoding is **off** (`SPEC_TOKENS=0`).
+[docs/results.md](../results.md)). MTP speculative decoding is **off** (`SPEC_TOKENS=0`).
 
 ### Decode
 
@@ -88,8 +88,8 @@ Needle test (a 10-character code at 10/50/90% depth in 57K, 115K, 176K and
 ### Code benchmarks
 
 HumanEval 0.976 / HumanEval+ 0.951, MBPP 0.934 / MBPP+ 0.788 (greedy, thinking off;
-[RESULTS.md](../../../RESULTS.md#code-humaneval-and-mbpp)). Slovak check: last of nine, sixth of
-seven before ([RESULTS.md](../../../RESULTS.md#non-english-slovak-blind-check)).
+[Qwen3.8 results](../results.md#code-humaneval-and-mbpp)). Slovak check: last of nine, sixth of
+seven before ([Qwen3.8 results](../results.md#non-english-slovak-blind-check)).
 
 ## Setup notes
 
