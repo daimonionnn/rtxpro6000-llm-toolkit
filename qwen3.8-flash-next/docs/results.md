@@ -212,10 +212,10 @@ grader** (2026-09-15):
 
 | Profile | Weights | Score, sum of 10 | Error penalty | Mean rank, 1–4 | Ranked first / last |
 |---|---|---|---|---|---|
-| `qwen3.8-flash-next-vllm-awq-w4a16-g32` | INT4 W4A16 g32 | **77** | **42** | **1.9** | **4** / 0 |
-| `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` | INT4 W4A16 g32, uncensored | 70 | 58 | 2.3 | 2 / 2 |
-| `qwen3.8-27b-sglang-bf16` | BF16 | 56 | 88 | 2.8 | 2 / 4 |
-| `qwen3.6-27b-sglang-bf16` | BF16 | 50 | 86 | 3.0 | 2 / 4 |
+| `qwen3.8-flash-next-vllm-awq-w4a16-g32-256k` | INT4 W4A16 g32 | **77** | **42** | **1.9** | **4** / 0 |
+| `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k` | INT4 W4A16 g32, uncensored | 70 | 58 | 2.3 | 2 / 2 |
+| `qwen3.8-27b-sglang-bf16-256k` | BF16 | 56 | 88 | 2.8 | 2 / 4 |
+| `qwen3.6-27b-sglang-bf16-256k` | BF16 | 50 | 86 | 3.0 | 2 / 4 |
 
 | Prompt | Flash-Next AWQ g32 | Flash-Next g32 uncensored | Qwen3.8-27B | Qwen3.6-27B |
 |---|---|---|---|---|
@@ -240,9 +240,9 @@ as strict.
 | Setup | Weights | Score, sum of 10 | Error penalty | Mean rank, 1–4¹ | Ranked first / last¹ |
 |---|---|---|---|---|---|
 | `ik_llama.cpp Q8_0` | Q8_0 GGUF, Q8_0 KV | **73** | **36** | **2.00** | 2 / 1 |
-| `qwen3.8-flash-next-vllm-awq-w4a16-g32` | INT4 W4A16 g32 | 70 | 47 | 2.62 | 1 / 0 |
-| `qwen3.8-flash-next-vllm-fp8-offload` | FP8 | 69 | 53 | 2.88 | 2 / 4 |
-| `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` | INT4 W4A16 g32, uncensored | 68 | 50 | 2.50 | **3** / 3 |
+| `qwen3.8-flash-next-vllm-awq-w4a16-g32-256k` | INT4 W4A16 g32 | 70 | 47 | 2.62 | 1 / 0 |
+| `qwen3.8-flash-next-vllm-fp8-offload-256k` | FP8 | 69 | 53 | 2.88 | 2 / 4 |
+| `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k` | INT4 W4A16 g32, uncensored | 68 | 50 | 2.50 | **3** / 3 |
 
 ¹ Over the 8 prompts where the answers differed; all four numeral-agreement and
 translation answers were identical.

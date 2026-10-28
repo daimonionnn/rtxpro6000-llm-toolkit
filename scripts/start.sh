@@ -5,7 +5,7 @@
 # pass --host 127.0.0.1 to keep it local.
 set -euo pipefail
 
-DEFAULT_PROFILE=qwen3.8-flash-next-strata-q8-vision
+DEFAULT_PROFILE=qwen3.8-flash-next-strata-q8-vision-256k
 
 source "$(dirname "$0")/_lib.sh"
 args=("$@")

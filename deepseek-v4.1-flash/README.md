@@ -10,14 +10,14 @@ read the Engram from the SSD.
 
 | Profile | Engine | Experts | Decode | Slovak blind score |
 |---|---|---|---:|---:|
-| `deepseek-v4.1-flash-llamacpp-ud-q3kxl`⁴ | llama.cpp PR #30817 | Unsloth UD-Q3_K_XL | **12.9–13.0 tok/s** | **83 / 84.5** |
-| `deepseek-v4.1-flash-ik-mxfp4`⁴ | ik_llama.cpp `main` | original MXFP4 | not yet measured¹ | 75 / 79.5 |
-| `deepseek-v4.1-flash-xolotl-xq-v2` | Xolotl (`ds41_generate`) | IndrasMirror XQ v2, PTQ1_0 / Q2_0 / Q3_K | **60–68 tok/s** (Slovak ~40) | 78² |
-| `deepseek-v4.1-flash-xolotl-xq-v2-vision` | the same + image input | | the same | |
-| `deepseek-v4.1-flash-strata-ud-q8kxl` | Strata `strata-dsv41` 0.2.7 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | 86.5⁵ |
+| `deepseek-v4.1-flash-llamacpp-ud-q3kxl-128k`⁴ | llama.cpp PR #30817 | Unsloth UD-Q3_K_XL | **12.9–13.0 tok/s** | **83 / 84.5** |
+| `deepseek-v4.1-flash-ik-mxfp4-128k`⁴ | ik_llama.cpp `main` | original MXFP4 | not yet measured¹ | 75 / 79.5 |
+| `deepseek-v4.1-flash-xolotl-xq-v2-128k` | Xolotl (`ds41_generate`) | IndrasMirror XQ v2, PTQ1_0 / Q2_0 / Q3_K | **60–68 tok/s** (Slovak ~40) | 78² |
+| `deepseek-v4.1-flash-xolotl-xq-v2-vision-128k` | the same + image input | | the same | |
+| `deepseek-v4.1-flash-strata-ud-q8kxl-128k` | Strata `strata-dsv41` 0.2.7 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | 86.5⁵ |
 | `deepseek-v4.1-flash-strata-ud-q8kxl-256k`, `-512k` | the same, 256K / 512K context | | ~19–22 tok/s at ~200K context | |
-| `deepseek-v4.1-flash-strata-ud-q8kxl-vision`, `-vision-256k`, `-vision-512k` | the same + image input (engine's own tower) | | the same | |
-| `deepseek-v4.1-flash-strata-ist-iq2xs` (+ `-256k`, `-vision`, `-vision-256k`) | Strata `strata-dsv41` 0.2.7 | ISTA-DASLab IQ2_XS, 2.25 bpw (official) | **40–59 tok/s** with DSpark | 84⁵ |
+| `deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k`, `-vision-256k`, `-vision-512k` | the same + image input (engine's own tower) | | the same | |
+| `deepseek-v4.1-flash-strata-ist-iq2xs-128k` (+ `-256k`, `-vision`, `-vision-256k`) | Strata `strata-dsv41` 0.2.7 | ISTA-DASLab IQ2_XS, 2.25 bpw (official) | **40–59 tok/s** with DSpark | 84⁵ |
 
 ¹ Its first speed runs were in the desktop's power-saver mode and were discarded;
 expect it to be slower than UD-Q3_K_XL in proportion to its larger experts.
@@ -270,7 +270,7 @@ UD-Q3_K_XL answers were identical).
 
 ### Image input
 
-`deepseek-v4.1-flash-xolotl-xq-v2-vision` is the same server with pictures: Xolotl's
+`deepseek-v4.1-flash-xolotl-xq-v2-vision-128k` is the same server with pictures: Xolotl's
 `tools/v41/vision/ds41_vision.py` encodes them with DeepSeek's vision tower, which the
 MTP sidecar carries in Q8_0, and DeepSeek's reference `vision.py` / `image_processor.py`
 from the original checkpoint's `inference/` folder.

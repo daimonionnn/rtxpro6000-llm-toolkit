@@ -4,4 +4,4 @@
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 
-start_profile qwen3.8-flash-next-sglang-nvfp4-nvme
+start_profile qwen3.8-flash-next-sglang-nvfp4-nvme-256k

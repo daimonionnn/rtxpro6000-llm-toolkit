@@ -45,7 +45,7 @@ mkdir -p "$ROOT/logs"
 
 case "$VARIANT" in
   xq-v2|xq-v2-vision)
-    PROFILE=deepseek-v4.1-flash-xolotl-$VARIANT
+    PROFILE=deepseek-v4.1-flash-xolotl-$VARIANT-$((CTX / 1024))k
     XQ_DIR="$SIDE_DIR/v2"
     ;;
   *) echo "unknown variant $VARIANT (xq-v2, xq-v2-vision)" >&2; exit 2 ;;

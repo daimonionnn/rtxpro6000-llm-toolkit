@@ -30,15 +30,16 @@ already installed under LM Studio. [Encoder preparation and usage](strata/README
 
 ## Profiles
 
-The toolkit default (`scripts/start.sh`) is **Strata Q8 vision 128K**, profile
-`qwen3.8-flash-next-strata-q8-vision`, with up to 4,096 image tokens. On the
+The toolkit default (`scripts/start.sh`) is **Strata Q8 vision 256K**, profile
+`qwen3.8-flash-next-strata-q8-vision-256k`, with up to 4,096 image tokens (since
+2026-10-28; 128K before). On the
 workstation, `strata-server.service` starts it automatically at boot.
 
 One at a time, each on `http://127.0.0.1:8090/v1` by default. All 18 profiles
 start with `scripts/start-qwen3.8-flash-next-<engine>-<variant>-<context>k.sh` at the toolkit
 root and are managed by `scripts/status.sh` and `scripts/stop.sh`.
 SGLang, vLLM and TabbyAPI advertise model `Qwen3.8-Flash-Next`. Strata advertises
-its full profile ID: `qwen3.8-flash-next-strata-q8` or `...-q6`, with `-256k`
+its full profile ID: `qwen3.8-flash-next-strata-q8-128k` or `...-q6`, with `-256k`
 for the larger-context variants. Vision variants insert `-vision` after the
 quantization name, e.g. `qwen3.8-flash-next-strata-q8-vision-256k`. Strata launchers share the `strata/` directory
 and [documentation](strata/README.md); other profiles are documented in

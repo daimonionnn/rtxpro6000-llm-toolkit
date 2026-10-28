@@ -17,9 +17,9 @@ Strata — and llama.cpp, ik_llama.cpp, Xolotl and Strata's DeepSeek engine for 
 > ISTA-DASLab's 2.25 bpw set keeps about 140 GB of RAM busy. Neither was tried with less
 > RAM. See [Hardware](#hardware).
 
-The default profile is **Strata Q8 vision 128K**
-(`qwen3.8-flash-next-strata-q8-vision`), launched by `scripts/start.sh`.
-It uses a 131,072-token context and up to 4,096 image tokens. On this workstation,
+The default profile is **Strata Q8 vision 256K**
+(`qwen3.8-flash-next-strata-q8-vision-256k`), launched by `scripts/start.sh`.
+It uses a 262,144-token context and up to 4,096 image tokens. On this workstation,
 `strata-server.service` also starts it automatically at boot.
 
 By default every profile serves an OpenAI-compatible API on
@@ -51,17 +51,17 @@ details are with each model: [Qwen3.8-Flash-Next](qwen3.8-flash-next/docs/result
 [Qwen3.8-27B](qwen3.8-27b/README.md). In short:
 
 - **The default and the best everyday model: Qwen3.8-Flash-Next on Strata**
-  (`qwen3.8-flash-next-strata-q8-vision`, started by `scripts/start.sh`). Q8_0 weights,
+  (`qwen3.8-flash-next-strata-q8-vision-256k`, started by `scripts/start.sh`; also at 128K). Q8_0 weights,
   so close to full quality, and still fast: 159 tok/s on prose, 176 on code and 122 in
-  Slovak with MTP, about 6,700 tok/s cold prefill at 32–120K, image input, 128K context
-  (256K profile). GSM8K 97.0 %, MMLU-Pro 78.5 %, HumanEval+ 0.951 (measured on Strata
+  Slovak with MTP, about 6,700 tok/s cold prefill at 32–120K (measured at 128K), image
+  input, 256K context. GSM8K 97.0 %, MMLU-Pro 78.5 %, HumanEval+ 0.951 (measured on Strata
   0.1.41). It needs about 37 GiB of RAM beside the card and suits agents that make
   many calls.
-- **Second: DeepSeek-V4.1-Flash on Strata**, two profiles. `deepseek-v4.1-flash-strata-ud-q8kxl`
+- **Second: DeepSeek-V4.1-Flash on Strata**, two profiles. `deepseek-v4.1-flash-strata-ud-q8kxl-128k`
   runs the experts as DeepSeek released them (MXFP4) and writes the best Slovak measured
   here (86.5 against 63–70 for the best Qwen3.8 setups, one grader); GSM8K 98.3 %,
   MMLU-Pro 81.0 %; ~29 tok/s, ~1,000 tok/s prefill at 30K, ~224 GB of RAM.
-  `deepseek-v4.1-flash-strata-ist-iq2xs` uses ISTA-DASLab's official 2.25 bpw set:
+  `deepseek-v4.1-flash-strata-ist-iq2xs-128k` uses ISTA-DASLab's official 2.25 bpw set:
   40–59 tok/s, 2,118 tok/s prefill at 30K, Slovak 84, ~140 GB of RAM. Both decode three
   to six times slower than Qwen3.8, so they are not the everyday agent model, but suit
   coding sessions and complex, demanding tasks where the answer matters more than the
@@ -82,10 +82,10 @@ details are with each model: [Qwen3.8-Flash-Next](qwen3.8-flash-next/docs/result
   for smaller, morphologically rich languages, European ones in particular. It says less
   about non-Latin scripts (tokenization) or agglutinative languages such as Finnish or
   Turkish, and it is small: ten prompts, one greedy answer each, an LLM grader.
-- **Fastest prefill and the largest Qwen3.8 context:** `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal`
+- **Fastest prefill and the largest Qwen3.8 context:** `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k`
   (2.6 s at 32K, 9.7 s at 128K; 524K window, 831K-token KV pool, NVFP4 weights);
   `-sglang-nvfp4-ram` for plain Docker.
-- **No refusals:** `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` — no measurable
+- **No refusals:** `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k` — no measurable
   loss on code, a few points below g32 in Slovak; dealignai's abliterated NVFP4 lost
   code ability. `strata-q8-abliterated-vision` is the 8-bit option on Strata.
 - **Dense Qwen3.6-27B and Qwen3.8-27B at BF16** trail Flash-Next on code and
@@ -104,7 +104,7 @@ tower. Setup, profiles and measurements: [Qwen3.8 on Strata](qwen3.8-flash-next/
 
 | Script | Does |
 |---|---|
-| `scripts/start.sh` | Start the default profile: Strata Q8 vision 128K (`qwen3.8-flash-next-strata-q8-vision`) |
+| `scripts/start.sh` | Start the default profile: Strata Q8 vision 256K (`qwen3.8-flash-next-strata-q8-vision-256k`) |
 | `scripts/start-<model>-<engine>-<variant>-<context>k.sh` | Start one profile with its labelled default context (listed below) |
 | `scripts/stop.sh` | Stop the running registered profile (`--rm` also removes a Docker container) |
 | `scripts/status.sh` | Which registered profile is running, from which directory, with which checkpoint, context and KV cache |
@@ -167,7 +167,7 @@ scripts/stop.sh
 
 The workstation uses the user service
 [strata-server.service](common/systemd/strata-server.service), which calls
-`scripts/start.sh --host 0.0.0.0` (since 2026-10-21 also the script's own default). It starts Q8 vision 128K on port 8090,
+`scripts/start.sh --host 0.0.0.0` (since 2026-10-21 also the script's own default). It starts Q8 vision 256K on port 8090,
 accessible locally and from the LAN, with a 4,096-token image limit.
 On this workstation the LAN API URL is `http://192.168.1.101:8090/v1`.
 User lingering starts the service at boot without
@@ -274,9 +274,11 @@ See [bench/README.md](bench/README.md).
    recognise it.
 2. Add a line to `PROFILES` in `scripts/_lib.sh`: id, directory, launcher,
    checkpoint directory under `models/`, description, default context in tokens.
-3. Add `scripts/start-<id>-<context>k.sh`: source `_lib.sh` and call
-   `start_profile <id>`. If the ID already ends with the context suffix,
-   use it once. `profile_field <id> script` resolves the wrapper filename.
+   The id is `<model>-<engine>-<variant>-<context>k`, the context in units of 1,024
+   tokens (`-128k`, `-256k`, `-512k`); the same server at another context is another
+   profile.
+3. Add `scripts/start-<id>.sh`: source `_lib.sh` and call `start_profile <id>`.
+   `profile_field <id> script` resolves the wrapper filename.
 4. Document it in `<model>/docs/profiles/<engine>-<variant>.md`, add a row to the
    model's README, its detailed measurements to the model's README or `docs/`, and a
    row to its table in `RESULTS.md`.

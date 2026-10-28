@@ -21,7 +21,7 @@
 #   MODEL_DIR     the variant's own set (scripts/start-*.sh sets it from the registry): UNSLOTH_DIR for
 #                 ud-q8kxl, ISTA_DIR for ist-*
 #   HOST PORT     bind address and port (default 127.0.0.1 8090)
-#   CTX           context tokens: 131072 (default), 262144 or 524288; the profile id gets -256k / -512k
+#   CTX           context tokens: 131072 (default), 262144 or 524288; the profile id ends in -128k / -256k / -512k
 #   MMAP_EXPERTS  on = read the CPU experts in place from the files (page cache, can be evicted),
 #                 off = copy them into the engine's memory at load (~208 GB of the 244 GiB),
 #                 auto = the engine decides (copies them when they fit). Default: see below.
@@ -80,10 +80,9 @@ case "${VARIANT%-vision}" in
   *) echo "unknown variant $VARIANT (ud-q8kxl, ist-iq2xs, ist-iq2xs-e8, each also with -vision)" >&2; exit 2 ;;
 esac
 PROFILE=deepseek-v4.1-flash-strata-$VARIANT
-# the 256K / 512K profiles are the same server with a larger window (serve-*-256k.sh, serve-*-512k.sh)
+# the profile id ends with its context; the 256K / 512K profiles are the same server with a larger window
 case "$CTX" in
-  131072) ;;
-  262144|524288) PROFILE="$PROFILE-$((CTX / 1024))k" ;;
+  131072|262144|524288) PROFILE="$PROFILE-$((CTX / 1024))k" ;;
   *) echo "CTX must be 131072, 262144 or 524288" >&2; exit 2 ;;
 esac
 VISION=off; [[ "$VARIANT" == *-vision ]] && VISION=on

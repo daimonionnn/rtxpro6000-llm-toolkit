@@ -82,8 +82,8 @@ def main(quant="q8", description=None, context=131072, vision=False):
             if not path.exists():
                 ap.error(f"missing shard {path}")
     logs = ROOT / "logs/strata-comparison"
-    suffix = ("-vision" if vision else "") + ("-256k" if args.context == 262144 else "")
-    profile = f"qwen3.8-flash-next-strata-{quant}{suffix}"
+    suffix = ("-vision" if vision else "") + ("-256k" if args.context == 262144 else "")   # log and config names
+    profile = f"qwen3.8-flash-next-strata-{quant}{'-vision' if vision else ''}-{args.context // 1024}k"
     config = dict(
         exe=str(strata / "build/strata"), cwd=str(strata),
         args=["--pack", str(pack), "--native", str(model),

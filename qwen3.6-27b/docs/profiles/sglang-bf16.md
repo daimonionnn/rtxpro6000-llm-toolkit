@@ -5,7 +5,7 @@ Profile `sglang-bf16`, directory `qwen3.6-27b/sglang/bf16/`, started with
 
 Qwen/Qwen3.6-27B @ `6a9e13bd` with its original BF16 weights on the official SGLang
 image `lmsysorg/sglang:dev-qwen38-next-local` (the one
-`qwen3.8-flash-next-sglang-nvfp4-ram-official` uses; its SGLang has the `qwen3_5`
+`qwen3.8-flash-next-sglang-nvfp4-ram-official-256k` uses; its SGLang has the `qwen3_5`
 model and MTP code). Measured 2026-09-14.
 
 ## Setup

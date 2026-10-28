@@ -35,7 +35,7 @@ mkdir -p "$ROOT/logs"
 
 case "$VARIANT" in
   ud-q3kxl)
-    PROFILE=deepseek-v4.1-flash-llamacpp-ud-q3kxl
+    PROFILE=deepseek-v4.1-flash-llamacpp-ud-q3kxl-$((CTX / 1024))k
     MODEL_DIR="${MODEL_DIR:-$ROOT/models/DeepSeek-V4.1-Flash-1017-GGUF}"
     MODEL="$MODEL_DIR/UD-Q3_K_XL/DeepSeek-V4.1-Flash-1017-UD-Q3_K_XL-00001-of-00008.gguf"
     EXE="${LLAMACPP_DIR:-$HOME/development/llama.cpp-ds41}/build/bin/llama-server"
@@ -46,7 +46,7 @@ case "$VARIANT" in
     ENVS=()
     ;;
   mxfp4)
-    PROFILE=deepseek-v4.1-flash-ik-mxfp4
+    PROFILE=deepseek-v4.1-flash-ik-mxfp4-$((CTX / 1024))k
     MODEL_DIR="${MODEL_DIR:-$ROOT/models/DeepSeek-V4.1-Flash-1017-ik-GGUF}"
     MODEL="$MODEL_DIR/Q8_0/DeepSeek-V4.1-Flash-1017-Q8_0-00001-of-00010.gguf"
     EXE="${IK_DIR:-$HOME/development/ik_llama-ds41}/build/bin/llama-server"

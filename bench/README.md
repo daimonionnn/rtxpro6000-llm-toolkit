@@ -41,7 +41,7 @@ python3 bench/prefill.py                  # 4K, 32K and 128K tokens
 python3 bench/prefill.py 8192 65536       # or your own sizes
 BASE=http://127.0.0.1:9000 python3 bench/prefill.py
 # Strata uses its own advertised model ID:
-BASE=http://127.0.0.1:8093 MODEL=qwen3.8-flash-next-strata-q8 \
+BASE=http://127.0.0.1:8093 MODEL=qwen3.8-flash-next-strata-q8-128k \
   python3 bench/prefill.py 4096 32768 124000
 ```
 

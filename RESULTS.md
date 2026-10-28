@@ -18,21 +18,21 @@ since); compare within a table.
 
 | If you want | Use | Why |
 |---|---|---|
-| The default: near-full quality at high speed | [`qwen3.8-flash-next-strata-q8-vision`](qwen3.8-flash-next/strata/README.md#upgrade-to-027-speed-ab-2026-10-27) | Q8_0 on Strata 0.2.7 with MTP: 159 prose / 176 code / 122 Slovak tok/s, ~6,700 tok/s cold prefill, image input, 128K (256K profile); GSM8K 97.0 %, MMLU-Pro 78.5 %, 457 of 542 code tests. ~37 GiB of pinned RAM. |
-| The best answers, at a lower speed | [`deepseek-v4.1-flash-strata-ud-q8kxl`](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl) | DeepSeek's own MXFP4 experts: the best Slovak measured, GSM8K 98.3 %, MMLU-Pro 81.0 %; ~29 tok/s, ~1,000 tok/s prefill at 30K, up to 512K, images. Needs ~224 GB of RAM. For coding sessions and complex tasks, not for an agent making many quick calls. |
-| DeepSeek, faster and smaller | [`deepseek-v4.1-flash-strata-ist-iq2xs`](deepseek-v4.1-flash/README.md#ista-daslab-iq2_xs-225-bpw) | ISTA-DASLab's official 2.25 bpw set: 40–59 tok/s, 2,118 tok/s prefill at 30K, Slovak 84, up to 256K, images; ~140 GB of RAM. |
-| The fastest prefill, the largest Qwen3.8 context | `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal` | 2.6 s at 32K, 9.7 s at 128K; 524K window, 831K-token KV pool, 235–254 tok/s; prefix cache survives restarts with HiCache. Depends on one person's fork and applies YaRN to every prompt. |
-| Fast and conservative | `qwen3.8-flash-next-sglang-nvfp4-ram` (or `-official` for no local build) | 236–260 tok/s, 262K window, plain Docker |
-| Little free host RAM | `qwen3.8-flash-next-sglang-nvfp4-nvme` | reads the PLE table from NVMe instead of holding ~65 GB in RAM; 214–222 tok/s, but the smallest KV pool and the slowest prefill of the SGLang profiles |
-| The best Slovak among the Qwen3.8 profiles | `qwen3.8-flash-next-vllm-awq-w4a16-g32` | first in three blind Slovak checks of the Qwen3.8 profiles; ~110 tok/s, 262K window |
-| The fastest decode with 16-bit activations | `qwen3.8-flash-next-exllamav3-exl3-5.05bpw` | 119 tok/s on prose, 216 on code; loads in under a minute. Prefill ~1.6× slower than vLLM, lower half in every Slovak check. |
-| No refusals | `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored` | leoncca's uncensored AWQ g32 with a small vLLM patch; 461 of 542 code tests, the best measured, no loss against the original. One unexplained crash under the first concurrent load. |
-| No refusals, 8-bit weights | [`strata-q8-abliterated-vision`](qwen3.8-flash-next/strata/README.md#abliterated-q8_0) | windowsxp811203's abliterated Q8_0 on Strata: no measured loss against the original Q8_0 (code 455 vs 457 of 542, GSM8K 96.7 vs 97.0 %, MMLU-Pro 80.2 vs 78.5 %), vision works. |
-| Qwen3.8 at 8 bits outside Strata | **ik_llama.cpp with a Q8_0 GGUF**, not a profile here | first of four in its blind Slovak check of Qwen3.8 setups (73 against 70 for AWQ g32), but no better on code (454 of 542); 38 tok/s, 131K window, ~105 GiB host RAM. `vllm-fp8-offload` also keeps experts in RAM and decodes at ~16 tok/s. |
-| Qwen3.8 with fewer bits on Strata | [`strata-q6`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | Q6_K/Q8_0 experts, 7.21 bpw; less pinned expert RAM (16 against 35 GiB) and faster generation than Q8 in the 2026-10-06 runs, but a slower first prefill; no scored quality run. |
-| A dense model | `qwen3.8-27b-sglang-bf16` or `qwen3.6-27b-sglang-bf16` | full BF16 precision, but both solved fewer code tasks than every measured Flash-Next quantization except the abliterated NVFP4, scored 21–27 points below AWQ g32 in the Slovak check, and decode slower (57–87 tok/s) |
-| — not this one | `qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated` | dealignai's abliterated NVFP4 lost 16 code tasks net against the same profile without abliteration (p = 0.02) |
-| — superseded | `qwen3.8-flash-next-vllm-awq-w4a16` | INT4 group 128: the largest vLLM KV pool (605K), but in the bottom two of every Slovak check; group 32 is slightly faster |
+| The default: near-full quality at high speed | [`qwen3.8-flash-next-strata-q8-vision-256k`](qwen3.8-flash-next/strata/README.md#upgrade-to-027-speed-ab-2026-10-27) | Q8_0 on Strata 0.2.7 with MTP: 159 prose / 176 code / 122 Slovak tok/s, ~6,700 tok/s cold prefill (measured at 128K), image input, 256K (also 128K); GSM8K 97.0 %, MMLU-Pro 78.5 %, 457 of 542 code tests. ~37 GiB of pinned RAM. |
+| The best answers, at a lower speed | [`deepseek-v4.1-flash-strata-ud-q8kxl-128k`](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl) | DeepSeek's own MXFP4 experts: the best Slovak measured, GSM8K 98.3 %, MMLU-Pro 81.0 %; ~29 tok/s, ~1,000 tok/s prefill at 30K, up to 512K, images. Needs ~224 GB of RAM. For coding sessions and complex tasks, not for an agent making many quick calls. |
+| DeepSeek, faster and smaller | [`deepseek-v4.1-flash-strata-ist-iq2xs-128k`](deepseek-v4.1-flash/README.md#ista-daslab-iq2_xs-225-bpw) | ISTA-DASLab's official 2.25 bpw set: 40–59 tok/s, 2,118 tok/s prefill at 30K, Slovak 84, up to 256K, images; ~140 GB of RAM. |
+| The fastest prefill, the largest Qwen3.8 context | `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k` | 2.6 s at 32K, 9.7 s at 128K; 524K window, 831K-token KV pool, 235–254 tok/s; prefix cache survives restarts with HiCache. Depends on one person's fork and applies YaRN to every prompt. |
+| Fast and conservative | `qwen3.8-flash-next-sglang-nvfp4-ram-256k` (or `-official` for no local build) | 236–260 tok/s, 262K window, plain Docker |
+| Little free host RAM | `qwen3.8-flash-next-sglang-nvfp4-nvme-256k` | reads the PLE table from NVMe instead of holding ~65 GB in RAM; 214–222 tok/s, but the smallest KV pool and the slowest prefill of the SGLang profiles |
+| The best Slovak among the Qwen3.8 profiles | `qwen3.8-flash-next-vllm-awq-w4a16-g32-256k` | first in three blind Slovak checks of the Qwen3.8 profiles; ~110 tok/s, 262K window |
+| The fastest decode with 16-bit activations | `qwen3.8-flash-next-exllamav3-exl3-5.05bpw-256k` | 119 tok/s on prose, 216 on code; loads in under a minute. Prefill ~1.6× slower than vLLM, lower half in every Slovak check. |
+| No refusals | `qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k` | leoncca's uncensored AWQ g32 with a small vLLM patch; 461 of 542 code tests, the best measured, no loss against the original. One unexplained crash under the first concurrent load. |
+| No refusals, 8-bit weights | [`strata-q8-abliterated-vision-128k`](qwen3.8-flash-next/strata/README.md#abliterated-q8_0) | windowsxp811203's abliterated Q8_0 on Strata: no measured loss against the original Q8_0 (code 455 vs 457 of 542, GSM8K 96.7 vs 97.0 %, MMLU-Pro 80.2 vs 78.5 %), vision works. |
+| Qwen3.8 at 8 bits outside Strata | **ik_llama.cpp with a Q8_0 GGUF**, not a profile here | first of four in its blind Slovak check of Qwen3.8 setups (73 against 70 for AWQ g32), but no better on code (454 of 542); 38 tok/s, 131K window, ~105 GiB host RAM. `vllm-fp8-offload-256k` also keeps experts in RAM and decodes at ~16 tok/s. |
+| Qwen3.8 with fewer bits on Strata | [`strata-q6-128k`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | Q6_K/Q8_0 experts, 7.21 bpw; less pinned expert RAM (16 against 35 GiB) and faster generation than Q8 in the 2026-10-06 runs, but a slower first prefill; no scored quality run. |
+| A dense model | `qwen3.8-27b-sglang-bf16-256k` or `qwen3.6-27b-sglang-bf16-256k` | full BF16 precision, but both solved fewer code tasks than every measured Flash-Next quantization except the abliterated NVFP4, scored 21–27 points below AWQ g32 in the Slovak check, and decode slower (57–87 tok/s) |
+| — not this one | `qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated-256k` | dealignai's abliterated NVFP4 lost 16 code tasks net against the same profile without abliteration (p = 0.02) |
+| — superseded | `qwen3.8-flash-next-vllm-awq-w4a16-256k` | INT4 group 128: the largest vLLM KV pool (605K), but in the bottom two of every Slovak check; group 32 is slightly faster |
 
 ## Qwen3.8-Flash-Next
 
@@ -43,18 +43,18 @@ ten prompts). [All columns, footnotes and the 2026-10-06 Strata Q8 / Q6 rows](qw
 
 | Profile | Engine, weights | Context | TTFT 32K / 128K | Decode, tok/s | Host RAM | Code | Slovak |
 |---|---|---:|---|---|---:|---:|---:|
-| `strata-q8-vision` (default) | Strata 0.2.7, Q8_0, MTP | 131,072 | 4.79 / 18.0 s¹ | 159 prose, 176 code, 122 Slovak | ~37 GiB | 457² | 64 / 66⁴ |
-| `strata-q8-abliterated-vision` | Strata, abliterated Q8_0 | 131,072 | — | 101 / 125 / 81² | — | 455² | 62 / 64⁴ |
-| `sglang-nvfp4-ram-pennyroyal` | SGLang fork, NVFP4 | **524,288** | **2.62 / 9.68 s** | 235–254 | ~65 GB | 456 | 68 |
-| `sglang-nvfp4-ram` | SGLang, NVFP4 | 262,144 | 2.90 / 10.7 s | 236–249 | ~65 GB | 457 | 69 |
-| `sglang-nvfp4-ram-official` | SGLang official image, NVFP4 | 262,144 | 2.45 / 10.4 s | 258–260 | ~65 GB | 458 | 72 |
-| `sglang-nvfp4-nvme` | SGLang, NVFP4, PLE from NVMe | 262,144 | 4.37 / 18.0 s | 214–222 | ~0 | 457 | 66 |
-| `vllm-awq-w4a16-g32` | vLLM, INT4 g32 | 262,144 | 3.36 / 12.1 s | 110 | ~115 GB | 457 | **75** |
-| `vllm-awq-w4a16-g32-uncensored` | vLLM, INT4 g32, uncensored | 262,144 | — | 110 | ~50 GB | **461** | 70 |
-| `vllm-awq-w4a16` | vLLM, INT4 g128 | 262,144 | 3.28 / 12.1 s | 102–103 | ~115 GB | 454 | 65 |
-| `exllamav3-exl3-5.05bpw` | ExLlamaV3, EXL3 5.05 bpw | 262,144 | 4.83 / 19.4 s | 119 prose, **216 code** | ~43 GB | 460 | 67 |
-| `vllm-fp8-offload` | vLLM, FP8, experts in RAM | 262,144 | 69K: 86.3 s | 15.6–16.6 | ~131 GB | — | 71³ |
-| `sglang-nvfp4-ram-official-abliterated` | SGLang, NVFP4, abliterated | 262,144 | — | 200–216 code, 133 prose | ~65 GB | 442 | 71 |
+| `strata-q8-vision-128k` (default: the same at 256K) | Strata 0.2.7, Q8_0, MTP | 131,072 | 4.79 / 18.0 s¹ | 159 prose, 176 code, 122 Slovak | ~37 GiB | 457² | 64 / 66⁴ |
+| `strata-q8-abliterated-vision-128k` | Strata, abliterated Q8_0 | 131,072 | — | 101 / 125 / 81² | — | 455² | 62 / 64⁴ |
+| `sglang-nvfp4-ram-pennyroyal-512k` | SGLang fork, NVFP4 | **524,288** | **2.62 / 9.68 s** | 235–254 | ~65 GB | 456 | 68 |
+| `sglang-nvfp4-ram-256k` | SGLang, NVFP4 | 262,144 | 2.90 / 10.7 s | 236–249 | ~65 GB | 457 | 69 |
+| `sglang-nvfp4-ram-official-256k` | SGLang official image, NVFP4 | 262,144 | 2.45 / 10.4 s | 258–260 | ~65 GB | 458 | 72 |
+| `sglang-nvfp4-nvme-256k` | SGLang, NVFP4, PLE from NVMe | 262,144 | 4.37 / 18.0 s | 214–222 | ~0 | 457 | 66 |
+| `vllm-awq-w4a16-g32-256k` | vLLM, INT4 g32 | 262,144 | 3.36 / 12.1 s | 110 | ~115 GB | 457 | **75** |
+| `vllm-awq-w4a16-g32-uncensored-256k` | vLLM, INT4 g32, uncensored | 262,144 | — | 110 | ~50 GB | **461** | 70 |
+| `vllm-awq-w4a16-256k` | vLLM, INT4 g128 | 262,144 | 3.28 / 12.1 s | 102–103 | ~115 GB | 454 | 65 |
+| `exllamav3-exl3-5.05bpw-256k` | ExLlamaV3, EXL3 5.05 bpw | 262,144 | 4.83 / 19.4 s | 119 prose, **216 code** | ~43 GB | 460 | 67 |
+| `vllm-fp8-offload-256k` | vLLM, FP8, experts in RAM | 262,144 | 69K: 86.3 s | 15.6–16.6 | ~131 GB | — | 71³ |
+| `sglang-nvfp4-ram-official-abliterated-256k` | SGLang, NVFP4, abliterated | 262,144 | — | 200–216 code, 133 prose | ~65 GB | 442 | 71 |
 
 ¹ 120K. ² Strata 0.1.41 (2026-10-14). ³ In an earlier four-profile sheet with a different
 grader (AWQ g32 70 there). ⁴ Two graders on a 2026-10-14 sheet with ik_llama.cpp Q8_0
@@ -68,11 +68,11 @@ DSpark on for Strata, warm decode means. [Details](deepseek-v4.1-flash/README.md
 
 | Profile | Engine, experts | Decode | Prefill, cold ~30K | Host RAM | Slovak |
 |---|---|---|---:|---:|---:|
-| `strata-ud-q8kxl` | Strata 0.2.7, UD-Q8_K_XL (original MXFP4) | ~29 tok/s | ~1,000 tok/s | ~224 GB | **86.5**¹ |
-| `strata-ist-iq2xs` | Strata 0.2.7, ISTA-DASLab IQ2_XS 2.25 bpw | 40–59 tok/s | **2,118 tok/s** | ~140 GB | 84¹ |
-| `xolotl-xq-v2` | Xolotl, XQ v2 (PTQ1_0 / Q2_0 / Q3_K) | **60–68 tok/s** (Slovak ~40) | 668 tok/s | 72 GiB arena | 77¹ |
-| `llamacpp-ud-q3kxl`² | llama.cpp PR, UD-Q3_K_XL | 12.9–13.0 tok/s | 443 tok/s | ~195 GB | 86¹ |
-| `ik-mxfp4`² | ik_llama.cpp, original MXFP4 | not measured | not measured | ~217 GB | 81¹ |
+| `strata-ud-q8kxl-128k` | Strata 0.2.7, UD-Q8_K_XL (original MXFP4) | ~29 tok/s | ~1,000 tok/s | ~224 GB | **86.5**¹ |
+| `strata-ist-iq2xs-128k` | Strata 0.2.7, ISTA-DASLab IQ2_XS 2.25 bpw | 40–59 tok/s | **2,118 tok/s** | ~140 GB | 84¹ |
+| `xolotl-xq-v2-128k` | Xolotl, XQ v2 (PTQ1_0 / Q2_0 / Q3_K) | **60–68 tok/s** (Slovak ~40) | 668 tok/s | 72 GiB arena | 77¹ |
+| `llamacpp-ud-q3kxl-128k`² | llama.cpp PR, UD-Q3_K_XL | 12.9–13.0 tok/s | 443 tok/s | ~195 GB | 86¹ |
+| `ik-mxfp4-128k`² | ik_llama.cpp, original MXFP4 | not measured | not measured | ~217 GB | 81¹ |
 
 Profile ids drop the `deepseek-v4.1-flash-` prefix. Strata also has 256K, 512K (UD-Q8_K_XL)
 and vision variants of both. ¹ One grader on the 2026-10-27/28 sheets (the 2.25 bpw set on

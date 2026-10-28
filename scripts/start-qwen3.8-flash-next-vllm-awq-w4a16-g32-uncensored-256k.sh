@@ -4,4 +4,4 @@
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 
-start_profile qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored
+start_profile qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k

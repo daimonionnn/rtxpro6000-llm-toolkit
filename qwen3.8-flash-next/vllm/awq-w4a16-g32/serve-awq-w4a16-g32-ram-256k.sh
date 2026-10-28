@@ -59,7 +59,7 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 docker run -d --name "$NAME" --restart unless-stopped --gpus '"device=0"' \
   --ipc host --shm-size 32g \
   --ulimit memlock=-1 \
-  --label "rtxpro6000-llm.profile=qwen3.8-flash-next-vllm-awq-w4a16-g32" \
+  --label "rtxpro6000-llm.profile=qwen3.8-flash-next-vllm-awq-w4a16-g32-256k" \
   --label "rtxpro6000-llm.quant.experts=INT4-W4A16-g32-asym" \
   --label "rtxpro6000-llm.quant.rest=BF16" \
   --label "rtxpro6000-llm.quant.kv_cache=$KV_DTYPE" \

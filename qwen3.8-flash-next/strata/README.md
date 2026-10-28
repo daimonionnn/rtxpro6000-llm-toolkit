@@ -361,7 +361,7 @@ Each runs in the foreground on localhost port 8090 by default; `--port` changes
 it. Use `--host 0.0.0.0` for LAN access; the workstation's boot service already
 uses this option, with LAN API URL `http://192.168.1.101:8090/v1`.
 The API model ID is the full profile ID, e.g.
-`qwen3.8-flash-next-strata-q8-vision` at 128K or
+`qwen3.8-flash-next-strata-q8-vision-128k` at 128K or
 `qwen3.8-flash-next-strata-q8-vision-256k` at 256K.
 
 GPU is the default encoder device. `--vision-device cpu` uses the same helper on
@@ -407,7 +407,7 @@ import urllib.request
 
 image = base64.b64encode(open("photo.png", "rb").read()).decode()
 body = {
-    "model": "qwen3.8-flash-next-strata-q8-vision",
+    "model": "qwen3.8-flash-next-strata-q8-vision-128k",
     "messages": [{"role": "user", "content": [
         {"type": "image_url", "image_url": {"url": "data:image/png;base64," + image}},
         {"type": "text", "text": "Describe this image."},
@@ -548,10 +548,10 @@ Raw results: `logs/evalplus/strata-q8-{abliterated,orig-0141}/`,
 
 ```bash
 python3 bench/compare_decode.py strata-q8 --base http://127.0.0.1:8093
-BASE=http://127.0.0.1:8093 MODEL=qwen3.8-flash-next-strata-q8 \
+BASE=http://127.0.0.1:8093 MODEL=qwen3.8-flash-next-strata-q8-128k \
   python3 bench/prefill.py 4096 32768 124000
 python3 bench/language_samples.py collect strata-q8 \
-  --base http://127.0.0.1:8093 --model qwen3.8-flash-next-strata-q8
+  --base http://127.0.0.1:8093 --model qwen3.8-flash-next-strata-q8-128k
 ```
 
 The decode script uses three fixed prompts, 512 generated tokens, three
@@ -628,10 +628,10 @@ In a separate terminal, run the measurements sequentially:
 
 ```bash
 python3 bench/compare_decode.py strata-q6 --base http://127.0.0.1:8096
-BASE=http://127.0.0.1:8096 MODEL=qwen3.8-flash-next-strata-q6 \
+BASE=http://127.0.0.1:8096 MODEL=qwen3.8-flash-next-strata-q6-128k \
   python3 bench/prefill.py 4096 32768 124000
 python3 bench/language_samples.py collect strata-q6 \
-  --base http://127.0.0.1:8096 --model qwen3.8-flash-next-strata-q6
+  --base http://127.0.0.1:8096 --model qwen3.8-flash-next-strata-q6-128k
 ```
 
 ## ik_llama.cpp reference runs

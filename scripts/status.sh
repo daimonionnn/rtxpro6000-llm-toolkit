@@ -84,7 +84,7 @@ if [ -f "$NATIVE_PIDFILE" ] && kill -0 "$(cat "$NATIVE_PIDFILE")" 2>/dev/null; t
   port=$(grep -oE -- "--port [0-9]+" <<<"$cmd" | awk '{print $2}')
   kvd=$(grep -oE -- "--kv-cache-dtype [a-z0-9_]+" <<<"$cmd" | awk '{print $2}')
   hc="off"; grep -q -- "--enable-hierarchical-cache" <<<"$cmd" && hc="on (NIXL persistence)"
-  report qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal "${port:-8090}" "cat '$PENNYROYAL_LOG'" "$hc" "${kvd:-?}" "$(ps -o lstart= -p "$pid") (PID $pid)"
+  report qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k "${port:-8090}" "cat '$PENNYROYAL_LOG'" "$hc" "${kvd:-?}" "$(ps -o lstart= -p "$pid") (PID $pid)"
   found=1
 fi
 

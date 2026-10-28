@@ -4,4 +4,4 @@
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 export HICACHE=1
-start_profile qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal
+start_profile qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k

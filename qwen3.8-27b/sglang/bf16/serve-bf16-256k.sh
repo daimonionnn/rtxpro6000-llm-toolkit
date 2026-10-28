@@ -53,7 +53,7 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 # shellcheck disable=SC2086
 docker run -d --name "$NAME" --restart unless-stopped --gpus '"device=0"' \
   --ipc host --shm-size 32g \
-  --label "rtxpro6000-llm.profile=qwen3.8-27b-sglang-bf16" \
+  --label "rtxpro6000-llm.profile=qwen3.8-27b-sglang-bf16-256k" \
   --label "rtxpro6000-llm.quant.weights=BF16" \
   --label "rtxpro6000-llm.quant.kv_cache=bfloat16" \
   -p "127.0.0.1:${PORT}:8000" \

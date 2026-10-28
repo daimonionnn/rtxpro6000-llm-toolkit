@@ -6,46 +6,47 @@ DEEPSEEK_DIR="$ROOT/deepseek-v4.1-flash/native"
 STRATA_LIFECYCLE="$ROOT/qwen3.8-flash-next/strata/lifecycle.py"
 
 # Registry: id | directory | launcher | checkpoint (under models/) | description | default context.
-# Profile ids are <model>-<engine>-<checkpoint/placement>; the directory is
-# <model>/<engine>/<checkpoint/placement> (Strata variants share one directory).
-# A new profile needs a line here and a scripts/start-<id>-<context>k.sh wrapper.
+# Profile ids are <model>-<engine>-<checkpoint/placement>-<context>k (1K = 1,024 tokens, the
+# default context below); the directory is <model>/<engine>/<checkpoint/placement> (Strata
+# variants share one directory). A new profile needs a line here and a scripts/start-<id>.sh
+# wrapper.
 PROFILES=(
-  "qwen3.8-flash-next-strata-q8|qwen3.8-flash-next/strata|run_q8_128k.py|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, Q8_0, MTP, 128K context|131072"
-  "qwen3.8-flash-next-strata-q6|qwen3.8-flash-next/strata|run_q6_128k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6_K GU / Q8_0 down, MTP, 128K context|131072"
+  "qwen3.8-flash-next-strata-q8-128k|qwen3.8-flash-next/strata|run_q8_128k.py|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, Q8_0, MTP, 128K context|131072"
+  "qwen3.8-flash-next-strata-q6-128k|qwen3.8-flash-next/strata|run_q6_128k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6_K GU / Q8_0 down, MTP, 128K context|131072"
   "qwen3.8-flash-next-strata-q8-256k|qwen3.8-flash-next/strata|run_q8_256k.py|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, Q8_0, MTP, 256K context|262144"
   "qwen3.8-flash-next-strata-q6-256k|qwen3.8-flash-next/strata|run_q6_256k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6_K GU / Q8_0 down, MTP, 256K context|262144"
-  "qwen3.8-flash-next-strata-q8-vision|qwen3.8-flash-next/strata|run_q8_vision_128k.py|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, Q8, BF16 GPU vision, MTP, 128K context|131072"
+  "qwen3.8-flash-next-strata-q8-vision-128k|qwen3.8-flash-next/strata|run_q8_vision_128k.py|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, Q8, BF16 GPU vision, MTP, 128K context|131072"
   "qwen3.8-flash-next-strata-q8-vision-256k|qwen3.8-flash-next/strata|run_q8_vision_256k.py|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, Q8, BF16 GPU vision, MTP, 256K context|262144"
-  "qwen3.8-flash-next-strata-q6-vision|qwen3.8-flash-next/strata|run_q6_vision_128k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6, BF16 GPU vision, MTP, 128K context|131072"
+  "qwen3.8-flash-next-strata-q6-vision-128k|qwen3.8-flash-next/strata|run_q6_vision_128k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6, BF16 GPU vision, MTP, 128K context|131072"
   "qwen3.8-flash-next-strata-q6-vision-256k|qwen3.8-flash-next/strata|run_q6_vision_256k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6, BF16 GPU vision, MTP, 256K context|262144"
-  "qwen3.8-flash-next-strata-q8-abliterated|qwen3.8-flash-next/strata|run_q8_abliterated_128k.py|Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, abliterated Q8_0 (windowsxp811203), MTP, 128K context|131072"
-  "qwen3.8-flash-next-strata-q8-abliterated-vision|qwen3.8-flash-next/strata|run_q8_abliterated_vision_128k.py|Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, abliterated Q8_0 (windowsxp811203), BF16 GPU vision, MTP, 128K context|131072"
-  "qwen3.8-flash-next-sglang-nvfp4-nvme|qwen3.8-flash-next/sglang/nvfp4-nvme|serve-nvfp4-nvme-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, local Docker image, NVFP4, PLE table streamed from NVMe|262144"
-  "qwen3.8-flash-next-sglang-nvfp4-ram|qwen3.8-flash-next/sglang/nvfp4-ram|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, local Docker image, NVFP4, PLE table in RAM|262144"
-  "qwen3.8-flash-next-sglang-nvfp4-ram-official|qwen3.8-flash-next/sglang/nvfp4-ram-official|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, official lmsysorg image, NVFP4, PLE table in RAM|262144"
-  "qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated|qwen3.8-flash-next/sglang/nvfp4-ram-official|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-ABLITERATED-NVFP4|Qwen3.8-Flash-Next · SGLang, official image, abliterated NVFP4 (dealignai), PLE table in RAM|262144"
-  "qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal|qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal|serve-nvfp4-ram-512k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang pennyroyal fork (native), NVFP4, PLE table in RAM, 524K context|524288"
-  "qwen3.8-flash-next-vllm-awq-w4a16|qwen3.8-flash-next/vllm/awq-w4a16|serve-awq-w4a16-ram-256k.sh|Qwen3.8-Flash-Next-AWQ-W4A16|Qwen3.8-Flash-Next · vLLM, official image, AWQ W4A16, PLE table in RAM|262144"
-  "qwen3.8-flash-next-vllm-awq-w4a16-g32|qwen3.8-flash-next/vllm/awq-w4a16-g32|serve-awq-w4a16-g32-ram-256k.sh|Qwen3.8-Flash-Next-AWQ-INT4-g32|Qwen3.8-Flash-Next · vLLM, official image, AWQ W4A16 group 32 (cyankiwi), PLE table in RAM|262144"
-  "qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored|qwen3.8-flash-next/vllm/awq-w4a16-g32-uncensored|serve-awq-w4a16-g32-uncensored-256k.sh|Qwen3.8-Flash-Next-Uncensored-AWQ-g32|Qwen3.8-Flash-Next · vLLM, preview image + FP8 PLE patch, uncensored AWQ W4A16 g32 (leoncca), PLE table in RAM|262144"
-  "qwen3.8-flash-next-exllamav3-exl3-5.05bpw|qwen3.8-flash-next/exllamav3/exl3-5.05bpw|serve-exl3-5.05bpw-256k.sh|Qwen3.8-Flash-Next-EXL3-5.05bpw|Qwen3.8-Flash-Next · ExLlamaV3 + TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP|262144"
-  "qwen3.8-flash-next-vllm-fp8-offload|qwen3.8-flash-next/vllm/fp8-offload|serve-fp8-offload-256k.sh|Qwen3.8-Flash-Next-FP8|Qwen3.8-Flash-Next · vLLM, official image, official FP8, part of the experts and PLE table in RAM|262144"
-  "deepseek-v4.1-flash-llamacpp-ud-q3kxl|deepseek-v4.1-flash/native|serve-ud-q3kxl-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · llama.cpp PR #30817, Unsloth UD-Q3_K_XL, experts of 29 layers locked in RAM|131072"
-  "deepseek-v4.1-flash-ik-mxfp4|deepseek-v4.1-flash/native|serve-mxfp4-128k.sh|DeepSeek-V4.1-Flash-1017-ik-GGUF|DeepSeek-V4.1-Flash-1017 · ik_llama.cpp, original MXFP4 experts, experts of 30 layers locked in RAM|131072"
-  "deepseek-v4.1-flash-xolotl-xq-v2|deepseek-v4.1-flash/xolotl|serve-xq-v2-128k.sh|V41-XQ-1017|DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2 (PTQ1/Q2/Q3_K experts, refusal direction removed), exact routing, Engram from the original shards|131072"
-  "deepseek-v4.1-flash-xolotl-xq-v2-vision|deepseek-v4.1-flash/xolotl|serve-xq-v2-vision-128k.sh|V41-XQ-1017|DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2 (PTQ1/Q2/Q3_K experts, refusal direction removed), exact routing, image input (sidecar vision tower, CPU encoder), Engram from the original shards|131072"
-  "deepseek-v4.1-flash-strata-ud-q8kxl|deepseek-v4.1-flash/strata|serve-ud-q8kxl-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, hot experts in VRAM, the rest on the CPU, 128K context|131072"
+  "qwen3.8-flash-next-strata-q8-abliterated-128k|qwen3.8-flash-next/strata|run_q8_abliterated_128k.py|Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, abliterated Q8_0 (windowsxp811203), MTP, 128K context|131072"
+  "qwen3.8-flash-next-strata-q8-abliterated-vision-128k|qwen3.8-flash-next/strata|run_q8_abliterated_vision_128k.py|Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, abliterated Q8_0 (windowsxp811203), BF16 GPU vision, MTP, 128K context|131072"
+  "qwen3.8-flash-next-sglang-nvfp4-nvme-256k|qwen3.8-flash-next/sglang/nvfp4-nvme|serve-nvfp4-nvme-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, local Docker image, NVFP4, PLE table streamed from NVMe|262144"
+  "qwen3.8-flash-next-sglang-nvfp4-ram-256k|qwen3.8-flash-next/sglang/nvfp4-ram|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, local Docker image, NVFP4, PLE table in RAM|262144"
+  "qwen3.8-flash-next-sglang-nvfp4-ram-official-256k|qwen3.8-flash-next/sglang/nvfp4-ram-official|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, official lmsysorg image, NVFP4, PLE table in RAM|262144"
+  "qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated-256k|qwen3.8-flash-next/sglang/nvfp4-ram-official|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-ABLITERATED-NVFP4|Qwen3.8-Flash-Next · SGLang, official image, abliterated NVFP4 (dealignai), PLE table in RAM|262144"
+  "qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k|qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal|serve-nvfp4-ram-512k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang pennyroyal fork (native), NVFP4, PLE table in RAM, 524K context|524288"
+  "qwen3.8-flash-next-vllm-awq-w4a16-256k|qwen3.8-flash-next/vllm/awq-w4a16|serve-awq-w4a16-ram-256k.sh|Qwen3.8-Flash-Next-AWQ-W4A16|Qwen3.8-Flash-Next · vLLM, official image, AWQ W4A16, PLE table in RAM|262144"
+  "qwen3.8-flash-next-vllm-awq-w4a16-g32-256k|qwen3.8-flash-next/vllm/awq-w4a16-g32|serve-awq-w4a16-g32-ram-256k.sh|Qwen3.8-Flash-Next-AWQ-INT4-g32|Qwen3.8-Flash-Next · vLLM, official image, AWQ W4A16 group 32 (cyankiwi), PLE table in RAM|262144"
+  "qwen3.8-flash-next-vllm-awq-w4a16-g32-uncensored-256k|qwen3.8-flash-next/vllm/awq-w4a16-g32-uncensored|serve-awq-w4a16-g32-uncensored-256k.sh|Qwen3.8-Flash-Next-Uncensored-AWQ-g32|Qwen3.8-Flash-Next · vLLM, preview image + FP8 PLE patch, uncensored AWQ W4A16 g32 (leoncca), PLE table in RAM|262144"
+  "qwen3.8-flash-next-exllamav3-exl3-5.05bpw-256k|qwen3.8-flash-next/exllamav3/exl3-5.05bpw|serve-exl3-5.05bpw-256k.sh|Qwen3.8-Flash-Next-EXL3-5.05bpw|Qwen3.8-Flash-Next · ExLlamaV3 + TabbyAPI, EXL3 5.05 bpw, n-gram table in RAM, MTP|262144"
+  "qwen3.8-flash-next-vllm-fp8-offload-256k|qwen3.8-flash-next/vllm/fp8-offload|serve-fp8-offload-256k.sh|Qwen3.8-Flash-Next-FP8|Qwen3.8-Flash-Next · vLLM, official image, official FP8, part of the experts and PLE table in RAM|262144"
+  "deepseek-v4.1-flash-llamacpp-ud-q3kxl-128k|deepseek-v4.1-flash/native|serve-ud-q3kxl-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · llama.cpp PR #30817, Unsloth UD-Q3_K_XL, experts of 29 layers locked in RAM|131072"
+  "deepseek-v4.1-flash-ik-mxfp4-128k|deepseek-v4.1-flash/native|serve-mxfp4-128k.sh|DeepSeek-V4.1-Flash-1017-ik-GGUF|DeepSeek-V4.1-Flash-1017 · ik_llama.cpp, original MXFP4 experts, experts of 30 layers locked in RAM|131072"
+  "deepseek-v4.1-flash-xolotl-xq-v2-128k|deepseek-v4.1-flash/xolotl|serve-xq-v2-128k.sh|V41-XQ-1017|DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2 (PTQ1/Q2/Q3_K experts, refusal direction removed), exact routing, Engram from the original shards|131072"
+  "deepseek-v4.1-flash-xolotl-xq-v2-vision-128k|deepseek-v4.1-flash/xolotl|serve-xq-v2-vision-128k.sh|V41-XQ-1017|DeepSeek-V4.1-Flash-1017 · Xolotl engine, IndrasMirror XQ v2 (PTQ1/Q2/Q3_K experts, refusal direction removed), exact routing, image input (sidecar vision tower, CPU encoder), Engram from the original shards|131072"
+  "deepseek-v4.1-flash-strata-ud-q8kxl-128k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, hot experts in VRAM, the rest on the CPU, 128K context|131072"
   "deepseek-v4.1-flash-strata-ud-q8kxl-256k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-256k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, 256K context|262144"
   "deepseek-v4.1-flash-strata-ud-q8kxl-512k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-512k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, 512K context|524288"
-  "deepseek-v4.1-flash-strata-ud-q8kxl-vision|deepseek-v4.1-flash/strata|serve-ud-q8kxl-vision-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, image input (engine's BF16 vision tower), 128K context|131072"
+  "deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-vision-128k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, image input (engine's BF16 vision tower), 128K context|131072"
   "deepseek-v4.1-flash-strata-ud-q8kxl-vision-256k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-vision-256k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, image input (engine's BF16 vision tower), 256K context|262144"
   "deepseek-v4.1-flash-strata-ud-q8kxl-vision-512k|deepseek-v4.1-flash/strata|serve-ud-q8kxl-vision-512k.sh|DeepSeek-V4.1-Flash-1017-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, Unsloth UD-Q8_K_XL (MXFP4 experts, BF16 dense), DSpark, image input (engine's BF16 vision tower), 512K context|524288"
-  "deepseek-v4.1-flash-strata-ist-iq2xs|deepseek-v4.1-flash/strata|serve-ist-iq2xs-128k.sh|DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw (official), IQ4_NL Engram, DSpark, 128K context|131072"
+  "deepseek-v4.1-flash-strata-ist-iq2xs-128k|deepseek-v4.1-flash/strata|serve-ist-iq2xs-128k.sh|DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw (official), IQ4_NL Engram, DSpark, 128K context|131072"
   "deepseek-v4.1-flash-strata-ist-iq2xs-256k|deepseek-v4.1-flash/strata|serve-ist-iq2xs-256k.sh|DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw (official), IQ4_NL Engram, DSpark, 256K context|262144"
-  "deepseek-v4.1-flash-strata-ist-iq2xs-vision|deepseek-v4.1-flash/strata|serve-ist-iq2xs-vision-128k.sh|DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw (official), IQ4_NL Engram, DSpark, image input (engine's BF16 vision tower), 128K context|131072"
+  "deepseek-v4.1-flash-strata-ist-iq2xs-vision-128k|deepseek-v4.1-flash/strata|serve-ist-iq2xs-vision-128k.sh|DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw (official), IQ4_NL Engram, DSpark, image input (engine's BF16 vision tower), 128K context|131072"
   "deepseek-v4.1-flash-strata-ist-iq2xs-vision-256k|deepseek-v4.1-flash/strata|serve-ist-iq2xs-vision-256k.sh|DeepSeek-V4.1-Flash-1017-GSQ-RCO-GGUF|DeepSeek-V4.1-Flash-1017 · Strata DeepSeek engine, ISTA-DASLab IQ2_XS 2.25 bpw (official), IQ4_NL Engram, DSpark, image input (engine's BF16 vision tower), 256K context|262144"
-  "qwen3.6-27b-sglang-bf16|qwen3.6-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.6-27B|Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation|262144"
-  "qwen3.8-27b-sglang-bf16|qwen3.8-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.8-27B|Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation|262144"
+  "qwen3.6-27b-sglang-bf16-256k|qwen3.6-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.6-27B|Qwen3.6-27B · SGLang, official image, BF16, NEXTN speculation|262144"
+  "qwen3.8-27b-sglang-bf16-256k|qwen3.8-27b/sglang/bf16|serve-bf16-256k.sh|Qwen3.8-27B|Qwen3.8-27B · SGLang, official image, BF16, NEXTN speculation|262144"
 )
 
 # profile_field ID FIELD — FIELD is dir, launcher, model, desc, context or script.
@@ -76,7 +77,7 @@ profile_field() {
 running_profiles() {
   python3 "$STRATA_LIFECYCLE" running
   if [ -f "$NATIVE_PIDFILE" ] && kill -0 "$(cat "$NATIVE_PIDFILE")" 2>/dev/null; then
-    echo qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal
+    echo qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k
   fi
   if [ -f "$DEEPSEEK_DIR/server.pid" ] && kill -0 "$(cat "$DEEPSEEK_DIR/server.pid")" 2>/dev/null; then
     cat "$DEEPSEEK_DIR/server.profile" 2>/dev/null || echo deepseek-v4.1-flash-unknown

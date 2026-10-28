@@ -55,7 +55,7 @@ docker rm -f "$NAME" >/dev/null 2>&1 || true
 docker run -d --name "$NAME" --restart unless-stopped --gpus '"device=0"' \
   --ipc host --shm-size 8g \
   --ulimit memlock=-1 \
-  --label "rtxpro6000-llm.profile=qwen3.8-flash-next-exllamav3-exl3-5.05bpw" \
+  --label "rtxpro6000-llm.profile=qwen3.8-flash-next-exllamav3-exl3-5.05bpw-256k" \
   --label "rtxpro6000-llm.quant.experts=EXL3-5.05bpw" \
   --label "rtxpro6000-llm.quant.rest=EXL3-5.05bpw/head-6bpw" \
   --label "rtxpro6000-llm.quant.kv_cache=$CACHE_MODE" \

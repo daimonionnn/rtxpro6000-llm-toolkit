@@ -4,4 +4,4 @@
 set -euo pipefail
 source "$(dirname "$0")/_lib.sh"
 
-start_profile qwen3.8-flash-next-vllm-fp8-offload
+start_profile qwen3.8-flash-next-vllm-fp8-offload-256k
