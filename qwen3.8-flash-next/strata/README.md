@@ -13,8 +13,8 @@ are in the toolkit registry. Launchers run in the foreground; Ctrl+C or
 | `strata-q6` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q6-128k.sh) | 131,072 | 8,192 (auto) | 117.1 / 142.5 / 81.3 tok/s |
 | `strata-q8-256k` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-256k.sh) | 262,144 | 8,192 (auto) | 89.4 / 104.9 / 73.1 tok/s |
 | `strata-q6-256k` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q6-256k.sh) | 262,144 | 8,192 (auto) | 119.5 / 144.4 / 93.2 tok/s |
-| `strata-q8-vision` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh) | 131,072 | 8,192 (auto) | not benchmarked (GPU vision) |
-| `strata-q8-vision-256k` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh) | 262,144 | 8,192 (auto) | not benchmarked (GPU vision) |
+| `strata-q8-vision` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-vision-128k.sh) | 131,072 | 8,192 (auto) | 159 / 176 / 122 tok/s (0.2.7) |
+| `strata-q8-vision-256k` (default) | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q8-vision-256k.sh) | 262,144 | 8,192 (auto) | 151 / 169 / 121 tok/s (0.2.7) |
 | `strata-q6-vision` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q6-vision-128k.sh) | 131,072 | 8,192 (auto) | not benchmarked (GPU vision) |
 | `strata-q6-vision-256k` | [shell wrapper](../../scripts/start-qwen3.8-flash-next-strata-q6-vision-256k.sh) | 262,144 | 8,192 (auto) | not benchmarked (GPU vision) |
 
@@ -50,6 +50,30 @@ On the same day the checkout moved on to 0.2.7, which adds pictures to the DeepS
 engine (the DeepSeek profiles run from the same checkout). `iq_pack.py` and the MTP
 tools are unchanged between 0.2.6 and 0.2.7, so the packs and MTP runtime files were
 kept. The 0.2.6 commit is tagged `toolkit-0.2.6-running` in `../Strata`.
+
+### 256K vision and the `balanced` power profile, 2026-10-30
+
+The default became `strata-q8-vision-256k` on 2026-10-28, and the desktop's power
+profile moved from `performance` to `balanced` (about 15 % less energy, most of it at
+idle). The same run as the A/B below, fresh start per profile, Strata 0.2.7, DDR5-6400 CL42,
+plus one ~233K cold prompt on the 256K profile; CPU package power from RAPL over the
+decode benchmark:
+
+| | 128K, `performance` (2026-10-27) | 128K, `balanced` | 256K, `balanced` |
+|---|---:|---:|---:|
+| Decode prose / code / Slovak, tok/s | 159 / 176 / 122 | 153 / 183 / 126 | 151 / 169 / 121 |
+| Cold prefill 4K / 32K / 120K, tok/s | 1,970 / 6,659 / 6,691 | 1,912 / 6,574 / 6,594 | 1,879 / 6,431 / 6,460 |
+| Cold prefill ~233K | | | 6,183 tok/s (37.7 s) |
+| The same ~233K prompt, cached | | | 1.27 s |
+| Load time | 44 s | 52 s | 51 s |
+| CPU package power in decode | not measured | 48 W | 48 W |
+
+All three read both vision fixtures exactly. `balanced` costs 1–3 % of prefill and about
+8 s of load time; decode stays within the spread of single rounds (10–30 tok/s between
+rounds of one run). The 256K window costs up to 8 % of decode on code and 2 % of prefill
+against 128K: the larger KV cache leaves fewer experts on the card, at a 99.6–100 %
+expert-cache hit rate. Raw results:
+`logs/strata-comparison/strata-q8-vision{,-256k}-0.2.7-balanced*`.
 
 ### Upgrade to 0.2.7, speed A/B, 2026-10-27
 

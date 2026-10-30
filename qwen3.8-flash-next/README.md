@@ -67,7 +67,7 @@ filename convention.
 | [`strata-q8-256k`](strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8 PLE patch; MTP | Q8_0 | mmap / OS file cache | 262,144 | 89.4 prose, 104.9 code, 73.1 Slovak | 36.75 GiB pinned experts + PLE cache |
 | [`strata-q6-256k`](strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8/Q6 patches; MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | 119.5 prose, 144.4 code, 93.2 Slovak | 17.95 GiB pinned experts + PLE cache |
 | [`strata-q8-vision`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 131,072 | not benchmarked | 36.55 GiB pinned experts + PLE cache |
-| [`strata-q8-vision-256k`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 262,144 | not benchmarked | 38.46 GiB pinned experts + PLE cache |
+| [`strata-q8-vision-256k`](strata/README.md#256k-vision-and-the-balanced-power-profile-2026-10-30) (default) | Strata 0.2.7; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 262,144 | 151 prose, 169 code, 121 Slovak (2026-10-30) | 38.46 GiB pinned experts + PLE cache |
 | [`strata-q6-vision`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 131,072 | not benchmarked | 17.75 GiB pinned experts + PLE cache |
 | [`strata-q6-vision-256k`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | not benchmarked | 19.66 GiB pinned experts + PLE cache |
 

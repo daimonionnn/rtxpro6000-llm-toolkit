@@ -18,7 +18,7 @@ since); compare within a table.
 
 | If you want | Use | Why |
 |---|---|---|
-| The default: near-full quality at high speed | [`qwen3.8-flash-next-strata-q8-vision-256k`](qwen3.8-flash-next/strata/README.md#upgrade-to-027-speed-ab-2026-10-27) | Q8_0 on Strata 0.2.7 with MTP: 159 prose / 176 code / 122 Slovak tok/s, ~6,700 tok/s cold prefill (measured at 128K), image input, 256K (also 128K); GSM8K 97.0 %, MMLU-Pro 78.5 %, 457 of 542 code tests. ~37 GiB of pinned RAM. |
+| The default: near-full quality at high speed | [`qwen3.8-flash-next-strata-q8-vision-256k`](qwen3.8-flash-next/strata/README.md#256k-vision-and-the-balanced-power-profile-2026-10-30) | Q8_0 on Strata 0.2.7 with MTP: 151 prose / 169 code / 121 Slovak tok/s, ~6,400 tok/s cold prefill up to 120K and 6,200 at 233K, image input, 256K (also 128K); GSM8K 97.0 %, MMLU-Pro 78.5 %, 457 of 542 code tests. ~37 GiB of pinned RAM. |
 | The best answers, at a lower speed | [`deepseek-v4.1-flash-strata-ud-q8kxl-128k`](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl) | DeepSeek's own MXFP4 experts: the best Slovak measured, GSM8K 98.3 %, MMLU-Pro 81.0 %; ~29 tok/s, ~1,000 tok/s prefill at 30K, up to 512K, images. Needs ~224 GB of RAM. For coding sessions and complex tasks, not for an agent making many quick calls. |
 | DeepSeek, faster and smaller | [`deepseek-v4.1-flash-strata-ist-iq2xs-128k`](deepseek-v4.1-flash/README.md#ista-daslab-iq2_xs-225-bpw) | ISTA-DASLab's official 2.25 bpw set: 40–59 tok/s, 2,118 tok/s prefill at 30K, Slovak 84, up to 256K, images; ~140 GB of RAM. |
 | The fastest prefill, the largest Qwen3.8 context | `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k` | 2.6 s at 32K, 9.7 s at 128K; 524K window, 831K-token KV pool, 235–254 tok/s; prefix cache survives restarts with HiCache. Depends on one person's fork and applies YaRN to every prompt. |
@@ -43,7 +43,8 @@ ten prompts). [All columns, footnotes and the 2026-10-06 Strata Q8 / Q6 rows](qw
 
 | Profile | Engine, weights | Context | TTFT 32K / 128K | Decode, tok/s | Host RAM | Code | Slovak |
 |---|---|---:|---|---|---:|---:|---:|
-| `strata-q8-vision-128k` (default: the same at 256K) | Strata 0.2.7, Q8_0, MTP | 131,072 | 4.79 / 18.0 s¹ | 159 prose, 176 code, 122 Slovak | ~37 GiB | 457² | 64 / 66⁴ |
+| `strata-q8-vision-256k` (default) | Strata 0.2.7, Q8_0, MTP | 262,144 | 4.96 / 18.7 s¹ ⁵ | 151 prose, 169 code, 121 Slovak⁵ | ~38 GiB | same weights as 128K | |
+| `strata-q8-vision-128k` | Strata 0.2.7, Q8_0, MTP | 131,072 | 4.79 / 18.0 s¹ | 159 prose, 176 code, 122 Slovak | ~37 GiB | 457² | 64 / 66⁴ |
 | `strata-q8-abliterated-vision-128k` | Strata, abliterated Q8_0 | 131,072 | — | 101 / 125 / 81² | — | 455² | 62 / 64⁴ |
 | `sglang-nvfp4-ram-pennyroyal-512k` | SGLang fork, NVFP4 | **524,288** | **2.62 / 9.68 s** | 235–254 | ~65 GB | 456 | 68 |
 | `sglang-nvfp4-ram-256k` | SGLang, NVFP4 | 262,144 | 2.90 / 10.7 s | 236–249 | ~65 GB | 457 | 69 |
@@ -59,7 +60,8 @@ ten prompts). [All columns, footnotes and the 2026-10-06 Strata Q8 / Q6 rows](qw
 ¹ 120K. ² Strata 0.1.41 (2026-10-14). ³ In an earlier four-profile sheet with a different
 grader (AWQ g32 70 there). ⁴ Two graders on a 2026-10-14 sheet with ik_llama.cpp Q8_0
 (74 / 72) and AWQ g32 (69 / 76); both Strata runs placed last there
-([details](qwen3.8-flash-next/strata/README.md#full-test-against-the-original-q8_0-2026-10-14)).
+([details](qwen3.8-flash-next/strata/README.md#full-test-against-the-original-q8_0-2026-10-14)). ⁵ 2026-10-30, desktop power profile `balanced`; a ~233K cold prompt read at
+6,183 tok/s (37.7 s), cached in 1.3 s ([details](qwen3.8-flash-next/strata/README.md#256k-vision-and-the-balanced-power-profile-2026-10-30)).
 
 ## DeepSeek-V4.1-Flash-1017
 

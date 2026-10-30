@@ -52,9 +52,9 @@ details are with each model: [Qwen3.8-Flash-Next](qwen3.8-flash-next/docs/result
 
 - **The default and the best everyday model: Qwen3.8-Flash-Next on Strata**
   (`qwen3.8-flash-next-strata-q8-vision-256k`, started by `scripts/start.sh`; also at 128K). Q8_0 weights,
-  so close to full quality, and still fast: 159 tok/s on prose, 176 on code and 122 in
-  Slovak with MTP, about 6,700 tok/s cold prefill at 32–120K (measured at 128K), image
-  input, 256K context. GSM8K 97.0 %, MMLU-Pro 78.5 %, HumanEval+ 0.951 (measured on Strata
+  so close to full quality, and still fast: 151 tok/s on prose, 169 on code and 121 in
+  Slovak with MTP, about 6,400 tok/s cold prefill at 32–120K and a full ~233K prompt in
+  38 s, image input, 256K context. GSM8K 97.0 %, MMLU-Pro 78.5 %, HumanEval+ 0.951 (measured on Strata
   0.1.41). It needs about 37 GiB of RAM beside the card and suits agents that make
   many calls.
 - **Second: DeepSeek-V4.1-Flash on Strata**, two profiles. `deepseek-v4.1-flash-strata-ud-q8kxl-128k`

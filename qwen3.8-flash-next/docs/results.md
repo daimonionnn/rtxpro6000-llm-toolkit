@@ -46,7 +46,7 @@ profiles and the vision variants are in [strata/COMPARISON.md](../strata/COMPARI
 | | [`strata-q8-256k`](../strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8 PLE patch, MTP | Q8_0; PLE mmap | INT8, single stream | 262,144 | 5.37 / 13.77 / 22.56 s³ | 89.4 prose, 104.9 code, 73.1 Slovak | 94.16 GiB | 36.75 GiB pinned experts + PLE cache³ |
 | | [`strata-q6-256k`](../strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8/Q6 patches, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 262,144 | 7.30 / 23.74 / 28.86 s³ | 119.5 prose, 144.4 code, 93.2 Slovak | 94.09 GiB | 17.95 GiB pinned experts + PLE cache³ |
 | | [`strata-q8-vision`](../strata/README.md#upgrade-to-027-speed-ab-2026-10-27) | Strata 0.2.7, BF16 GPU vision, MTP | Q8_0; PLE mmap | INT8, single stream | 131,072 | 32K 4.79 s · 120K 18.0 s⁵ | 159 prose, 176 code, 122 Slovak⁵ | 94.14 GiB | 36.55 GiB pinned experts + PLE cache⁴ |
-| | [`strata-q8-vision-256k`](../strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q8_0; PLE mmap | INT8, single stream | 262,144 | not benchmarked | not benchmarked | 94.12 GiB⁴ | 38.46 GiB pinned experts + PLE cache⁴ |
+| | [`strata-q8-vision-256k`](../strata/README.md#256k-vision-and-the-balanced-power-profile-2026-10-30) | Strata 0.2.7, BF16 GPU vision, MTP | Q8_0; PLE mmap | INT8, single stream | 262,144 | 32K 4.96 s · 120K 18.7 s · 233K 37.7 s⁶ | 151 prose, 169 code, 121 Slovak⁶ | 94.12 GiB⁴ | 38.46 GiB pinned experts + PLE cache⁴ |
 | | [`strata-q6-vision`](../strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 131,072 | not benchmarked | not benchmarked | 94.06 GiB⁴ | 17.75 GiB pinned experts + PLE cache⁴ |
 | | [`strata-q6-vision-256k`](../strata/README.md#vision-profiles) | Strata 0.1.39 + patches, BF16 GPU vision, MTP | Q6_K/Q8_0 experts, 7.21 bpw; PLE mmap | INT8, single stream | 262,144 | not benchmarked | not benchmarked | 94.06 GiB⁴ | 19.66 GiB pinned experts + PLE cache⁴ |
 | Qwen3.8-Flash-Next, not a profile | `ik_llama.cpp Q8_0` | ik_llama.cpp `d5f53d9f`, native | Q8_0 GGUF; routed experts of 17 of 48 layers in RAM | 131,072 Q8_0 | 131,072 | 2.20 / 17.4 / 86.6 s² | 38 | 92.2 GiB | ~105 GiB |
@@ -76,6 +76,10 @@ rows used 6667 MT/s and 0.1.39); median of three 512-token responses, second col
 prefill sweep. Earlier the same day: 0.2.6 166 / 187 / 119 tok/s, 4.87 / 18.4 s;
 0.1.44.1 139 / 159 / 111 tok/s, 5.26 / 19.4 s.
 [Upgrade A/B](../strata/README.md#upgrade-to-026-speed-ab-2026-10-27).
+
+⁶ Measured 2026-10-30 on Strata 0.2.7 in the desktop's `balanced` power profile, the
+sequence of footnote ⁵; the VRAM and RAM columns are from 0.1.39.
+[Details](../strata/README.md#256k-vision-and-the-balanced-power-profile-2026-10-30).
 
 - **Decode barely falls with context on Flash-Next**: three of four layers keep a
   fixed-size recurrent state and the rest attend to 2,048 selected tokens —
