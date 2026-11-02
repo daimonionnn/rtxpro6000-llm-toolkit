@@ -70,10 +70,16 @@ filename convention.
 | [`strata-q8-vision-256k`](strata/README.md#256k-vision-and-the-balanced-power-profile-2026-10-30) (default) | Strata 0.2.7; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 262,144 | 151 prose, 169 code, 121 Slovak (2026-10-30) | 38.46 GiB pinned experts + PLE cache |
 | [`strata-q6-vision`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 131,072 | not benchmarked | 17.75 GiB pinned experts + PLE cache |
 | [`strata-q6-vision-256k`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | not benchmarked | 19.66 GiB pinned experts + PLE cache |
+| [`ik-q8-vision-128k`](ikllama/README.md) | ik_llama.cpp via ik-llama-toolkit; GPU vision | Q8_0 (same file as Strata) | in the GGUF, mmap | 131,072 | ~40 | ~105 GiB |
+| [`ik-q8-vision-256k`](ikllama/README.md) | ik_llama.cpp via ik-llama-toolkit; GPU vision | Q8_0 (same file as Strata) | in the GGUF, mmap | 262,144 | not benchmarked here | ~105 GiB |
+| [`ik-q8-mtp-vision-128k`](ikllama/README.md) | ik_llama.cpp via ik-llama-toolkit; GPU vision, MTP | Q8_0 (same file as Strata) | in the GGUF, mmap | 131,072 | ~47 prose, ~68 code³ | ~105 GiB |
 
 KV pool, prefill, VRAM, code benchmarks and the Slovak check for every profile:
 [docs/results.md](docs/results.md); the comparison with the other models and the
 recommendations: [RESULTS.md](../RESULTS.md).
+
+The ik rates are ik-llama-toolkit's own measurements (its RESULTS 56) for the same
+weights; ³ MTP gains fade past ~96K of context.
 
 Strata rates above are 2026-10-06 medians of three 512-token responses to short
 prompts; its adaptive
@@ -240,6 +246,7 @@ qwen3.8-flash-next/
 │   ├── awq-w4a16-g32/            launcher + stop
 │   ├── awq-w4a16-g32-uncensored/ launcher + stop, PLE patch, index filter
 │   └── fp8-offload/              launcher + stop
+├── ikllama/                     thin launcher around the external ik-llama-toolkit, pinned commits
 ├── exllamav3/
 │   └── exl3-5.05bpw/             launcher + stop, TabbyAPI config template, sampler preset
 └── strata/                      Q8/Q6 Python launchers, historical 0.1.39 patches, comparison

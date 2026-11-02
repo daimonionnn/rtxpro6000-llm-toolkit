@@ -3,6 +3,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONTAINER=rtxpro6000-llm   # every Docker profile runs as this one container
 NATIVE_PIDFILE="$ROOT/qwen3.8-flash-next/sglang/nvfp4-ram-pennyroyal/server.pid"
 DEEPSEEK_DIR="$ROOT/deepseek-v4.1-flash/native"
+IKLLAMA_DIR="$ROOT/qwen3.8-flash-next/ikllama"
 STRATA_LIFECYCLE="$ROOT/qwen3.8-flash-next/strata/lifecycle.py"
 
 # Registry: id | directory | launcher | checkpoint (under models/) | description | default context.
@@ -21,6 +22,9 @@ PROFILES=(
   "qwen3.8-flash-next-strata-q6-vision-256k|qwen3.8-flash-next/strata|run_q6_vision_256k.py|Qwen3.8-Flash-Next-Q6_K-GGUF|Qwen3.8-Flash-Next · Strata, Q6, BF16 GPU vision, MTP, 256K context|262144"
   "qwen3.8-flash-next-strata-q8-abliterated-128k|qwen3.8-flash-next/strata|run_q8_abliterated_128k.py|Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, abliterated Q8_0 (windowsxp811203), MTP, 128K context|131072"
   "qwen3.8-flash-next-strata-q8-abliterated-vision-128k|qwen3.8-flash-next/strata|run_q8_abliterated_vision_128k.py|Qwen3.8-Flash-Next-Abliterated-Q8_0-GGUF|Qwen3.8-Flash-Next · Strata, abliterated Q8_0 (windowsxp811203), BF16 GPU vision, MTP, 128K context|131072"
+  "qwen3.8-flash-next-ik-q8-vision-128k|qwen3.8-flash-next/ikllama|serve-q8-vision-128k.sh|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · ik_llama.cpp via ik-llama-toolkit, Q8_0 (same file as Strata Q8), GPU vision, 128K context|131072"
+  "qwen3.8-flash-next-ik-q8-vision-256k|qwen3.8-flash-next/ikllama|serve-q8-vision-256k.sh|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · ik_llama.cpp via ik-llama-toolkit, Q8_0 (same file as Strata Q8), GPU vision, 256K context|262144"
+  "qwen3.8-flash-next-ik-q8-mtp-vision-128k|qwen3.8-flash-next/ikllama|serve-q8-mtp-vision-128k.sh|Qwen3.8-Flash-Next-Q8_0-GGUF|Qwen3.8-Flash-Next · ik_llama.cpp via ik-llama-toolkit, Q8_0 (same file as Strata Q8), MTP draft head, GPU vision, 128K context|131072"
   "qwen3.8-flash-next-sglang-nvfp4-nvme-256k|qwen3.8-flash-next/sglang/nvfp4-nvme|serve-nvfp4-nvme-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, local Docker image, NVFP4, PLE table streamed from NVMe|262144"
   "qwen3.8-flash-next-sglang-nvfp4-ram-256k|qwen3.8-flash-next/sglang/nvfp4-ram|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, local Docker image, NVFP4, PLE table in RAM|262144"
   "qwen3.8-flash-next-sglang-nvfp4-ram-official-256k|qwen3.8-flash-next/sglang/nvfp4-ram-official|serve-nvfp4-ram-256k.sh|Qwen3.8-Flash-Next-NVFP4|Qwen3.8-Flash-Next · SGLang, official lmsysorg image, NVFP4, PLE table in RAM|262144"
@@ -72,8 +76,8 @@ profile_field() {
   return 1
 }
 
-# Print serving profiles: Strata from PID/start-time state, native pennyroyal
-# from its PID file, Docker from the container's rtxpro6000-llm.profile label.
+# Print serving profiles: Strata from PID/start-time state, native pennyroyal,
+# DeepSeek and ik_llama.cpp from their PID files, Docker from the container's rtxpro6000-llm.profile label.
 running_profiles() {
   python3 "$STRATA_LIFECYCLE" running
   if [ -f "$NATIVE_PIDFILE" ] && kill -0 "$(cat "$NATIVE_PIDFILE")" 2>/dev/null; then
@@ -81,6 +85,9 @@ running_profiles() {
   fi
   if [ -f "$DEEPSEEK_DIR/server.pid" ] && kill -0 "$(cat "$DEEPSEEK_DIR/server.pid")" 2>/dev/null; then
     cat "$DEEPSEEK_DIR/server.profile" 2>/dev/null || echo deepseek-v4.1-flash-unknown
+  fi
+  if [ -f "$IKLLAMA_DIR/server.pid" ] && kill -0 "$(cat "$IKLLAMA_DIR/server.pid")" 2>/dev/null; then
+    cat "$IKLLAMA_DIR/server.profile" 2>/dev/null || echo qwen3.8-flash-next-ik-unknown
   fi
   if docker ps --format '{{.Names}}' 2>/dev/null | grep -qx "$CONTAINER"; then
     local p

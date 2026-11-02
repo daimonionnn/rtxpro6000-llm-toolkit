@@ -3,8 +3,8 @@
 #
 #   scripts/status.sh
 #
-# Strata uses PID/start-time state; pennyroyal uses its PID file. Docker profiles
-# use the "rtxpro6000-llm" container and its rtxpro6000-llm.profile label.
+# Strata uses PID/start-time state; pennyroyal, DeepSeek and ik_llama.cpp use PID
+# files. Docker profiles use the "rtxpro6000-llm" container and its rtxpro6000-llm.profile label.
 set -uo pipefail
 source "$(dirname "$0")/_lib.sh"
 PENNYROYAL_LOG="$ROOT/logs/pennyroyal-serve.log"
@@ -112,6 +112,18 @@ if [ -f "$DEEPSEEK_DIR/server.pid" ] && kill -0 "$(cat "$DEEPSEEK_DIR/server.pid
   fi
   echo "  log        logs/$ds_profile-server.log"
   echo "  follow     tail -f $ROOT/logs/$ds_profile-server.log"
+  echo
+  found=1
+fi
+
+if [ -f "$IKLLAMA_DIR/server.pid" ] && kill -0 "$(cat "$IKLLAMA_DIR/server.pid")" 2>/dev/null; then
+  pid=$(cat "$IKLLAMA_DIR/server.pid")
+  ik_profile=$(cat "$IKLLAMA_DIR/server.profile" 2>/dev/null || echo qwen3.8-flash-next-ik-unknown)
+  report "$ik_profile" 8090 "cat '$ROOT/logs/$ik_profile-server.log'" "" "q8_0" "$(ps -o lstart= -p "$pid") (PID $pid)"
+  grep -aoE "profile +[a-z0-9.-]+|experts +first [0-9]+ layers on CPU" "$ROOT/logs/$ik_profile-server.log" 2>/dev/null \
+    | head -2 | sed -E 's/^profile +/  ik profile /; s/^experts +/  experts    /'
+  echo "  log        logs/$ik_profile-server.log"
+  echo "  follow     tail -f $ROOT/logs/$ik_profile-server.log"
   echo
   found=1
 fi

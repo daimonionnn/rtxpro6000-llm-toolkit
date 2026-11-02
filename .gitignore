@@ -29,6 +29,7 @@ __pycache__/
 
 # DeepSeek native server state
 /deepseek-v4.1-flash/native/server.profile
+/qwen3.8-flash-next/ikllama/server.profile
 
 # a stray llama.cpp log in the toolkit root
 /llama.log

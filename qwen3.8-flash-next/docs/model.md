@@ -86,7 +86,7 @@ Beyond the checkpoint, three settings differ between profiles:
 | `sglang-nvfp4-ram-pennyroyal` | FP8, uncalibrated | BF16 | **YaRN ×2 on every prompt** |
 | `vllm-awq-w4a16`, `vllm-awq-w4a16-g32`, `vllm-awq-w4a16-g32-uncensored`, `vllm-fp8-offload` | BF16 | model default | native |
 | `exllamav3-exl3-5.05bpw` | FP16 | engine default | native |
-| ik_llama.cpp Q8_0 (not a profile here) | Q8_0 | engine default | native |
+| ik_llama.cpp Q8_0 (`ik-q8-vision-128k`) | Q8_0 | engine default | native |
 
 **Comments**
 

@@ -16,11 +16,12 @@ between Flash-Next setups are small — ik_llama.cpp Q8_0 narrowly best, weight-
 INT4 group 32 the most consistent of the profiles — and the dense 27B models are
 clearly behind.
 
-One setup is not a profile here: `ik_llama.cpp Q8_0`, the Q8_0 GGUF of
-Qwen3.8-Flash-Next served by ik_llama.cpp from
-[ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit), measured
+`ik_llama.cpp Q8_0` is the Q8_0 GGUF of Qwen3.8-Flash-Next served by ik_llama.cpp
+from [ik-llama-toolkit](https://github.com/daimonionnn/ik-llama-toolkit), measured
 through its API with the same benchmarks as the profiles (2026-09-15), as the
-reference for 8-bit weights.
+reference for 8-bit weights. It was not a profile here then; since 2026-11-02 it is
+`qwen3.8-flash-next-ik-q8-vision-128k` ([ikllama/](../ikllama/README.md)), on a
+newer ik_llama.cpp build than the one measured below.
 
 The Strata Q8 / Q6 comparison of 2026-10-06 (with ik_llama.cpp, MTP on both), its 256K
 profiles and the vision variants are in [strata/COMPARISON.md](../strata/COMPARISON.md),
