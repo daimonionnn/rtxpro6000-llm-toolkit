@@ -29,7 +29,10 @@ expect it to be slower than UD-Q3_K_XL in proportion to its larger experts.
 first start ran at ~10 tok/s. See [Strata UD-Q8_K_XL](#strata-ud-q8_k_xl).
 
 ⁵ One grader on two sheets with the same rubric (2026-10-27/28): UD-Q3_K_XL 86, MXFP4 81,
-Xolotl exact 77 on the first; see [ISTA-DASLab IQ2_XS](#ista-daslab-iq2_xs-225-bpw).
+Xolotl exact 77 on the first; see [ISTA-DASLab IQ2_XS](#ista-daslab-iq2_xs-225-bpw). A later
+sheet with two graders and sampled answers as well (2026-11-03) keeps the order with a wider
+gap: UD-Q8_K_XL 78.5, IQ2_XS 69.3, Xolotl 70.5 on a different scale; see
+[Slovak, two graders](#slovak-two-graders-2026-11-03).
 
 ⁴ Checkpoint not on disk: the ik MXFP4 GGUF was removed earlier, and the UD-Q3_K_XL
 shards were deleted on 2026-10-27 to make room; the Strata UD-Q8_K_XL profile takes the
@@ -616,10 +619,47 @@ Only the MMLU-Pro gain over the original Qwen3.8 Q8 approaches significance (McN
 p = 0.058). On HumanEval+ DeepSeek passes nine tasks fewer. Six MMLU-Pro answers could
 not be parsed and two were cut off; they count as wrong.
 
+## Slovak, two graders, 2026-11-03
+
+The earlier Slovak scores are one greedy answer per prompt and one grader. This sheet adds
+two sampled answers per profile (temperature 1.0, top_p 1.0, seeds 1 and 2: the sampling
+Strata's model card gives DeepSeek-V4.1, so what a client gets with the server defaults) and
+two independent graders, the protocol of the
+[Qwen3.8 engine comparison](../qwen3.8-flash-next/strata/NON-ENGLISH.md#strata-027-against-ik_llamacpp-2026-11-03).
+Both Strata profiles ran the 256K vision launchers on Strata 0.2.7, DSpark on, thinking off;
+Xolotl XQ v2 (exact routing) is its greedy set of 2026-10-23. Seven sets on one sheet, 0–100:
+
+| Set | Grader 1 | Grader 2 | Mean |
+|---|---:|---:|---:|
+| UD-Q8_K_XL, greedy | 83 | 81 | **82.0** |
+| UD-Q8_K_XL, seed 1 | 77 | 72 | 74.5 |
+| UD-Q8_K_XL, seed 2 | 81 | 77 | 79.0 |
+| IQ2_XS, greedy | 74 | 71 | 72.5 |
+| IQ2_XS, seed 1 | 70 | 64 | 67.0 |
+| IQ2_XS, seed 2 | 70 | 67 | 68.5 |
+| Xolotl XQ v2 exact, greedy | 73 | 68 | 70.5 |
+
+- UD-Q8_K_XL averages 78.5 over its three sets, IQ2_XS 69.3: a gap of about nine points,
+  larger than the 2.5 of the single-grader sheet and larger than the spread between one
+  profile's sets (5–7.5 points). Both graders rank every UD-Q8_K_XL set above every IQ2_XS set.
+  IQ2_XS loses most on the idioms (3.5 points of 10: invented or wrongly explained idioms)
+  and the grammar fix (2.2), about one point on the e-mail, the story, the inflection and the
+  explanation; it is a point ahead on the translation.
+- IQ2_XS greedy is level with Xolotl XQ v2, which is faster on decode.
+- Sampling at temperature 1.0 costs both profiles 3–7.5 points against greedy.
+- None of the 70 answers fixes "tri jablka" to "tri jablká"; several call "jablka" correct
+  or explain "boly" with the Czech rule.
+- No answer was cut off at 800 tokens and none contains Chinese characters.
+- Greedy is not reproducible across starts: 8 of 10 UD-Q8_K_XL greedy answers differ from
+  those of 2026-10-27, so the single greedy sets above were one sample too.
+
+Sheet, key and grades: `logs/language-samples/sk/blind-20261103-100418{,-key,-grader1,-grader2}.md`.
+
 ## TODO
 
 - [ ] Finish MBPP+ for Strata UD-Q8_K_XL (`evalplus_codegen.py` resumes at task 52).
-- [ ] A second grader for the 2026-10-27/28 Slovak sheets.
+- [x] A second grader for the Strata Slovak scores: the 2026-11-03 sheet re-collected the
+      answers and graded them twice ([Slovak, two graders](#slovak-two-graders-2026-11-03)).
 
 - [ ] Build a standard (no refusal edit) XQ quant from the original checkpoint with
       Xolotl's `tools/v41` (budget ~230 GiB, mostly Q3_K experts, 128 calibration

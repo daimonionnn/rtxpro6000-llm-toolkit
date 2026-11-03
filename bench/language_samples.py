@@ -2,10 +2,13 @@
 """Collect answers to a fixed set of non-English prompts, for comparing quantizations.
 
     python3 bench/language_samples.py collect LABEL [--lang sk] [--base URL]
+        [--temperature T --top-p P --top-k K --presence-penalty X --seed S]
     python3 bench/language_samples.py blind [LABEL ...] [--lang sk]
 
 collect  sends every prompt of the language set to the running server (thinking
-         off, temperature 0, one request at a time) and writes
+         off, temperature 0 unless --temperature is given, one request at a time;
+         the sampling options are sent explicitly so that every engine samples
+         the same way, whatever its own defaults) and writes
          logs/language-samples/<lang>/<LABEL>.json. LABEL is a name for the
          profile under test, e.g. vllm-awq-w4a16.
 blind    merges the collected files into one Markdown sheet with the answers to
@@ -62,8 +65,12 @@ def collect(a):
     results = []
     for pid, text in prompts:
         body = {"model": a.model, "messages": [{"role": "user", "content": text}],
-                "max_tokens": a.max_tokens, "temperature": 0, "stream": False,
+                "max_tokens": a.max_tokens, "temperature": a.temperature, "stream": False,
                 "chat_template_kwargs": {"enable_thinking": False}}
+        for key, val in (("top_p", a.top_p), ("top_k", a.top_k),
+                         ("presence_penalty", a.presence_penalty), ("seed", a.seed)):
+            if val is not None:
+                body[key] = val
         req = urllib.request.Request(url, json.dumps(body).encode(), {"Content-Type": "application/json"})
         t0 = time.time()
         r = json.load(urllib.request.urlopen(req, timeout=1800))
@@ -77,7 +84,9 @@ def collect(a):
         print(f"  {pid:<18} {usage.get('completion_tokens', '?'):>5} tok  {dt:6.1f} s", flush=True)
     os.makedirs(os.path.join(OUT, a.lang), exist_ok=True)
     path = os.path.join(OUT, a.lang, f"{a.label}.json")
-    json.dump({"label": a.label, "lang": a.lang, "base": a.base,
+    sampling = {k: getattr(a, k) for k in ("temperature", "top_p", "top_k", "presence_penalty", "seed")
+                if getattr(a, k) is not None}
+    json.dump({"label": a.label, "lang": a.lang, "base": a.base, "sampling": sampling,
                "collected": time.strftime("%Y-%m-%d %H:%M:%S"), "results": results},
               open(path, "w"), ensure_ascii=False, indent=2)
     print(f"wrote {path}")
@@ -117,6 +126,11 @@ def main():
     c.add_argument("--base", default=os.environ.get("BASE", "http://127.0.0.1:8090"))
     c.add_argument("--model", default="Qwen3.8-Flash-Next")
     c.add_argument("--max-tokens", type=int, default=800)
+    c.add_argument("--temperature", type=float, default=0.0)
+    c.add_argument("--top-p", type=float)
+    c.add_argument("--top-k", type=int)
+    c.add_argument("--presence-penalty", type=float)
+    c.add_argument("--seed", type=int)
     b = sub.add_parser("blind")
     b.add_argument("labels", nargs="*")
     b.add_argument("--lang", default="sk", choices=sorted(PROMPTS))

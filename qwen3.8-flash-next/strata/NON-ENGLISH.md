@@ -2,8 +2,12 @@
 
 In the 2026-10-14 blind Slovak check, both Strata Q8_0 profiles scored below
 ik_llama.cpp with the same Q8_0 weights. This page records the evidence, the
-candidate causes found in the engine, and how to separate them. Nothing here has
-been confirmed yet; the open tasks are in the [TODO](../README.md#todo).
+candidate causes found in the engine, and how they were separated.
+
+**Status, 2026-11-03: the gap is gone on Strata 0.2.7.** A fresh blind check with three
+answers per engine and two graders puts Strata level with ik_llama.cpp, and teacher
+forcing finds no Slovak-specific drift and no switch that matters
+([measurement below](#strata-027-against-ik_llamacpp-2026-11-03)).
 
 ## The observation
 
@@ -165,3 +169,74 @@ variable is already set; measure before enabling it.
    0.1.44+ `STRATA_ROUTE_TAIL_SKIP=0`.
 3. **A larger blind check.** Fresh Slovak answers from ik_llama.cpp and Strata in the
    same session, several samples per prompt or more prompts, at least two graders.
+
+## Strata 0.2.7 against ik_llama.cpp, 2026-11-03
+
+Both engines read the same Q8_0 GGUF: Strata 0.2.7 (the default
+`strata-q8-vision-256k` profile) and ik_llama.cpp `13cffc00` through
+[ikllama/](../ikllama/README.md).
+
+### Blind sheet
+
+Ten prompts, three answer sets per engine: greedy, and two samples at temperature 0.7,
+top-p 0.8, top-k 20, no presence penalty, seeds 1 and 2, all sent explicitly so both
+engines sample alike. Thinking off. Six answers per prompt, shuffled, graded 0-10 by
+two LLM graders that saw only the sheet
+(`logs/language-samples/sk/blind-20261103-015803*.md`):
+
+| Answer set | Grader 1 | Grader 2 | Mean |
+|---|---:|---:|---:|
+| ik_llama.cpp, greedy | 74.0 | 70.5 | 72.25 |
+| ik_llama.cpp, sample 1 | 73.0 | 68.0 | 70.5 |
+| ik_llama.cpp, sample 2 | 68.5 | 66.5 | 67.5 |
+| Strata 0.2.7, greedy | 73.5 | 73.5 | **73.5** |
+| Strata 0.2.7, sample 1 | 67.5 | 67.0 | 67.25 |
+| Strata 0.2.7, sample 2 | 73.0 | 71.5 | 72.25 |
+
+The engines average 70.1 (ik_llama.cpp) and 71.0 (Strata); two samples of one engine
+differ by up to 5 points, more than the engines do. Both fail the same two prompts
+(case inflection of "mesto", and the grammar fix, where most answers keep "jablka").
+Strata's worst set (sample 1) holds the two lowest inflection and grammar-fix answers,
+and ran to the 800-token limit on both.
+
+**Chinese characters.** None in any of the 100 answers, including two more sets per
+engine at presence penalty 1.5 (the model card's instruct default, suspected of
+language mixing). Thinking was off; the reports of Chinese output were not reproduced
+by this test.
+
+### Teacher forcing
+
+Six segments of 1,000 tokens, read one token at a time: three Slovak texts written for
+this test (`bench/fixtures/sk-teacher-forcing/`, a story with dialogue, an expository
+text, an official letter) and the English, code and multilingual segments of Strata's
+own quant-quality set. The reference is ik_llama.cpp with F16 KV, read through its server
+by `bench/teacher_forcing.py` (5,967 positions; 27 skipped where a prefix ends inside a
+multi-byte character). Strata runs through `tools/quant_quality.py` (decode windows, no
+prefill CPU share, route tail skip off), switched one setting at a time with
+`bench/strata_quant_quality.py`. Top-1 agreement and KL over the reference's 64 most
+likely tokens; perplexity on the 5,868 positions where the target is in every run's top
+64 (`bench/teacher_forcing_ppl.py`):
+
+| Run | Top-1, all | KL, all | KL, Slovak story / expository / formal | KL, English / code | Perplexity |
+|---|---:|---:|---|---|---:|
+| ik_llama.cpp, Q8_0 KV (the reference's own KV-format change) | 96.85% | 0.0097 | 0.0121 / 0.0083 / 0.0073 | 0.0128 / 0.0107 | 2.478 |
+| Strata, experts on the CPU, F16 KV (the tool's default) | 95.83% | 0.0180 | 0.0237 / 0.0110 / 0.0157 | 0.0203 / 0.0210 | 2.484 |
+| Strata, experts on the GPU, F16 KV | 95.64% | 0.0180 | 0.0203 / 0.0131 / 0.0177 | 0.0188 / 0.0208 | 2.481 |
+| Strata, experts on the GPU, F16 KV, `STRATA_HC_Q8=1` | 95.66% | 0.0170 | 0.0204 / 0.0106 / 0.0160 | 0.0199 / 0.0189 | 2.485 |
+| Strata, experts on the GPU, INT8 KV (as served) | 95.73% | 0.0176 | 0.0195 / 0.0125 / 0.0162 | 0.0197 / 0.0235 | 2.487 |
+
+The reference's perplexity is 2.480.
+
+- **Strata differs from ik_llama.cpp about twice as much as ik_llama.cpp differs from
+  itself with Q8_0 instead of F16 KV** (KL 0.017-0.018 against 0.0097), and evenly: the
+  Slovak segments are not further off than English or code.
+- **None of the switches moves it.** Expert placement (CPU or GPU), the hyper-connection
+  projections in Q8_0 instead of BF16, and INT8 instead of F16 KV all stay within
+  0.0170-0.0180, so none of candidates 1 and 4 above is the source.
+- **The drift does not cost quality.** Perplexity on the same text is within 0.3% of the
+  reference for every run: lower than ik_llama.cpp's on English and the multilingual
+  segment, 1.1-1.8% higher on the Slovak letter, 0-1.1% on the story. KL against ik_llama.cpp measures
+  distance from ik_llama.cpp, not from the BF16 model; without a BF16 reference it cannot
+  say which engine is closer to it.
+- Not covered: the batched prompt path (prefill CPU share), MTP drafting (teacher forcing
+  does not draft), and thinking on with reasoning recovery.

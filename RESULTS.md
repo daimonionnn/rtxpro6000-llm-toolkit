@@ -20,7 +20,7 @@ since); compare within a table.
 |---|---|---|
 | The default: near-full quality at high speed | [`qwen3.8-flash-next-strata-q8-vision-256k`](qwen3.8-flash-next/strata/README.md#256k-vision-and-the-balanced-power-profile-2026-10-30) | Q8_0 on Strata 0.2.7 with MTP: 151 prose / 169 code / 121 Slovak tok/s, ~6,400 tok/s cold prefill up to 120K and 6,200 at 233K, image input, 256K (also 128K); GSM8K 97.0 %, MMLU-Pro 78.5 %, 457 of 542 code tests. ~37 GiB of pinned RAM. |
 | The best answers, at a lower speed | [`deepseek-v4.1-flash-strata-ud-q8kxl-128k`](deepseek-v4.1-flash/README.md#strata-ud-q8_k_xl) | DeepSeek's own MXFP4 experts: the best Slovak measured, GSM8K 98.3 %, MMLU-Pro 81.0 %; ~29 tok/s, ~1,000 tok/s prefill at 30K, up to 512K, images. Needs ~224 GB of RAM. For coding sessions and complex tasks, not for an agent making many quick calls. |
-| DeepSeek, faster and smaller | [`deepseek-v4.1-flash-strata-ist-iq2xs-128k`](deepseek-v4.1-flash/README.md#ista-daslab-iq2_xs-225-bpw) | ISTA-DASLab's official 2.25 bpw set: 40–59 tok/s, 2,118 tok/s prefill at 30K, Slovak 84, up to 256K, images; ~140 GB of RAM. |
+| DeepSeek, faster and smaller | [`deepseek-v4.1-flash-strata-ist-iq2xs-128k`](deepseek-v4.1-flash/README.md#ista-daslab-iq2_xs-225-bpw) | ISTA-DASLab's official 2.25 bpw set: 40–59 tok/s, 2,118 tok/s prefill at 30K, Slovak 84 on one sheet, about nine points below UD-Q8_K_XL with two graders, up to 256K, images; ~140 GB of RAM. |
 | The fastest prefill, the largest Qwen3.8 context | `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k` | 2.6 s at 32K, 9.7 s at 128K; 524K window, 831K-token KV pool, 235–254 tok/s; prefix cache survives restarts with HiCache. Depends on one person's fork and applies YaRN to every prompt. |
 | Fast and conservative | `qwen3.8-flash-next-sglang-nvfp4-ram-256k` (or `-official` for no local build) | 236–260 tok/s, 262K window, plain Docker |
 | Little free host RAM | `qwen3.8-flash-next-sglang-nvfp4-nvme-256k` | reads the PLE table from NVMe instead of holding ~65 GB in RAM; 214–222 tok/s, but the smallest KV pool and the slowest prefill of the SGLang profiles |
@@ -105,7 +105,10 @@ within one sheet only.
 
 The DeepSeek answers had about half the weighted errors. Later DeepSeek-only sheets
 (one grader) placed Strata UD-Q8_K_XL level with UD-Q3_K_XL (86.5 / 86) and the
-2.25 bpw set at 84. The Qwen3.8-only sheets are in
+2.25 bpw set at 84; a sheet with two graders and sampled answers (2026-11-03) widened
+that to 78.5 against 69.3
+([DeepSeek, Slovak with two graders](deepseek-v4.1-flash/README.md#slovak-two-graders-2026-11-03)).
+The Qwen3.8-only sheets are in
 [qwen3.8-flash-next/docs/results.md](qwen3.8-flash-next/docs/results.md#non-english-slovak-blind-check).
 
 ### Knowledge, math and code
@@ -130,9 +133,9 @@ reflect published agentic coding results, where DeepSeek-V4.1-Flash-1017 leads
 
 ## Not measured yet
 
-- DeepSeek: MBPP+ for UD-Q8_K_XL; GSM8K / MMLU-Pro / EvalPlus for the 2.25 bpw set; a
-  second grader for the 2026-10-27/28 Slovak sheets.
-- Qwen3.8 Strata 0.2.7: GSM8K / MMLU-Pro / EvalPlus and a blind Slovak grading (the last
-  scored runs used 0.1.41–0.1.44.1).
+- DeepSeek: MBPP+ for UD-Q8_K_XL; GSM8K / MMLU-Pro / EvalPlus for the 2.25 bpw set.
+- Qwen3.8 Strata 0.2.7: GSM8K / MMLU-Pro / EvalPlus (the last scored runs used
+  0.1.41–0.1.44.1). Its Slovak was re-checked on 2026-11-03: level with ik_llama.cpp on the
+  same Q8_0 weights ([NON-ENGLISH.md](qwen3.8-flash-next/strata/NON-ENGLISH.md#strata-027-against-ik_llamacpp-2026-11-03)).
 - Anything with thinking on, agentic tool use, long-context retrieval.
 - [Qwen3.8-Flash-Next open items](qwen3.8-flash-next/docs/results.md#not-measured-yet).
