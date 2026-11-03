@@ -94,7 +94,7 @@ details are with each model: [Qwen3.8-Flash-Next](qwen3.8-flash-next/docs/result
 ### Strata
 
 [Strata](https://github.com/Niko1221/Strata) serves both main models from one checkout
-(0.2.7): Qwen3.8-Flash-Next with its Qwen engine and DeepSeek-V4.1-Flash with its own
+(0.2.10): Qwen3.8-Flash-Next with its Qwen engine and DeepSeek-V4.1-Flash with its own
 DeepSeek engine (`strata-dsv41`). Both take images: Qwen3.8 through a GPU encoder with the
 BF16 mmproj (up to 4,096 image tokens), DeepSeek through the engine's own BF16 vision
 tower. Setup, profiles and measurements: [Qwen3.8 on Strata](qwen3.8-flash-next/strata/README.md),
@@ -200,9 +200,16 @@ Before switching to another profile, stop the service with
 Use `systemctl --user disable --now strata-server.service` to turn off boot
 startup. The unit restarts on failure; an explicit service stop stays stopped.
 
+To boot another profile, set `Environment=DEFAULT_PROFILE=<profile id>` in a drop-in
+(`systemctl --user edit strata-server.service`) instead of editing the unit. A launcher
+that returns once its server is loaded (the DeepSeek and ik_llama.cpp profiles) also needs
+`Type=oneshot`, `RemainAfterExit=yes` and `scripts/stop.sh` as `ExecStop`.
+
 The `start-*.sh` scripts call the profile launcher and refuse to start while
 another registered profile is running. Docker and SGLang launchers set
-`MODEL_DIR` to the checkpoint under `models/`. Launcher variables can be
+`MODEL_DIR` to the checkpoint under `models/`. Apart from the Strata Qwen launchers they
+take no options: `--host` and `--port` given to a `start-*.sh` script become `HOST` and
+`PORT`, anything else is ignored with a warning. Launcher variables can be
 overridden from the environment, e.g.
 `CHUNKED=8192 scripts/start-qwen3.8-flash-next-sglang-nvfp4-ram-256k.sh`.
 

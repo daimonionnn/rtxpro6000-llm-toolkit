@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-# Start the default profile: whatever DEFAULT_PROFILE below names.
+# Start the default profile: whatever DEFAULT_PROFILE below names, unless the
+# environment sets DEFAULT_PROFILE (for example a systemd drop-in for the boot service).
 # Shorthand for the default profile's context-labelled script; variables pass through.
 # It binds to every interface (--host 0.0.0.0) so LAN clients can reach the API;
 # pass --host 127.0.0.1 to keep it local.
 set -euo pipefail
 
-DEFAULT_PROFILE=qwen3.8-flash-next-strata-q8-vision-256k
+DEFAULT_PROFILE="${DEFAULT_PROFILE:-qwen3.8-flash-next-strata-q8-vision-256k}"
 
 source "$(dirname "$0")/_lib.sh"
 args=("$@")

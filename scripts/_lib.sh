@@ -117,7 +117,18 @@ start_profile() {
     shift
     exec python3 "$ROOT/$dir/$launcher" "$@"
   fi
+  local id=$1; shift
+  # the other launchers take no options: they read the bind address and port from HOST and PORT
+  while (( $# )); do
+    case "$1" in
+      --host) export HOST="$2"; shift 2 ;;
+      --host=*) export HOST="${1#*=}"; shift ;;
+      --port) export PORT="$2"; shift 2 ;;
+      --port=*) export PORT="${1#*=}"; shift ;;
+      *) echo "$id: ignoring $1 (this launcher reads its settings from the environment)" >&2; shift ;;
+    esac
+  done
   export MODEL_DIR="${MODEL_DIR:-$ROOT/models/$model}"
-  export PROFILE_ID="$1"   # launchers shared by several profiles label the container with it
+  export PROFILE_ID="$id"   # launchers shared by several profiles label the container with it
   exec "$ROOT/$dir/$launcher"
 }
