@@ -14,7 +14,7 @@ read the Engram from the SSD.
 | `deepseek-v4.1-flash-ik-mxfp4-128k`⁴ | ik_llama.cpp `main` | original MXFP4 | not yet measured¹ | 75 / 79.5 |
 | `deepseek-v4.1-flash-xolotl-xq-v2-128k` | Xolotl (`ds41_generate`) | IndrasMirror XQ v2, PTQ1_0 / Q2_0 / Q3_K | **60–68 tok/s** (Slovak ~40) | 78² |
 | `deepseek-v4.1-flash-xolotl-xq-v2-vision-128k` | the same + image input | | the same | |
-| `deepseek-v4.1-flash-strata-ud-q8kxl-128k` | Strata `strata-dsv41` 0.2.7 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | 86.5⁵ |
+| `deepseek-v4.1-flash-strata-ud-q8kxl-128k` | Strata `strata-dsv41` 0.2.10 | Unsloth UD-Q8_K_XL (original MXFP4) | ~29 tok/s with DSpark (Slovak, English, code)³ | 86.5⁵ |
 | `deepseek-v4.1-flash-strata-ud-q8kxl-256k`, `-512k` | the same, 256K / 512K context | | ~19–22 tok/s at ~200K context | |
 | `deepseek-v4.1-flash-strata-ud-q8kxl-vision-128k`, `-vision-256k`, `-vision-512k` | the same + image input (engine's own tower) | | the same | |
 | `deepseek-v4.1-flash-strata-ist-iq2xs-128k` (+ `-256k`, `-vision`, `-vision-256k`) | Strata `strata-dsv41` 0.2.7 | ISTA-DASLab IQ2_XS, 2.25 bpw (official) | **40–59 tok/s** with DSpark | 84⁵ |
@@ -335,7 +335,7 @@ now sets `"fit_max_tokens": true`, which shortens `max_tokens` to the room left 
 
 ## Strata UD-Q8_K_XL
 
-[Strata](https://github.com/Niko1221/Strata) 0.2.7 ships its own DeepSeek-V4.1 engine,
+[Strata](https://github.com/Niko1221/Strata) 0.2.10 ships its own DeepSeek-V4.1 engine,
 `strata-dsv41` (ported from Project Maya's `maya-ds4`), behind the same API server as
 the Qwen3.8 Strata profiles. It runs Unsloth's UD-Q8_K_XL as released: the experts in
 their original MXFP4, the dense weights in BF16 and the Engram on the SSD, 508.4 GB in
@@ -351,6 +351,12 @@ HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-256k.sh   
 HOST=0.0.0.0 scripts/start-deepseek-v4.1-flash-strata-ud-q8kxl-vision-512k.sh   # 512K with image input
 ```
 
+Strata's web app at `http://HOST:PORT/` has a Monitor tab (GPU load, power, VRAM, CPU and RAM,
+prefill and decode speed per request). `API_MONITOR=1` before the start command also turns
+on Strata's API request monitor at `/api-monitor`: the request bodies (sampling, thinking
+switch), reasoning and answer of the last 100 requests, kept in memory until the restart.
+It is off by default; with `HOST=0.0.0.0` anyone on the network can read the history.
+
 The three profiles differ only in `--max-context`. The engine's compressed KV cache is
 small: 0.12 / 0.24 / 0.49 GB of VRAM at 128K / 256K / 512K, which costs 50 to 65 VRAM
 experts (of ~4,300) at 512K.
@@ -362,7 +368,8 @@ chat UI's origin, clamps oversized `max_tokens` and shares `native/stop.sh` and 
 file with the other DeepSeek profiles.
 
 The figures below up to [Image input](#image-input-strata-027) were measured on 0.2.6;
-see [Strata 0.2.7](#strata-027) for the upgrade. The launcher passes `--experts 6`: 0.2.7
+see [Strata 0.2.7](#strata-027) and [Strata 0.2.10](#strata-0210) for the upgrades. The launcher
+passes `--experts 6`: Strata
 drops to five routed experts a word on cards of 16 GiB or less, never here, but the
 flag keeps full quality if that rule changes.
 
@@ -501,9 +508,31 @@ Warm, 0.2.7 matches 0.2.6. Its first answers after a start are about 25 % slower
 change the first round, so the cause is not one of those defaults; the profiles keep
 0.2.7's defaults.
 
+### Strata 0.2.10
+
+0.2.10 (DeepSeek engine 0.1.56, 2026-11-03) keeps the vision tower in pinned RAM between
+pictures and gives its VRAM to the experts: 4,338 experts on the card at 128K and 4,331 at
+256K with vision on, against 4,216 on 0.2.7. Two fresh starts per context, the same
+sequence, `performance` power profile, GPU power limit 500 W:
+
+| | Slovak, rounds 1 / 2 / 3 | English | Python | Prefill 3.8K / 30K |
+|---|---:|---:|---:|---:|
+| 0.2.7, vision on | 20.6 / 26.9 / 29.2 | 20.9 / 25.5 / 26.2 | 26.7 / 31.9 / 31.9 | 330 / 965 tok/s |
+| 0.2.10, vision on, 128K | 17.0–17.6 / 23.3–23.9 / 27.0–30.2 | 16.8–18.5 / 27.0 / 27.3–27.5 | 21.1–21.5 / 26.7–28.8 / 22.6–29.2 | 516–518 / **1,311–1,315** tok/s |
+| 0.2.10, vision on, 256K | 17.5 / 24.2–24.7 / 28.7 | 18.9–19.2 / 24.5–25.6 / 27.4–28.0 | 22.0–25.3 / 26.9 / 25.9–29.2 | 517 / 1,308–1,310 tok/s |
+
+Prompts read 56 % faster at 3.8K and 36 % faster at 30K. Decode after a start is slower:
+the first round by 5–20 %, the second by up to 16 % (English is level there); by the third
+the two versions are within the spread of single answers (22.6–30.2 tok/s). For long-prompt work 0.2.10 is the
+better trade, for many short answers right after a start it is not. The 256K window
+costs nothing measurable against 128K (seven experts fewer on the card), so the
+profiles' context is a free choice. The 0.2.7 commit is tagged `toolkit-0.2.7-running`
+in `../Strata`; its binaries were deleted. Raw results:
+`logs/strata-comparison/strata-0.2.10-run.txt`.
+
 ### Setup
 
-`~/development/Strata` is the same checkout as the Qwen3.8 Strata profiles (tag `v0.2.7`).
+`~/development/Strata` is the same checkout as the Qwen3.8 Strata profiles (tag `v0.2.10`).
 The vision tower comes from shard 1 of DeepSeek's own checkpoint (0.97 GB, only the tower);
 `vision_pack.py` turns it into `vision.bin`, reads the three image-marker rows (30 KB) from
 shard 2 with an HTTP range request, and `pack_gguf.py` takes `../vision` by itself.

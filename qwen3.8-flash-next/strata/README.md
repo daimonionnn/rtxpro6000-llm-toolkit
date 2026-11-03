@@ -25,11 +25,11 @@ comparison methodology are in [COMPARISON.md](COMPARISON.md).
 
 ## Source and compatibility
 
-- Strata 0.2.7 (Qwen engine 0.1.52), commit `5e8a4cca7d690ac60ca37eb09e7d0e010099ad6d`
-  (tag `v0.2.7`), unpatched, built from source. It reads Q8_0 PLE tables and contains
+- Strata 0.2.10 (Qwen engine 0.1.56), commit `ffa80d73133ea5c548aefe57889a16e8085a938f`
+  (tag `v0.2.10`), unpatched, built from source. It reads Q8_0 PLE tables and contains
   Q6_K expert kernels upstream.
 - The launchers set `STRATA_ROUTE_TAIL_SKIP=0` unless the caller sets it. Strata
-  0.1.42+ (still in 0.2.7) otherwise skips low-ranked experts missing from VRAM on CUDA,
+  0.1.42+ (still in 0.2.10) otherwise skips low-ranked experts missing from VRAM on CUDA,
   which changes answers, most on non-English text ([NON-ENGLISH.md](NON-ENGLISH.md)).
 - Its pinned ggml dependency: llama.cpp `3cf03257f219afbe7334045ff7c6a06ac68c627d`.
 - CUDA 13.3, compiled for SM120.
@@ -50,6 +50,34 @@ On the same day the checkout moved on to 0.2.7, which adds pictures to the DeepS
 engine (the DeepSeek profiles run from the same checkout). `iq_pack.py` and the MTP
 tools are unchanged between 0.2.6 and 0.2.7, so the packs and MTP runtime files were
 kept. The 0.2.6 commit is tagged `toolkit-0.2.6-running` in `../Strata`.
+
+On 2026-11-03 the checkout moved to 0.2.10. `iq_pack.py`, the MTP tools and the pinned
+llama.cpp dependency are unchanged since 0.2.7, so the packs, the MTP runtime files and
+the vision encoder build were kept; only `build/strata` and `build-dsv41/strata-dsv41`
+were rebuilt. The 0.2.7 commit is tagged `toolkit-0.2.7-running` in `../Strata`.
+
+### Upgrade to 0.2.10, 2026-11-03
+
+The run of the 256K section below, fresh start, `balanced`, DDR5-6400 CL42, GPU power
+limit 500 W (the limit of the earlier runs):
+
+| | 0.2.7 (2026-10-30) | 0.2.10 |
+|---|---:|---:|
+| Decode prose / code / Slovak, tok/s | 151 / 169 / 121 | 161 / 188 / 133 |
+| Cold prefill 4K / 32K / 120K, tok/s | 1,879 / 6,431 / 6,460 | 1,941 / 7,134 / 7,071 |
+| Cold prefill ~233K | 6,183 tok/s (37.7 s) | 6,726 tok/s (34.7 s) |
+| Load time | 51 s | 42 s |
+
+Both read the two vision fixtures exactly. Decode is 6–11 % faster on prose and code and
+10 % on Slovak, cold prefill 9–11 % from 32K up. A run earlier the same day, with the limit
+moved from 400 to 500 W during its decode, gave 157 / 181 / 119 and 2,133 / 7,089 / 7,153.
+0.2.10 sets `STRATA_GR_V3_PF=133` on sm_120 cards (register-blocked down kernels for verify
+windows of 5+ rows) and opens prompt-lookup windows of up to 12 tokens on one CUDA card.
+The teacher-forced logits over the six segments of
+[NON-ENGLISH.md](NON-ENGLISH.md#strata-027-against-ik_llamacpp-2026-11-03) are byte for
+byte those of 0.2.7, with experts on the GPU and INT8 K/V and with experts on the CPU and
+F16 K/V: the decode numerics did not change. Raw results:
+`logs/strata-comparison/strata-q8-vision-256k-0.2.10-balanced*`.
 
 ### 256K vision and the `balanced` power profile, 2026-10-30
 
@@ -211,6 +239,12 @@ for long conversations. Restart the server to apply changes to this setting.
 `--resident-gib`, `--prefill`, `--vram-reserve-mib`, `--pool-workers` and
 `--pool-affinity` override the defaults.
 The engine log is `logs/strata-q8-engine.log`.
+
+Strata's web app at `http://HOST:PORT/` has a Monitor tab (GPU load, power, VRAM, CPU and RAM,
+prefill and decode speed per request). `API_MONITOR=1` before the start command also turns
+on Strata's API request monitor at `/api-monitor`: the request bodies (sampling, thinking
+switch), reasoning and answer of the last 100 requests, kept in memory until the restart.
+It is off by default; with `--host 0.0.0.0` anyone on the network can read the history.
 
 ### CPU expert pool
 

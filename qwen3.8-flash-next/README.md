@@ -67,7 +67,7 @@ filename convention.
 | [`strata-q8-256k`](strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8 PLE patch; MTP | Q8_0 | mmap / OS file cache | 262,144 | 89.4 prose, 104.9 code, 73.1 Slovak | 36.75 GiB pinned experts + PLE cache |
 | [`strata-q6-256k`](strata/README.md#256k-profiles) | Strata 0.1.39, native + Q8/Q6 patches; MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | 119.5 prose, 144.4 code, 93.2 Slovak | 17.95 GiB pinned experts + PLE cache |
 | [`strata-q8-vision`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 131,072 | not benchmarked | 36.55 GiB pinned experts + PLE cache |
-| [`strata-q8-vision-256k`](strata/README.md#256k-vision-and-the-balanced-power-profile-2026-10-30) (default) | Strata 0.2.7; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 262,144 | 151 prose, 169 code, 121 Slovak (2026-10-30) | 38.46 GiB pinned experts + PLE cache |
+| [`strata-q8-vision-256k`](strata/README.md#upgrade-to-0210-2026-11-03) (default) | Strata 0.2.10; BF16 GPU vision, MTP | Q8_0 | mmap / OS file cache | 262,144 | 161 prose, 188 code, 133 Slovak (2026-11-03) | 38.46 GiB pinned experts + PLE cache |
 | [`strata-q6-vision`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 131,072 | not benchmarked | 17.75 GiB pinned experts + PLE cache |
 | [`strata-q6-vision-256k`](strata/README.md#vision-profiles) | Strata 0.1.39 + patches; BF16 GPU vision, MTP | Q6_K/Q8_0, 7.21 bpw | mmap / OS file cache | 262,144 | not benchmarked | 19.66 GiB pinned experts + PLE cache |
 | [`ik-q8-vision-128k`](ikllama/README.md) | ik_llama.cpp via ik-llama-toolkit; GPU vision | Q8_0 (same file as Strata) | in the GGUF, mmap | 131,072 | ~40 | ~105 GiB |
@@ -202,6 +202,8 @@ runs need port 8090, so Strata and the agents using it are down meanwhile.
 - [x] Upgrade to Strata 0.2.7 (2026-10-27): speed within run-to-run spread, load 50 -> 44 s
       ([speed A/B](strata/README.md#upgrade-to-027-speed-ab-2026-10-27)); the quality
       checks below now apply to 0.2.7
+- [x] Upgrade to Strata 0.2.10 (2026-11-03): decode +6–11 %, cold prefill +9–11 %, the same
+      teacher-forced logits as 0.2.7 ([upgrade](strata/README.md#upgrade-to-0210-2026-11-03))
 
 ### Strata 0.2.6 (Qwen engine 0.1.50) quality checks
 

@@ -98,6 +98,9 @@ def main(quant="q8", description=None, context=131072, vision=False):
         fit_max_tokens=True,
         log=str(ROOT / f"logs/strata-{quant}{suffix}-engine.log"), host=args.host, port=args.port)
     config["args"] += ["--pool-affinity", args.pool_affinity]
+    # API_MONITOR=1: Strata's API request monitor (/api-monitor) keeps the last 100 prompts and answers in memory
+    if os.environ.get("API_MONITOR") == "1":
+        config["api_monitor"] = True
     if args.pool_workers:
         config["args"] += ["--pool-workers", str(args.pool_workers)]
     if vision_config:

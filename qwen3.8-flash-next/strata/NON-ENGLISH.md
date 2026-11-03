@@ -238,5 +238,8 @@ The reference's perplexity is 2.480.
   segment, 1.1-1.8% higher on the Slovak letter, 0-1.1% on the story. KL against ik_llama.cpp measures
   distance from ik_llama.cpp, not from the BF16 model; without a BF16 reference it cannot
   say which engine is closer to it.
+- **Strata 0.2.10 gives the same logits.** Both 0.2.10 runs (experts on the GPU with INT8
+  K/V, experts on the CPU with F16 K/V) wrote byte-identical files to their 0.2.7 runs, so
+  every number above holds for 0.2.10.
 - Not covered: the batched prompt path (prefill CPU share), MTP drafting (teacher forcing
   does not draft), and thinking on with reasoning recovery.

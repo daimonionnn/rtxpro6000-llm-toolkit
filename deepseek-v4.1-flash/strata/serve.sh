@@ -35,6 +35,8 @@
 #                 the same speed on UD-Q8_K_XL, 2-15 % slower on the IQ2_XS set.
 #   EXPERTS       routed experts a word (default 6, the model's own; 5 = Strata's "Faster" mode)
 #   STRATA_DIR    Strata checkout (0.2.7+) with build-dsv41/ and packs/ (default ~/development/Strata)
+#   API_MONITOR   1 = Strata's API request monitor on http://HOST:PORT/api-monitor (request bodies,
+#                 sampling, reasoning and answer of the last 100 requests, kept in memory); default off
 set -euo pipefail
 HERE="$(cd "$(dirname "$0")" && pwd)"
 ROOT="$(cd "$HERE/../.." && pwd)"
@@ -133,7 +135,8 @@ print(json.dumps({
     # the toolkit's chat UI (scripts/start-ui.sh) calls /v1 from this origin in the browser
     "cors_origins": ["http://127.0.0.1:5173", "http://localhost:5173"],
     "sampling": {"temperature": 1, "top_p": 1.0},
-    "api_monitor": True,
+    # the API request monitor (/api-monitor) keeps the last 100 prompts and answers in memory
+    "api_monitor": e.get("API_MONITOR") == "1",
     # agents send max_tokens 65536 whatever the prompt: shorten it to the room left instead of a 400
     "fit_max_tokens": True,
 }, indent=2))

@@ -21,6 +21,8 @@
 #               fast routing: about +40 % decode, but clearly worse Slovak)
 #   DSPARK      1 = speculative decode with the MTP sidecar (default), 0 = off
 #   CPUSET      CPUs for the server (default 0-7, the P-cores of a 270K Plus)
+#   API_MONITOR 1 = Strata's API request monitor on http://HOST:PORT/api-monitor (request bodies,
+#               sampling, reasoning and answer of the last 100 requests, kept in memory); default off
 #   VISION_GPU  vision profile: 0 = image encoder on the CPU (default), 1 = on the GPU (takes VRAM from the experts)
 #   XOLOTL_DIR  Xolotl checkout (default ~/development/xolotl)
 #   PYTHON      Python with Xolotl's requirements.txt (default $XOLOTL_DIR/.venv/bin/python)
@@ -99,7 +101,8 @@ cfg = {
     # the toolkit's chat UI (scripts/start-ui.sh) calls /v1 from this origin in the browser
     "cors_origins": ["http://127.0.0.1:5173", "http://localhost:5173"],
     "sampling": {"temperature": 1, "top_p": 1.0},
-    "api_monitor": True,
+    # the API request monitor (/api-monitor) keeps the last 100 prompts and answers in memory
+    "api_monitor": e.get("API_MONITOR") == "1",
     # agents send max_tokens 65536 whatever the prompt: shorten it to the room left instead of a 400
     "fit_max_tokens": True,
     "reasoning_budget_tokens": 32768,
