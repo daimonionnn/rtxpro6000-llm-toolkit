@@ -17,9 +17,13 @@ Qwen3.8-Flash-Next quantizations.
 One at a time with every other profile, on `http://127.0.0.1:8090/v1` as model
 `Qwen3.8-27B`.
 
-| Profile | Runtime | Weights | KV cache | Context | Decode, tok/s | HumanEval+ / MBPP+ | Slovak check |
+| Profile | Runtime | Weights | KV cache | Context | Decode, tok/s | HumanEval+ / MBPP+ | Slovak, 2026-11-04 |
 |---|---|---|---|---|---|---|---|
-| [`sglang-bf16`](docs/profiles/sglang-bf16.md) | SGLang, official image | BF16 | 295,344 BF16 | 262,144 | 85 code, 57 prose | 0.933 / 0.780 | 56 (3.6-27B 50, Flash-Next AWQ g32 77) |
+| [`sglang-bf16`](docs/profiles/sglang-bf16.md) | SGLang, official image | BF16 | 295,344 BF16 | 262,144 | 85 code, 57 prose | 0.933 / 0.780 | 57 (3.6-27B 52, Flash-Next Q8 71, DeepSeek UD-Q8 80)¹ |
+
+¹ Mean of a greedy and two sampled answer sets, two graders, all four models on one sheet:
+[Slovak across models](../RESULTS.md#slovak). The 2026-09-15 sheet gave 56 against 50 for
+Qwen3.6-27B and 77 for Flash-Next AWQ g32.
 
 Setup, configuration and measurements: [docs/profiles/sglang-bf16.md](docs/profiles/sglang-bf16.md).
 Against Qwen3.6-27B and the Qwen3.8-Flash-Next profiles: [results](../qwen3.8-flash-next/docs/results.md).

@@ -39,7 +39,7 @@ BF16 KV cache (no FP8 without calibrated scales), BF16 SSM state,
 | HumanEval / HumanEval+ | 0.970 / 0.933 |
 | MBPP / MBPP+ | 0.910 / 0.780 |
 | Plus tests passed | 448 of 542 |
-| Slovak blind check, score of 100 | 56 (Qwen3.6-27B 50, Flash-Next AWQ g32 77) |
+| Slovak blind check, score of 100 | 57 on 2026-11-04 (Qwen3.6-27B 52, Flash-Next Q8 71, DeepSeek UD-Q8 80); 56 on 2026-09-15 (Qwen3.6-27B 50, Flash-Next AWQ g32 77) |
 
 Task by task against Qwen3.6-27B (446) it solved 18 tasks the older model missed
 and missed 16 it solved (p = 0.86) — no measurable difference on this benchmark.
@@ -48,4 +48,10 @@ In the four-way Slovak blind check it placed third, 6 points above Qwen3.6-27B w
 about as many weighted errors (88 against 86) and 14–21 points below the two
 Flash-Next AWQ g32 checkpoints. Typical errors: Czech words („Omluvy“, „predem“),
 gender slips („veľká pstruh“), non-words („nadmierať“, „odraza“) and invented
-grammar rules. Details and the Flash-Next comparison: [Qwen3.8 results](../../../qwen3.8-flash-next/docs/results.md#non-english-slovak-blind-check).
+grammar rules.
+
+On the four-model sheet of 2026-11-04 (two graders, one greedy and two sampled answer sets
+each) it scored 60.0 greedy and 58.3 / 53.0 sampled, 57.1 on average: second of the two
+dense models, 14 points below Flash-Next Q8 on Strata and 23 below DeepSeek UD-Q8. Its
+sampled answers overlap with Qwen3.6-27B's ([Slovak across models](../../../RESULTS.md#slovak)).
+Details and the Flash-Next comparison: [Qwen3.8 results](../../../qwen3.8-flash-next/docs/results.md#non-english-slovak-blind-check).

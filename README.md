@@ -81,7 +81,8 @@ details are with each model: [Qwen3.8-Flash-Next](qwen3.8-flash-next/docs/result
   endings, invented idioms, Czech words), so the blind Slovak check is a sensitive test
   for smaller, morphologically rich languages, European ones in particular. It says less
   about non-Latin scripts (tokenization) or agglutinative languages such as Finnish or
-  Turkish, and it is small: ten prompts, one greedy answer each, an LLM grader.
+  Turkish, and it is small: ten prompts, a greedy answer (lately also two sampled ones)
+  per setup, and LLM graders.
 - **Fastest prefill and the largest Qwen3.8 context:** `qwen3.8-flash-next-sglang-nvfp4-ram-pennyroyal-512k`
   (2.6 s at 32K, 9.7 s at 128K; 524K window, 831K-token KV pool, NVFP4 weights);
   `-sglang-nvfp4-ram` for plain Docker.
@@ -89,7 +90,8 @@ details are with each model: [Qwen3.8-Flash-Next](qwen3.8-flash-next/docs/result
   loss on code, a few points below g32 in Slovak; dealignai's abliterated NVFP4 lost
   code ability. `strata-q8-abliterated-vision` is the 8-bit option on Strata.
 - **Dense Qwen3.6-27B and Qwen3.8-27B at BF16** trail Flash-Next on code and
-  clearly in Slovak; 3.8 is no measurable step over 3.6.
+  clearly in Slovak (57 and 52 of 100 against 71 for the default Strata Q8 and 80 for
+  DeepSeek UD-Q8, one sheet, two graders, 2026-11-04); 3.8 is at most a small step over 3.6.
 
 ### Strata
 

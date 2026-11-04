@@ -30,7 +30,7 @@ since); compare within a table.
 | No refusals, 8-bit weights | [`strata-q8-abliterated-vision-128k`](qwen3.8-flash-next/strata/README.md#abliterated-q8_0) | windowsxp811203's abliterated Q8_0 on Strata: no measured loss against the original Q8_0 (code 455 vs 457 of 542, GSM8K 96.7 vs 97.0 %, MMLU-Pro 80.2 vs 78.5 %), vision works. |
 | Qwen3.8 at 8 bits outside Strata | [`qwen3.8-flash-next-ik-q8-vision-128k`](qwen3.8-flash-next/ikllama/README.md) (ik_llama.cpp through ik-llama-toolkit, also `-mtp-` and 256K) | first of four in its blind Slovak check of Qwen3.8 setups (73 against 70 for AWQ g32), but no better on code (454 of 542); 38 tok/s, 131K window, ~105 GiB host RAM. `vllm-fp8-offload-256k` also keeps experts in RAM and decodes at ~16 tok/s. |
 | Qwen3.8 with fewer bits on Strata | [`strata-q6-128k`](qwen3.8-flash-next/strata/README.md#strata-q6_kq8_0) | Q6_K/Q8_0 experts, 7.21 bpw; less pinned expert RAM (16 against 35 GiB) and faster generation than Q8 in the 2026-10-06 runs, but a slower first prefill; no scored quality run. |
-| A dense model | `qwen3.8-27b-sglang-bf16-256k` or `qwen3.6-27b-sglang-bf16-256k` | full BF16 precision, but both solved fewer code tasks than every measured Flash-Next quantization except the abliterated NVFP4, scored 21–27 points below AWQ g32 in the Slovak check, and decode slower (57–87 tok/s) |
+| A dense model | `qwen3.8-27b-sglang-bf16-256k` or `qwen3.6-27b-sglang-bf16-256k` | full BF16 precision, but both solved fewer code tasks than every measured Flash-Next quantization except the abliterated NVFP4, scored 14–19 points below the default Strata Q8 and 23–28 below DeepSeek UD-Q8 in the [four-model Slovak sheet](#slovak), and decode slower (57–87 tok/s) |
 | — not this one | `qwen3.8-flash-next-sglang-nvfp4-ram-official-abliterated-256k` | dealignai's abliterated NVFP4 lost 16 code tasks net against the same profile without abliteration (p = 0.02) |
 | — superseded | `qwen3.8-flash-next-vllm-awq-w4a16-256k` | INT4 group 128: the largest vLLM KV pool (605K), but in the bottom two of every Slovak check; group 32 is slightly faster |
 
@@ -109,6 +109,29 @@ The DeepSeek answers had about half the weighted errors. Later DeepSeek-only she
 2.25 bpw set at 84; a sheet with two graders and sampled answers (2026-11-03) widened
 that to 78.5 against 69.3
 ([DeepSeek, Slovak with two graders](deepseek-v4.1-flash/README.md#slovak-two-graders-2026-11-03)).
+**The four main models on one sheet, two graders** (2026-11-04,
+`logs/language-samples/sk/blind-20261104-003446*`): every model answered once greedily and
+twice sampled (seeds 1 and 2) with its recommended settings, temperature 0.7 / top_p 0.8 /
+top_k 20 for the Qwen models and 1.0 / 1.0 for DeepSeek, so 12 answers per prompt.
+Scores are the mean of the two graders; errors are the mean count over all three answer sets.
+
+| Setup | Greedy | Sampled, seed 1 / 2 | Mean of 3 | Errors |
+|---|---:|---:|---:|---:|
+| DeepSeek-V4.1 UD-Q8_K_XL (Strata) | **81.5** | 76.8 / 81.3 | **79.8** | 15 |
+| Qwen3.8-Flash-Next Q8_0 (Strata, the default) | 72.5 | 67.5 / 72.5 | 70.8 | 44 |
+| Qwen3.8-27B BF16 (SGLang) | 60.0 | 58.3 / 53.0 | 57.1 | 72 |
+| Qwen3.6-27B BF16 (SGLang) | 54.8 | 48.0 / 54.3 | 52.3 | 75 |
+
+Both graders put the models in the same order, and the setups do not overlap between the
+first three rows; the two dense 27B models do (their sampled answers interleave), so 3.8-27B
+is only slightly ahead of 3.6-27B. The dense models lose most on inflection, idioms and the
+story (wrong case endings, non-words, Czech words). No setup corrects "jablka" → "jablká" in
+the grammar fix reliably. The Strata answers come from 0.2.7, which gives byte-identical
+logits to 0.2.10 on Qwen3.8; the 27B answers were collected for this sheet. The two graders
+are the same LLM run independently, so they are not as independent as two people. A sheet
+without Qwen3.6-27B the day before (`blind-20261103-223121*`) gave the same order (82.5,
+71.8 and 60.8 greedy).
+
 The Qwen3.8-only sheets are in
 [qwen3.8-flash-next/docs/results.md](qwen3.8-flash-next/docs/results.md#non-english-slovak-blind-check).
 

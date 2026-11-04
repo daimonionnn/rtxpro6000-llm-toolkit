@@ -26,8 +26,10 @@ One at a time with every other profile, on `http://127.0.0.1:8090/v1` as model
 
 Setup, configuration and measurements: [docs/profiles/sglang-bf16.md](docs/profiles/sglang-bf16.md).
 Against the Qwen3.8-Flash-Next profiles: [results](../qwen3.8-flash-next/docs/results.md) — every
-Flash-Next quantization solved more of the code tasks, and in the Slovak blind check
-it scored 50 of 100 against 77 for Flash-Next AWQ g32 (Qwen3.8-27B: 56).
+Flash-Next quantization solved more of the code tasks. In Slovak it is last of the four main
+models on one sheet with two graders (2026-11-04): 52 of 100, against 57 for Qwen3.8-27B,
+71 for Flash-Next Q8 on Strata and 80 for DeepSeek UD-Q8 ([Slovak across models](../RESULTS.md#slovak));
+the 2026-09-15 sheet gave 50 against 77 for Flash-Next AWQ g32.
 
 ## Layout
 
