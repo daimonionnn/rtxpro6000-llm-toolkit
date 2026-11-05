@@ -445,6 +445,23 @@ before matters more than the threads: a 30K prompt right after a start read at
 prefill runs fell to 15–23 tok/s, as each workload shifts which experts stay in VRAM.
 Treat single runs as ±20 %.
 
+On Strata 0.2.10, UD-Q8_K_XL at 128K, re-measured with six P-cores added (2026-11-05,
+`balanced` power profile, GPU limit 500 W, `CPUSET` and `CPU_THREADS` together, one
+fresh start each, the same sequence; decode is the mean of rounds 2 and 3, power over all
+three rounds; idle 12.7–12.8 W in all three):
+
+| P-cores / threads | Decode, rounds 2–3 | CPU power, decode | Energy per token | Prefill 3.8K / 30K | CPU power, prefill |
+|---|---:|---:|---:|---:|---:|
+| 8 / 8 (`CPUSET=0-7`, default) | **28.0 tok/s** | 123 W | 4.4 J | 514 / 1,317 tok/s | 41 W |
+| 6 / 6 (`CPUSET=0-5 CPU_THREADS=6`) | 25.0 (−11 %) | 97 W | 3.9 J | 524 / 1,313 tok/s | 39 W |
+| 4 / 4 (`CPUSET=0-3 CPU_THREADS=4`) | 25.3 (−10 %) | **74 W** | **2.9 J** | 524 / 1,326 tok/s | 37 W |
+
+Six cores decode no faster than four (the difference is within the run-to-run spread)
+and draw 23 W more: the CPU experts are bound by RAM bandwidth, which four cores nearly
+saturate and eight fill. Four P-cores remain the low-power setting, a third less energy
+per token for about 10 % of decode speed; the default stays at eight. The first round
+after each start ran at 16–18 tok/s.
+
 With `--dspark auto` the engine does not load the DSpark drafter: it expects the verify
 rounds to read too many expert bytes when most experts are on the CPU. Forced on
 (same sequence, `CPUSET=0-7`, 22 lane threads) it pays off anyway, so the profile passes
